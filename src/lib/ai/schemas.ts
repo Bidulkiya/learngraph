@@ -5,7 +5,7 @@ export const skillTreeNodeSchema = z.object({
   id: z.string().describe('고유 ID (예: node_1, node_2)'),
   title: z.string().describe('개념 이름 (짧고 명확하게)'),
   description: z.string().describe('개념 설명 (2-3문장)'),
-  difficulty: z.number().min(1).max(5).describe('난이도 1(기초)~5(심화)'),
+  difficulty: z.number().describe('난이도 (1~5 사이 정수, 1=기초, 5=심화)'),
 })
 
 export const skillTreeEdgeSchema = z.object({
@@ -32,7 +32,7 @@ export const quizQuestionSchema = z.object({
   options: z.array(z.string()).optional().describe('객관식 보기 (4개)'),
   correct_answer: z.string().describe('정답'),
   explanation: z.string().describe('해설'),
-  difficulty: z.number().min(1).max(5).describe('난이도'),
+  difficulty: z.number().describe('난이도 (1~5 사이 정수)'),
 })
 
 export const quizSchema = z.object({
