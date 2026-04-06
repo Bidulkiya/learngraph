@@ -2,8 +2,9 @@
 
 import { streamObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
+import { createStreamableValue } from '@ai-sdk/rsc'
 import { createServerClient } from '@/lib/supabase/server'
-import { skillTreeSchema, type SkillTreeOutput } from '@/lib/ai/schemas'
+import { skillTreeSchema } from '@/lib/ai/schemas'
 import { SKILL_TREE_PROMPT } from '@/lib/ai/prompts'
 import { embedAndStoreDocument } from '@/lib/ai/embeddings'
 // pdf-parse v1 — index.js에 디버그 코드가 있어 test/data/05-versions-space.pdf를 참조함.
@@ -13,7 +14,6 @@ const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buffer: Buffer) => Pr
 
 /**
  * Extract text from uploaded PDF file.
- * Server-side extraction is more reliable than browser-side.
  */
 export async function extractPdfText(formData: FormData): Promise<string> {
   const file = formData.get('file') as File | null
@@ -32,20 +32,39 @@ export async function extractPdfText(formData: FormData): Promise<string> {
 
 /**
  * Generate a skill tree from text content using Claude API.
- * Returns a streamable object for real-time preview.
+ *
+ * FIX: streamObject()의 반환값은 직렬화 불가(클래스 인스턴스).
+ * Server Action → Client Component 경계를 넘기려면
+ * createStreamableValue로 감싸서 직렬화 가능한 토큰을 반환해야 한다.
+ * 클라이언트에서는 readStreamableValue로 소비.
  */
 export async function generateSkillTree(fileContent: string) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('인증이 필요합니다.')
 
-  const result = streamObject({
-    model: anthropic('claude-sonnet-4-6-20250514'),
-    schema: skillTreeSchema,
-    prompt: SKILL_TREE_PROMPT(fileContent),
-  })
+  const stream = createStreamableValue<unknown>()
 
-  return result
+  // Fire-and-forget: 스트림을 즉시 반환하고, 백그라운드에서 AI 결과를 push
+  ;(async () => {
+    try {
+      const result = streamObject({
+        model: anthropic('claude-sonnet-4-6-20250514'),
+        schema: skillTreeSchema,
+        prompt: SKILL_TREE_PROMPT(fileContent),
+      })
+
+      for await (const partialObject of result.partialObjectStream) {
+        stream.update(partialObject)
+      }
+
+      stream.done()
+    } catch (err) {
+      stream.error(err instanceof Error ? err : new Error('AI 생성 중 오류가 발생했습니다.'))
+    }
+  })()
+
+  return { object: stream.value }
 }
 
 /**

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { readStreamableValue } from '@ai-sdk/rsc'
 import { extractPdfText, generateSkillTree, saveSkillTree } from '@/actions/skill-tree'
 type Phase = 'upload' | 'extracting' | 'generating' | 'preview' | 'saving' | 'done'
 
@@ -50,18 +51,20 @@ export default function NewSkillTreePage() {
       const text = await extractPdfText(formData)
       setExtractedText(text)
 
-      // Phase 2: Generate skill tree
+      // Phase 2: Generate skill tree via streaming
       setPhase('generating')
-      const result = await generateSkillTree(text)
+      const { object } = await generateSkillTree(text)
 
-      // Stream the partial results for real-time preview
-      for await (const partialObject of result.partialObjectStream) {
-        setSkillTree(partialObject as PartialSkillTree)
+      // readStreamableValue consumes the serializable stream token
+      let lastValue: PartialSkillTree = {}
+      for await (const partialObject of readStreamableValue(object)) {
+        if (partialObject) {
+          lastValue = partialObject as PartialSkillTree
+          setSkillTree(lastValue)
+        }
       }
 
-      // Get the validated final object
-      const finalResult = await result.object
-      setSkillTree(finalResult as PartialSkillTree)
+      setSkillTree(lastValue)
       setPhase('preview')
     } catch (err) {
       const message = err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.'
