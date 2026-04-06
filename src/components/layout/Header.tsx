@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { LogOut, Moon, Sun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,9 +11,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { useEffect, useState } from "react"
-
-type Role = "teacher" | "student" | "admin"
+import { createBrowserClient } from "@/lib/supabase/client"
+import type { Role } from "@/types/user"
 
 interface HeaderProps {
   role: Role
@@ -25,8 +27,16 @@ const roleLabels: Record<Role, string> = {
   admin: "운영자",
 }
 
+const roleBadgeColors: Record<Role, string> = {
+  teacher: "bg-[#10B981]/10 text-[#10B981] border-[#10B981]/30",
+  student: "bg-[#4F6BF6]/10 text-[#4F6BF6] border-[#4F6BF6]/30",
+  admin: "bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/30",
+}
+
 export function Header({ role, userName = "사용자" }: HeaderProps) {
+  const router = useRouter()
   const [dark, setDark] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark")
@@ -39,12 +49,23 @@ export function Header({ role, userName = "사용자" }: HeaderProps) {
     document.documentElement.classList.toggle("dark", next)
   }
 
+  async function handleLogout(): Promise<void> {
+    setLoggingOut(true)
+    const supabase = createBrowserClient()
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
+  }
+
   return (
     <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-950">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {roleLabels[role]} 대시보드
         </h2>
+        <Badge variant="outline" className={roleBadgeColors[role]}>
+          {roleLabels[role]}
+        </Badge>
       </div>
 
       <div className="flex items-center gap-2">
@@ -67,9 +88,13 @@ export function Header({ role, userName = "사용자" }: HeaderProps) {
               프로필
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">
+            <DropdownMenuItem
+              className="text-red-600"
+              disabled={loggingOut}
+              onClick={handleLogout}
+            >
               <LogOut className="mr-2 h-4 w-4" />
-              로그아웃
+              {loggingOut ? "로그아웃 중..." : "로그아웃"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
