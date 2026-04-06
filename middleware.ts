@@ -1,10 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-// Protected route prefixes that require authentication
 const PROTECTED_ROUTES = ["/teacher", "/student", "/admin"]
-// Public routes that skip auth
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/callback"]
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({ request })
@@ -31,21 +28,31 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     }
   )
 
-  // IMPORTANT: use getUser() not getSession() — getUser() validates server-side
+  // IMPORTANT: getUser() validates server-side (not getSession which reads JWT only)
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Check if current path is a protected route
-  const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
-  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname === route)
-
-  // 1. Unauthenticated user accessing protected route → redirect to /login
-  if (!user && isProtectedRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/login"
-    return NextResponse.redirect(url)
+  // ──────────────────────────────────────────────────────
+  // FIX: 모든 redirect에 supabaseResponse의 쿠키를 복사.
+  // getUser()가 토큰을 갱신하면 setAll→supabaseResponse에 쿠키가 쓰이는데,
+  // NextResponse.redirect()는 별도 객체라 쿠키가 전달되지 않았음.
+  // 이 함수로 redirect 시에도 갱신된 세션 쿠키를 보존한다.
+  // ──────────────────────────────────────────────────────
+  function redirectTo(path: string): NextResponse {
+    const redirectResponse = NextResponse.redirect(new URL(path, request.url))
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value)
+    })
+    return redirectResponse
   }
 
-  // 2. Authenticated user on /login or /signup → redirect to their dashboard
+  const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
+
+  // 1. Unauthenticated → /login
+  if (!user && isProtectedRoute) {
+    return redirectTo("/login")
+  }
+
+  // 2. Authenticated user on /login or /signup → dashboard
   if (user && (pathname === "/login" || pathname === "/signup")) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -54,10 +61,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       .single()
 
     const role = profile?.role || "student"
-    return NextResponse.redirect(new URL(`/${role}`, request.url))
+    return redirectTo(`/${role}`)
   }
 
-  // 3. Role-based routing — ensure users can only access their role's routes
+  // 3. Role mismatch → correct dashboard
   if (user && isProtectedRoute) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -66,18 +73,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       .single()
 
     const role = profile?.role
-
     if (role) {
-      // Redirect if accessing wrong role route
-      if (pathname.startsWith("/teacher") && role !== "teacher") {
-        return NextResponse.redirect(new URL(`/${role}`, request.url))
-      }
-      if (pathname.startsWith("/student") && role !== "student") {
-        return NextResponse.redirect(new URL(`/${role}`, request.url))
-      }
-      if (pathname.startsWith("/admin") && role !== "admin") {
-        return NextResponse.redirect(new URL(`/${role}`, request.url))
-      }
+      if (pathname.startsWith("/teacher") && role !== "teacher") return redirectTo(`/${role}`)
+      if (pathname.startsWith("/student") && role !== "student") return redirectTo(`/${role}`)
+      if (pathname.startsWith("/admin") && role !== "admin") return redirectTo(`/${role}`)
     }
   }
 

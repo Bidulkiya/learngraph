@@ -1,9 +1,9 @@
 "use client"
 
 import { Suspense, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { BookOpen, Loader2 } from "lucide-react"
+import { BookOpen, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,12 +12,12 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import type { Role } from "@/types/user"
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const justRegistered = searchParams.get("registered") === "true"
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -46,7 +46,7 @@ function LoginForm() {
         return
       }
 
-      // Fetch user's role from profiles
+      // Fetch user role from profiles
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         setError("사용자 정보를 불러올 수 없습니다.")
@@ -62,9 +62,11 @@ function LoginForm() {
 
       const role = (profile?.role as Role) || "student"
 
-      // Redirect to role-specific dashboard
-      router.push(`/${role}`)
-      router.refresh()
+      // FIX: router.push + router.refresh 대신 window.location 사용.
+      // router.push()는 soft navigation이라 middleware가 stale 쿠키로 실행될 수 있고,
+      // router.refresh()와 동시 호출 시 /login 재요청 → 리디렉트 루프가 발생했음.
+      // window.location은 full navigation이므로 쿠키가 확실히 포함된다.
+      window.location.href = `/${role}`
     } catch {
       setError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.")
       setLoading(false)
@@ -73,7 +75,6 @@ function LoginForm() {
 
   return (
     <>
-      {/* Registration success notice */}
       {justRegistered && (
         <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
           회원가입이 완료되었습니다. 로그인해주세요.
@@ -81,7 +82,6 @@ function LoginForm() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Email */}
         <div className="space-y-2">
           <Label htmlFor="email">이메일</Label>
           <Input
@@ -94,25 +94,32 @@ function LoginForm() {
           />
         </div>
 
-        {/* Password */}
         <div className="space-y-2">
           <Label htmlFor="password">비밀번호</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="비밀번호 입력"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="비밀번호 입력"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pr-10"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
 
-        {/* Error */}
         {error && (
           <p className="text-sm text-red-500">{error}</p>
         )}
 
-        {/* Submit */}
         <Button type="submit" className="w-full bg-[#4F6BF6] hover:bg-[#4F6BF6]/90" disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           로그인
