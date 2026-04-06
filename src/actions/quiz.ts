@@ -19,8 +19,10 @@ export async function generateQuizForNode(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    const admin = createAdminClient()
+
     // Check if quizzes already exist
-    const { data: existing } = await supabase
+    const { data: existing } = await admin
       .from('quizzes')
       .select('*')
       .eq('node_id', nodeId)
@@ -30,7 +32,7 @@ export async function generateQuizForNode(
     }
 
     // Get node info
-    const { data: node } = await supabase
+    const { data: node } = await admin
       .from('nodes')
       .select('title, description, difficulty')
       .eq('id', nodeId)
@@ -56,7 +58,6 @@ export async function generateQuizForNode(
       difficulty: q.difficulty,
     }))
 
-    const admin = createAdminClient()
     const { data: savedQuizzes, error: saveErr } = await admin
       .from('quizzes')
       .insert(quizInserts)
@@ -87,8 +88,9 @@ export async function submitQuizAnswer(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
-    // Get quiz
-    const { data: quiz } = await supabase
+    // Get quiz (admin — anon client에서 RLS로 조회 실패 가능)
+    const adminForRead = createAdminClient()
+    const { data: quiz } = await adminForRead
       .from('quizzes')
       .select('correct_answer, explanation, question_type')
       .eq('id', quizId)
@@ -240,8 +242,8 @@ export async function getQuizzesForNode(
   nodeId: string
 ): Promise<{ data?: Quiz[]; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data, error } = await supabase
+    const admin = createAdminClient()
+    const { data, error } = await admin
       .from('quizzes')
       .select('*')
       .eq('node_id', nodeId)

@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { QuizSession } from './QuizSession'
 
@@ -8,11 +8,10 @@ interface Props {
 
 export default async function QuizPage({ params }: Props) {
   const { nodeId } = await params
-  const profile = await getCurrentProfile()
-  const supabase = await createServerClient()
+  await getCurrentProfile()
 
-  // Get node info
-  const { data: node } = await supabase
+  const admin = createAdminClient()
+  const { data: node } = await admin
     .from('nodes')
     .select('*, skill_trees(title)')
     .eq('id', nodeId)
