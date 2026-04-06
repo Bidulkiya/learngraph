@@ -1,65 +1,68 @@
-import Image from "next/image";
+import { BookOpen, GraduationCap, Shield } from "lucide-react"
+import Link from "next/link"
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[#4F6BF6]/5 via-white to-[#7C5CFC]/5 dark:from-[#4F6BF6]/10 dark:via-gray-950 dark:to-[#7C5CFC]/10">
+      <main className="flex flex-col items-center gap-8 px-6 text-center">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4F6BF6] to-[#7C5CFC] shadow-lg">
+            <BookOpen className="h-7 w-7 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Learn<span className="text-[#4F6BF6]">Graph</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {/* Description */}
+        <p className="max-w-lg text-lg text-gray-600 dark:text-gray-400">
+          AI가 수업 자료를 분석하여 스킬트리를 자동 생성하고,
+          <br />
+          학생이 퀴즈를 풀어 노드를 언락하며 학습하는 교육 플랫폼
+        </p>
+
+        {/* Role Cards */}
+        <div className="mt-4 grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3">
+          <Link
+            href="/teacher"
+            className="group flex flex-col items-center gap-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-[#10B981]/50 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-[#10B981]/50"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#10B981]/10 transition-colors group-hover:bg-[#10B981]/20">
+              <GraduationCap className="h-6 w-6 text-[#10B981]" />
+            </div>
+            <span className="font-semibold text-gray-900 dark:text-white">교사</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">스킬트리 생성 · 학생 관리</span>
+          </Link>
+
+          <Link
+            href="/student"
+            className="group flex flex-col items-center gap-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-[#4F6BF6]/50 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-[#4F6BF6]/50"
           >
-            Documentation
-          </a>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#4F6BF6]/10 transition-colors group-hover:bg-[#4F6BF6]/20">
+              <BookOpen className="h-6 w-6 text-[#4F6BF6]" />
+            </div>
+            <span className="font-semibold text-gray-900 dark:text-white">학생</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">스킬트리 탐험 · 퀴즈 풀기</span>
+          </Link>
+
+          <Link
+            href="/admin"
+            className="group flex flex-col items-center gap-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-[#F59E0B]/50 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-[#F59E0B]/50"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F59E0B]/10 transition-colors group-hover:bg-[#F59E0B]/20">
+              <Shield className="h-6 w-6 text-[#F59E0B]" />
+            </div>
+            <span className="font-semibold text-gray-900 dark:text-white">운영자</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">템플릿 관리 · 전체 분석</span>
+          </Link>
         </div>
+
+        {/* Footer */}
+        <p className="mt-8 text-sm text-gray-400 dark:text-gray-600">
+          KEG 바이브 코딩 대회 2025 출품작
+        </p>
       </main>
     </div>
-  );
+  )
 }
