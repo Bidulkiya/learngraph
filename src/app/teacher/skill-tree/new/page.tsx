@@ -6,17 +6,15 @@ import { Upload, FileText, Loader2, CheckCircle, TreePine, ArrowRight, Save } fr
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { readStreamableValue } from '@ai-sdk/rsc'
 import { extractPdfText, generateSkillTree, saveSkillTree } from '@/actions/skill-tree'
+
 type Phase = 'upload' | 'extracting' | 'generating' | 'preview' | 'saving' | 'done'
 
-// Streaming partial type — fields may be partially populated
-interface PartialSkillTree {
-  title?: string
-  description?: string
-  nodes?: Array<{ id?: string; title?: string; description?: string; difficulty?: number }>
-  edges?: Array<{ source?: string; target?: string; label?: string }>
+interface SkillTreeResult {
+  title: string
+  description: string
+  nodes: Array<{ id: string; title: string; description: string; difficulty: number }>
+  edges: Array<{ source: string; target: string; label?: string }>
 }
 
 export default function NewSkillTreePage() {
@@ -26,7 +24,7 @@ export default function NewSkillTreePage() {
   const [phase, setPhase] = useState<Phase>('upload')
   const [fileName, setFileName] = useState('')
   const [extractedText, setExtractedText] = useState('')
-  const [skillTree, setSkillTree] = useState<PartialSkillTree>({})
+  const [skillTree, setSkillTree] = useState<SkillTreeResult | null>(null)
   const [error, setError] = useState('')
   const [dragOver, setDragOver] = useState(false)
 
@@ -51,20 +49,11 @@ export default function NewSkillTreePage() {
       const text = await extractPdfText(formData)
       setExtractedText(text)
 
-      // Phase 2: Generate skill tree via streaming
+      // Phase 2: Generate skill tree (server-side, await full result)
+      // generateObject는 완전한 plain object를 반환하므로 직렬화 문제 없음.
       setPhase('generating')
-      const { object } = await generateSkillTree(text)
-
-      // readStreamableValue consumes the serializable stream token
-      let lastValue: PartialSkillTree = {}
-      for await (const partialObject of readStreamableValue(object)) {
-        if (partialObject) {
-          lastValue = partialObject as PartialSkillTree
-          setSkillTree(lastValue)
-        }
-      }
-
-      setSkillTree(lastValue)
+      const result = await generateSkillTree(text)
+      setSkillTree(result)
       setPhase('preview')
     } catch (err) {
       const message = err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.'
@@ -81,24 +70,15 @@ export default function NewSkillTreePage() {
   }, [handleFile])
 
   const handleSave = async (): Promise<void> => {
-    if (!skillTree.title || !skillTree.nodes?.length || !skillTree.edges) return
-    // Filter out incomplete partial nodes/edges before saving
-    const completeNodes = skillTree.nodes.filter(
-      (n): n is { id: string; title: string; description: string; difficulty: number } =>
-        !!n.id && !!n.title && !!n.description && n.difficulty != null
-    )
-    const completeEdges = (skillTree.edges ?? []).filter(
-      (e): e is { source: string; target: string; label?: string } =>
-        !!e.source && !!e.target
-    )
+    if (!skillTree) return
     setPhase('saving')
     setError('')
 
     try {
       await saveSkillTree(
-        { title: skillTree.title, description: skillTree.description ?? '' },
-        completeNodes,
-        completeEdges,
+        { title: skillTree.title, description: skillTree.description },
+        skillTree.nodes,
+        skillTree.edges,
         extractedText
       )
       setPhase('done')
@@ -188,34 +168,18 @@ export default function NewSkillTreePage() {
                 {phase === 'extracting' ? 'PDF 텍스트 추출 중...' : 'AI가 스킬트리를 생성 중...'}
               </p>
               <p className="mt-1 text-sm text-gray-500">
+                {phase === 'generating' && '10~30초 정도 소요됩니다'}
+              </p>
+              <p className="mt-1 text-sm text-gray-400">
                 {fileName && <><FileText className="mr-1 inline h-4 w-4" />{fileName}</>}
               </p>
             </div>
-
-            {/* Streaming preview during generation */}
-            {phase === 'generating' && skillTree.nodes && skillTree.nodes.length > 0 && (
-              <div className="mt-4 w-full max-w-lg space-y-2">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  생성된 노드: {skillTree.nodes.length}개
-                </p>
-                <div className="space-y-2">
-                  {skillTree.nodes.map((node, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded-lg border bg-white p-2 text-sm dark:border-gray-700 dark:bg-gray-800">
-                      <Badge className={difficultyColor(node.difficulty ?? 1)} variant="secondary">
-                        Lv.{node.difficulty ?? '?'}
-                      </Badge>
-                      <span className="font-medium">{node.title || '...'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
 
       {/* Phase: Preview */}
-      {(phase === 'preview' || phase === 'saving' || phase === 'done') && skillTree.title && (
+      {(phase === 'preview' || phase === 'saving' || phase === 'done') && skillTree && (
         <div className="space-y-4">
           <Card>
             <CardHeader>
@@ -227,17 +191,17 @@ export default function NewSkillTreePage() {
                   </CardTitle>
                   <CardDescription className="mt-1">{skillTree.description}</CardDescription>
                 </div>
-                <Badge>{skillTree.nodes?.length ?? 0}개 노드</Badge>
+                <Badge>{skillTree.nodes.length}개 노드</Badge>
               </div>
             </CardHeader>
           </Card>
 
           {/* Nodes */}
           <div className="grid gap-3 sm:grid-cols-2">
-            {skillTree.nodes?.map((node, i) => (
-              <Card key={i}>
+            {skillTree.nodes.map((node) => (
+              <Card key={node.id}>
                 <CardContent className="flex items-start gap-3 pt-4">
-                  <Badge className={difficultyColor(node.difficulty ?? 1)} variant="secondary">
+                  <Badge className={difficultyColor(node.difficulty)} variant="secondary">
                     Lv.{node.difficulty}
                   </Badge>
                   <div className="flex-1">
@@ -250,7 +214,7 @@ export default function NewSkillTreePage() {
           </div>
 
           {/* Edges */}
-          {skillTree.edges && skillTree.edges.length > 0 && (
+          {skillTree.edges.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">선수지식 관계 ({skillTree.edges.length}개)</CardTitle>
@@ -258,8 +222,8 @@ export default function NewSkillTreePage() {
               <CardContent>
                 <div className="space-y-1.5 text-sm">
                   {skillTree.edges.map((edge, i) => {
-                    const sourceNode = skillTree.nodes?.find(n => n.id === edge.source)
-                    const targetNode = skillTree.nodes?.find(n => n.id === edge.target)
+                    const sourceNode = skillTree.nodes.find(n => n.id === edge.source)
+                    const targetNode = skillTree.nodes.find(n => n.id === edge.target)
                     return (
                       <div key={i} className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                         <span className="font-medium text-gray-900 dark:text-white">{sourceNode?.title ?? edge.source}</span>
@@ -278,7 +242,7 @@ export default function NewSkillTreePage() {
           <div className="flex justify-end gap-3">
             {phase === 'preview' && (
               <>
-                <Button variant="outline" onClick={() => { setPhase('upload'); setSkillTree({}) }}>
+                <Button variant="outline" onClick={() => { setPhase('upload'); setSkillTree(null) }}>
                   다시 만들기
                 </Button>
                 <Button onClick={handleSave} className="bg-[#10B981] hover:bg-[#10B981]/90">

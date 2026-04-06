@@ -1,14 +1,12 @@
 'use server'
 
-import { streamObject } from 'ai'
+import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { createStreamableValue } from '@ai-sdk/rsc'
 import { createServerClient } from '@/lib/supabase/server'
-import { skillTreeSchema } from '@/lib/ai/schemas'
+import { skillTreeSchema, type SkillTreeOutput } from '@/lib/ai/schemas'
 import { SKILL_TREE_PROMPT } from '@/lib/ai/prompts'
 import { embedAndStoreDocument } from '@/lib/ai/embeddings'
-// pdf-parse v1 — index.js에 디버그 코드가 있어 test/data/05-versions-space.pdf를 참조함.
-// lib/pdf-parse.js를 직접 import하면 디버그 코드를 우회할 수 있다.
+// pdf-parse v1 — lib/pdf-parse.js 직접 import로 디버그 코드 우회
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buffer: Buffer) => Promise<{ text: string }>
 
@@ -33,38 +31,27 @@ export async function extractPdfText(formData: FormData): Promise<string> {
 /**
  * Generate a skill tree from text content using Claude API.
  *
- * FIX: streamObject()의 반환값은 직렬화 불가(클래스 인스턴스).
- * Server Action → Client Component 경계를 넘기려면
- * createStreamableValue로 감싸서 직렬화 가능한 토큰을 반환해야 한다.
- * 클라이언트에서는 readStreamableValue로 소비.
+ * generateObject를 사용하여 완전한 결과를 반환한다.
+ * 이전 streamObject + createStreamableValue 패턴은
+ * Server Action의 실행 컨텍스트가 return 후 종료되어
+ * 클라이언트가 빈 스트림을 받는 문제가 있었음.
+ *
+ * 반환값은 plain object만 포함 (Server Action 직렬화 호환).
  */
-export async function generateSkillTree(fileContent: string) {
+export async function generateSkillTree(
+  fileContent: string
+): Promise<SkillTreeOutput> {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('인증이 필요합니다.')
 
-  const stream = createStreamableValue<unknown>()
+  const { object } = await generateObject({
+    model: anthropic('claude-sonnet-4-6-20250514'),
+    schema: skillTreeSchema,
+    prompt: SKILL_TREE_PROMPT(fileContent),
+  })
 
-  // Fire-and-forget: 스트림을 즉시 반환하고, 백그라운드에서 AI 결과를 push
-  ;(async () => {
-    try {
-      const result = streamObject({
-        model: anthropic('claude-sonnet-4-6-20250514'),
-        schema: skillTreeSchema,
-        prompt: SKILL_TREE_PROMPT(fileContent),
-      })
-
-      for await (const partialObject of result.partialObjectStream) {
-        stream.update(partialObject)
-      }
-
-      stream.done()
-    } catch (err) {
-      stream.error(err instanceof Error ? err : new Error('AI 생성 중 오류가 발생했습니다.'))
-    }
-  })()
-
-  return { object: stream.value }
+  return object
 }
 
 /**
