@@ -58,10 +58,6 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Footer */}
-        <p className="mt-8 text-sm text-gray-400 dark:text-gray-600">
-          KEG 바이브 코딩 대회 2025 출품작
-        </p>
       </main>
     </div>
   )
