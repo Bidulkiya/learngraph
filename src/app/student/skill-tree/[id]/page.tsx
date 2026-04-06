@@ -1,0 +1,83 @@
+import { createServerClient } from '@/lib/supabase/server'
+import { getCurrentProfile } from '@/components/layout/RoleGuard'
+import { StudentSkillTreeView } from './StudentSkillTreeView'
+
+interface Props {
+  params: Promise<{ id: string }>
+}
+
+export default async function StudentSkillTreeExplorePage({ params }: Props) {
+  const { id } = await params
+  const profile = await getCurrentProfile()
+  const supabase = await createServerClient()
+
+  const { data: tree } = await supabase
+    .from('skill_trees')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (!tree) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-red-500">스킬트리를 찾을 수 없습니다</p>
+      </div>
+    )
+  }
+
+  const { data: nodes } = await supabase
+    .from('nodes')
+    .select('*')
+    .eq('skill_tree_id', id)
+    .order('order_index')
+
+  const { data: edges } = await supabase
+    .from('node_edges')
+    .select('*')
+    .eq('skill_tree_id', id)
+
+  // Fetch student progress
+  const { data: progress } = await supabase
+    .from('student_progress')
+    .select('*')
+    .eq('skill_tree_id', id)
+    .eq('student_id', profile?.id ?? '')
+
+  // Map progress to node status
+  const progressMap = new Map<string, string>()
+  progress?.forEach(p => progressMap.set(p.node_id, p.status))
+
+  const d3Nodes = (nodes ?? []).map(n => {
+    // If no progress entry, root nodes (no incoming edges) are available, others locked
+    let status = progressMap.get(n.id) ?? 'locked'
+    if (!progressMap.has(n.id)) {
+      const hasIncoming = edges?.some(e => e.target_node_id === n.id)
+      if (!hasIncoming) status = 'available'
+    }
+    return {
+      id: n.id,
+      title: n.title,
+      description: n.description ?? '',
+      difficulty: n.difficulty ?? 1,
+      status: status as 'locked' | 'available' | 'in_progress' | 'completed',
+      x: n.position_x ?? undefined,
+      y: n.position_y ?? undefined,
+    }
+  })
+
+  const d3Edges = (edges ?? []).map(e => ({
+    id: e.id,
+    source: e.source_node_id,
+    target: e.target_node_id,
+    label: e.label,
+  }))
+
+  return (
+    <StudentSkillTreeView
+      treeTitle={tree.title}
+      treeDescription={tree.description ?? ''}
+      nodes={d3Nodes}
+      edges={d3Edges}
+    />
+  )
+}

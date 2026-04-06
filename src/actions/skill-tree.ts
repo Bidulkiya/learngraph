@@ -47,6 +47,9 @@ export async function generateSkillTree(
   fileContent: string
 ): Promise<{ data?: SkillTreeOutput; error?: string }> {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY ?? ''
+    console.log(`[generateSkillTree] API key prefix: ${apiKey.slice(0, 10)}... model: claude-sonnet-4-6 textLen: ${fileContent.length}`)
+
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다. 다시 로그인해주세요.' }
@@ -57,10 +60,13 @@ export async function generateSkillTree(
       prompt: SKILL_TREE_PROMPT(fileContent),
     })
 
+    console.log(`[generateSkillTree] 성공: ${object.nodes?.length}개 노드`)
     return { data: object }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    console.error('[generateSkillTree] 에러:', msg)
+    const stack = err instanceof Error ? err.stack?.slice(0, 300) : ''
+    console.error(`[generateSkillTree] 에러: ${msg}`)
+    console.error(`[generateSkillTree] 스택: ${stack}`)
     return { error: `AI 생성 실패: ${msg}` }
   }
 }
@@ -145,5 +151,125 @@ export async function saveSkillTree(
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[saveSkillTree] 에러:', msg)
     return { error: `저장 실패: ${msg}` }
+  }
+}
+
+// =============================================
+// Phase 4: Node/Edge CRUD Server Actions
+// =============================================
+
+export async function updateNodePosition(
+  nodeId: string, x: number, y: number
+): Promise<{ error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { error } = await supabase
+      .from('nodes')
+      .update({ position_x: x, position_y: y })
+      .eq('id', nodeId)
+    if (error) return { error: error.message }
+    return {}
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+export async function updateNode(
+  nodeId: string, title: string, description: string, difficulty: number
+): Promise<{ error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { error } = await supabase
+      .from('nodes')
+      .update({ title, description, difficulty })
+      .eq('id', nodeId)
+    if (error) return { error: error.message }
+    return {}
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+export async function addNode(
+  skillTreeId: string, title: string, description: string, difficulty: number
+): Promise<{ id?: string; error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { data, error } = await supabase
+      .from('nodes')
+      .insert({ skill_tree_id: skillTreeId, title, description, difficulty, order_index: 0 })
+      .select('id')
+      .single()
+    if (error) return { error: error.message }
+    return { id: data.id }
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+export async function deleteNode(nodeId: string): Promise<{ error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    // Edges referencing this node are deleted via ON DELETE CASCADE
+    const { error } = await supabase.from('nodes').delete().eq('id', nodeId)
+    if (error) return { error: error.message }
+    return {}
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+export async function addEdge(
+  skillTreeId: string, sourceId: string, targetId: string
+): Promise<{ id?: string; error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { data, error } = await supabase
+      .from('node_edges')
+      .insert({ skill_tree_id: skillTreeId, source_node_id: sourceId, target_node_id: targetId })
+      .select('id')
+      .single()
+    if (error) return { error: error.message }
+    return { id: data.id }
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+export async function deleteEdge(edgeId: string): Promise<{ error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { error } = await supabase.from('node_edges').delete().eq('id', edgeId)
+    if (error) return { error: error.message }
+    return {}
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+export async function fetchSkillTreeDetail(treeId: string) {
+  try {
+    const supabase = await createServerClient()
+    const { data: tree, error: treeErr } = await supabase
+      .from('skill_trees')
+      .select('*')
+      .eq('id', treeId)
+      .single()
+    if (treeErr || !tree) return { error: treeErr?.message ?? 'Not found' }
+
+    const { data: nodes } = await supabase
+      .from('nodes')
+      .select('*')
+      .eq('skill_tree_id', treeId)
+      .order('order_index')
+
+    const { data: edges } = await supabase
+      .from('node_edges')
+      .select('*')
+      .eq('skill_tree_id', treeId)
+
+    return { data: { tree, nodes: nodes ?? [], edges: edges ?? [] } }
+  } catch (err) {
+    return { error: String(err) }
   }
 }
