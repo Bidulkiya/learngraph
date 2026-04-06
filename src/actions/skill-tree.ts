@@ -6,9 +6,10 @@ import { createServerClient } from '@/lib/supabase/server'
 import { skillTreeSchema, type SkillTreeOutput } from '@/lib/ai/schemas'
 import { SKILL_TREE_PROMPT } from '@/lib/ai/prompts'
 import { embedAndStoreDocument } from '@/lib/ai/embeddings'
-// pdf-parse v1 — CommonJS module, no default ESM export
+// pdf-parse v1 — index.js에 디버그 코드가 있어 test/data/05-versions-space.pdf를 참조함.
+// lib/pdf-parse.js를 직접 import하면 디버그 코드를 우회할 수 있다.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
+const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buffer: Buffer) => Promise<{ text: string }>
 
 /**
  * Extract text from uploaded PDF file.
