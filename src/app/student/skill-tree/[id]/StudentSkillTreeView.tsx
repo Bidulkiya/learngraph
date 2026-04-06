@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, TreePine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function StudentSkillTreeView({ treeTitle, treeDescription, nodes, edges }: Props) {
+  const router = useRouter()
   const completed = nodes.filter(n => n.status === 'completed').length
   const total = nodes.length
 
@@ -23,9 +25,9 @@ export function StudentSkillTreeView({ treeTitle, treeDescription, nodes, edges 
     if (node.status === 'locked') {
       toast.error('선수 과목을 먼저 완료하세요')
     } else if (node.status === 'available' || node.status === 'in_progress') {
-      toast.info('퀴즈 기능은 곧 추가됩니다')
+      router.push(`/student/quiz/${node.id}`)
     } else if (node.status === 'completed') {
-      toast.success(`"${node.title}" 완료!`)
+      toast.success(`"${node.title}" — 이미 완료한 노드입니다`)
     }
   }
 
