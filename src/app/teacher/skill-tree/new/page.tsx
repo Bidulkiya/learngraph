@@ -41,25 +41,32 @@ export default function NewSkillTreePage() {
     setError('')
     setFileName(file.name)
 
-    // Phase 1: Extract text
+    // Phase 1: Extract text from PDF
     setPhase('extracting')
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const text = await extractPdfText(formData)
-      setExtractedText(text)
+    const formData = new FormData()
+    formData.append('file', file)
+    const extractResult = await extractPdfText(formData)
 
-      // Phase 2: Generate skill tree (server-side, await full result)
-      // generateObject는 완전한 plain object를 반환하므로 직렬화 문제 없음.
-      setPhase('generating')
-      const result = await generateSkillTree(text)
-      setSkillTree(result)
-      setPhase('preview')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.'
-      setError(message)
+    if (extractResult.error || !extractResult.text) {
+      setError(extractResult.error ?? 'PDF 텍스트 추출에 실패했습니다.')
       setPhase('upload')
+      return
     }
+
+    setExtractedText(extractResult.text)
+
+    // Phase 2: Generate skill tree via Claude AI
+    setPhase('generating')
+    const genResult = await generateSkillTree(extractResult.text)
+
+    if (genResult.error || !genResult.data) {
+      setError(genResult.error ?? 'AI 스킬트리 생성에 실패했습니다.')
+      setPhase('upload')
+      return
+    }
+
+    setSkillTree(genResult.data)
+    setPhase('preview')
   }, [])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -74,20 +81,21 @@ export default function NewSkillTreePage() {
     setPhase('saving')
     setError('')
 
-    try {
-      await saveSkillTree(
-        { title: skillTree.title, description: skillTree.description },
-        skillTree.nodes,
-        skillTree.edges,
-        extractedText
-      )
-      setPhase('done')
-      setTimeout(() => router.push('/teacher/skill-tree'), 1500)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.'
-      setError(message)
+    const result = await saveSkillTree(
+      { title: skillTree.title, description: skillTree.description },
+      skillTree.nodes,
+      skillTree.edges,
+      extractedText
+    )
+
+    if (result.error) {
+      setError(result.error)
       setPhase('preview')
+      return
     }
+
+    setPhase('done')
+    setTimeout(() => router.push('/teacher/skill-tree'), 1500)
   }
 
   const difficultyColor = (d: number): string => {
