@@ -31,12 +31,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // IMPORTANT: getUser() validates server-side (not getSession which reads JWT only)
   const { data: { user } } = await supabase.auth.getUser()
 
-  // ──────────────────────────────────────────────────────
-  // FIX: 모든 redirect에 supabaseResponse의 쿠키를 복사.
-  // getUser()가 토큰을 갱신하면 setAll→supabaseResponse에 쿠키가 쓰이는데,
-  // NextResponse.redirect()는 별도 객체라 쿠키가 전달되지 않았음.
-  // 이 함수로 redirect 시에도 갱신된 세션 쿠키를 보존한다.
-  // ──────────────────────────────────────────────────────
+  // Redirect 시 supabaseResponse의 갱신된 세션 쿠키를 복사
   function redirectTo(path: string): NextResponse {
     const redirectResponse = NextResponse.redirect(new URL(path, request.url))
     supabaseResponse.cookies.getAll().forEach((cookie) => {
