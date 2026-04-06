@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { StudentSkillTreeView } from './StudentSkillTreeView'
 
@@ -9,9 +9,9 @@ interface Props {
 export default async function StudentSkillTreeExplorePage({ params }: Props) {
   const { id } = await params
   const profile = await getCurrentProfile()
-  const supabase = await createServerClient()
+  const admin = createAdminClient()
 
-  const { data: tree } = await supabase
+  const { data: tree } = await admin
     .from('skill_trees')
     .select('*')
     .eq('id', id)
@@ -25,19 +25,19 @@ export default async function StudentSkillTreeExplorePage({ params }: Props) {
     )
   }
 
-  const { data: nodes } = await supabase
+  const { data: nodes } = await admin
     .from('nodes')
     .select('*')
     .eq('skill_tree_id', id)
     .order('order_index')
 
-  const { data: edges } = await supabase
+  const { data: edges } = await admin
     .from('node_edges')
     .select('*')
     .eq('skill_tree_id', id)
 
   // Fetch student progress
-  const { data: progress } = await supabase
+  const { data: progress } = await admin
     .from('student_progress')
     .select('*')
     .eq('skill_tree_id', id)

@@ -3,17 +3,22 @@ import { Plus, TreePine, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 
 export default async function SkillTreeListPage() {
   const profile = await getCurrentProfile()
-  const supabase = await createServerClient()
+  if (!profile) return null
 
-  const { data: skillTrees } = await supabase
+  // admin client로 조회 — anon client의 RLS에서 auth.uid()가
+  // Server Component 쿠키 컨텍스트에서 불안정하게 작동하는 이슈 우회.
+  // 인증은 getCurrentProfile()에서 이미 확인됨.
+  const admin = createAdminClient()
+
+  const { data: skillTrees } = await admin
     .from('skill_trees')
     .select('*, nodes(count)')
-    .eq('created_by', profile?.id ?? '')
+    .eq('created_by', profile.id)
     .order('created_at', { ascending: false })
 
   const statusLabel: Record<string, string> = {

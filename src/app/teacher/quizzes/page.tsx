@@ -1,16 +1,17 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { TeacherQuizManager } from './TeacherQuizManager'
 
 export default async function TeacherQuizzesPage() {
   const profile = await getCurrentProfile()
-  const supabase = await createServerClient()
+  if (!profile) return null
 
-  // Get teacher's skill trees with their nodes
-  const { data: trees } = await supabase
+  const admin = createAdminClient()
+
+  const { data: trees } = await admin
     .from('skill_trees')
     .select('id, title, nodes(id, title, difficulty)')
-    .eq('created_by', profile?.id ?? '')
+    .eq('created_by', profile.id)
     .order('created_at', { ascending: false })
 
   return (

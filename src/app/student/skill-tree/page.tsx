@@ -1,17 +1,16 @@
 import Link from 'next/link'
 import { TreePine, FileText } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 
 export default async function StudentSkillTreeListPage() {
-  await getCurrentProfile()
-  const supabase = await createServerClient()
+  const profile = await getCurrentProfile()
+  if (!profile) return null
 
-  // RLS가 학생에게 보이는 skill_trees만 반환:
-  // - class_students에 속한 class의 스킬트리
-  // - student_progress가 있는 스킬트리
-  const { data: skillTrees } = await supabase
+  const admin = createAdminClient()
+
+  const { data: skillTrees } = await admin
     .from('skill_trees')
     .select('id, title, description, status, created_at, nodes(count)')
     .eq('status', 'published')

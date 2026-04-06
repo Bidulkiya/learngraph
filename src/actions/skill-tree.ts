@@ -254,21 +254,21 @@ export async function deleteEdge(edgeId: string): Promise<{ error?: string }> {
 
 export async function fetchSkillTreeDetail(treeId: string) {
   try {
-    const supabase = await createServerClient()
-    const { data: tree, error: treeErr } = await supabase
+    const admin = createAdminClient()
+    const { data: tree, error: treeErr } = await admin
       .from('skill_trees')
       .select('*')
       .eq('id', treeId)
       .single()
     if (treeErr || !tree) return { error: treeErr?.message ?? 'Not found' }
 
-    const { data: nodes } = await supabase
+    const { data: nodes } = await admin
       .from('nodes')
       .select('*')
       .eq('skill_tree_id', treeId)
       .order('order_index')
 
-    const { data: edges } = await supabase
+    const { data: edges } = await admin
       .from('node_edges')
       .select('*')
       .eq('skill_tree_id', treeId)
