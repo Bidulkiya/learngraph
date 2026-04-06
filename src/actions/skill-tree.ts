@@ -46,7 +46,7 @@ export async function generateSkillTree(
   if (!user) throw new Error('인증이 필요합니다.')
 
   const { object } = await generateObject({
-    model: anthropic('claude-sonnet-4-6-20250514'),
+    model: anthropic('claude-sonnet-4-6'),
     schema: skillTreeSchema,
     prompt: SKILL_TREE_PROMPT(fileContent),
   })
