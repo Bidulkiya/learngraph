@@ -6,6 +6,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { skillTreeSchema, type SkillTreeOutput } from '@/lib/ai/schemas'
 import { SKILL_TREE_PROMPT } from '@/lib/ai/prompts'
 import { embedAndStoreDocument } from '@/lib/ai/embeddings'
+import { createAdminClient } from '@/lib/supabase/admin'
 // pdf-parse v1 — lib/pdf-parse.js 직접 import로 디버그 코드 우회
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buffer: Buffer) => Promise<{ text: string }>
@@ -82,12 +83,17 @@ export async function saveSkillTree(
   originalText: string
 ): Promise<{ id?: string; error?: string }> {
   try {
+    // 인증 확인 (anon key 클라이언트)
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 쓰기 작업은 admin 클라이언트 사용 — RLS 재귀 문제 우회
+    // 인증은 위에서 이미 확인했으므로 안전
+    const admin = createAdminClient()
+
     // 1. Create skill tree record
-    const { data: tree, error: treeError } = await supabase
+    const { data: tree, error: treeError } = await admin
       .from('skill_trees')
       .insert({
         title: treeData.title,
@@ -109,7 +115,7 @@ export async function saveSkillTree(
       order_index: index,
     }))
 
-    const { data: dbNodes, error: nodesError } = await supabase
+    const { data: dbNodes, error: nodesError } = await admin
       .from('nodes')
       .insert(nodeInserts)
       .select()
@@ -133,13 +139,13 @@ export async function saveSkillTree(
       }))
 
     if (edgeInserts.length > 0) {
-      const { error: edgesError } = await supabase
+      const { error: edgesError } = await admin
         .from('node_edges')
         .insert(edgeInserts)
       if (edgesError) return { error: '엣지 저장 실패: ' + edgesError.message }
     }
 
-    // 4. Vectorize (best-effort)
+    // 4. Vectorize (best-effort, admin client)
     try {
       await embedAndStoreDocument(originalText, tree.id)
     } catch (vecErr) {
@@ -162,8 +168,8 @@ export async function updateNodePosition(
   nodeId: string, x: number, y: number
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { error } = await supabase
+    const admin = createAdminClient()
+    const { error } = await admin
       .from('nodes')
       .update({ position_x: x, position_y: y })
       .eq('id', nodeId)
@@ -178,8 +184,8 @@ export async function updateNode(
   nodeId: string, title: string, description: string, difficulty: number
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { error } = await supabase
+    const admin = createAdminClient()
+    const { error } = await admin
       .from('nodes')
       .update({ title, description, difficulty })
       .eq('id', nodeId)
@@ -194,8 +200,8 @@ export async function addNode(
   skillTreeId: string, title: string, description: string, difficulty: number
 ): Promise<{ id?: string; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data, error } = await supabase
+    const admin = createAdminClient()
+    const { data, error } = await admin
       .from('nodes')
       .insert({ skill_tree_id: skillTreeId, title, description, difficulty, order_index: 0 })
       .select('id')
@@ -209,9 +215,8 @@ export async function addNode(
 
 export async function deleteNode(nodeId: string): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    // Edges referencing this node are deleted via ON DELETE CASCADE
-    const { error } = await supabase.from('nodes').delete().eq('id', nodeId)
+    const admin = createAdminClient()
+    const { error } = await admin.from('nodes').delete().eq('id', nodeId)
     if (error) return { error: error.message }
     return {}
   } catch (err) {
@@ -223,8 +228,8 @@ export async function addEdge(
   skillTreeId: string, sourceId: string, targetId: string
 ): Promise<{ id?: string; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data, error } = await supabase
+    const admin = createAdminClient()
+    const { data, error } = await admin
       .from('node_edges')
       .insert({ skill_tree_id: skillTreeId, source_node_id: sourceId, target_node_id: targetId })
       .select('id')
@@ -238,8 +243,8 @@ export async function addEdge(
 
 export async function deleteEdge(edgeId: string): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { error } = await supabase.from('node_edges').delete().eq('id', edgeId)
+    const admin = createAdminClient()
+    const { error } = await admin.from('node_edges').delete().eq('id', edgeId)
     if (error) return { error: error.message }
     return {}
   } catch (err) {

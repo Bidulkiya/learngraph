@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -12,7 +12,7 @@ export async function embedAndStoreDocument(
   skillTreeId: string,
   chunkSize: number = 500
 ): Promise<void> {
-  const supabase = await createServerClient()
+  const admin = createAdminClient()
   const chunks = splitIntoChunks(content, chunkSize)
 
   for (const chunk of chunks) {
@@ -23,7 +23,7 @@ export async function embedAndStoreDocument(
 
     const embedding = response.data[0].embedding
 
-    await supabase.from('document_chunks').insert({
+    await admin.from('document_chunks').insert({
       skill_tree_id: skillTreeId,
       content: chunk,
       embedding,

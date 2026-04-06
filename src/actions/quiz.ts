@@ -3,6 +3,7 @@
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { quizSchema } from '@/lib/ai/schemas'
 import { QUIZ_PROMPT } from '@/lib/ai/prompts'
 import type { Quiz } from '@/types/quiz'
@@ -55,7 +56,8 @@ export async function generateQuizForNode(
       difficulty: q.difficulty,
     }))
 
-    const { data: savedQuizzes, error: saveErr } = await supabase
+    const admin = createAdminClient()
+    const { data: savedQuizzes, error: saveErr } = await admin
       .from('quizzes')
       .insert(quizInserts)
       .select()
@@ -107,8 +109,9 @@ export async function submitQuizAnswer(
                   normalizedAnswer === normalizedCorrect
     }
 
-    // Record attempt
-    await supabase.from('quiz_attempts').insert({
+    // Record attempt (admin bypasses RLS)
+    const admin = createAdminClient()
+    await admin.from('quiz_attempts').insert({
       student_id: user.id,
       quiz_id: quizId,
       node_id: nodeId,
@@ -144,8 +147,10 @@ export async function completeNode(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    const admin = createAdminClient()
+
     // Get node info for XP calculation
-    const { data: node } = await supabase
+    const { data: node } = await admin
       .from('nodes')
       .select('skill_tree_id, difficulty')
       .eq('id', nodeId)
@@ -154,7 +159,7 @@ export async function completeNode(
     if (!node) return { error: '노드를 찾을 수 없습니다.' }
 
     // Update progress to completed
-    const { error: progressErr } = await supabase
+    const { error: progressErr } = await admin
       .from('student_progress')
       .upsert({
         student_id: user.id,
@@ -169,29 +174,28 @@ export async function completeNode(
 
     // Add XP (difficulty × 20)
     const xpGain = (node.difficulty ?? 1) * 20
-    const { data: profile } = await supabase
+    const { data: profile } = await admin
       .from('profiles')
       .select('xp')
       .eq('id', user.id)
       .single()
 
     if (profile) {
-      await supabase
+      await admin
         .from('profiles')
         .update({ xp: (profile.xp ?? 0) + xpGain })
         .eq('id', user.id)
     }
 
     // Unlock subsequent nodes
-    const { data: nextEdges } = await supabase
+    const { data: nextEdges } = await admin
       .from('node_edges')
       .select('target_node_id')
       .eq('source_node_id', nodeId)
 
     if (nextEdges) {
       for (const edge of nextEdges) {
-        // Check if ALL prerequisites of the target are completed
-        const { data: prereqEdges } = await supabase
+        const { data: prereqEdges } = await admin
           .from('node_edges')
           .select('source_node_id')
           .eq('target_node_id', edge.target_node_id)
@@ -199,7 +203,7 @@ export async function completeNode(
         if (prereqEdges) {
           const results = await Promise.all(
             prereqEdges.map(async (pe) => {
-              const { data } = await supabase
+              const { data } = await admin
                 .from('student_progress')
                 .select('status')
                 .eq('student_id', user.id)
@@ -210,7 +214,7 @@ export async function completeNode(
           )
 
           if (results.every(Boolean)) {
-            await supabase
+            await admin
               .from('student_progress')
               .upsert({
                 student_id: user.id,
@@ -257,8 +261,8 @@ export async function updateQuiz(
   updates: { question?: string; correct_answer?: string; explanation?: string; options?: string[] }
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { error } = await supabase
+    const admin = createAdminClient()
+    const { error } = await admin
       .from('quizzes')
       .update(updates)
       .eq('id', quizId)
@@ -276,10 +280,8 @@ export async function regenerateQuizzes(
   nodeId: string
 ): Promise<{ data?: Quiz[]; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    // Delete existing quizzes (quiz_attempts are preserved)
-    await supabase.from('quizzes').delete().eq('node_id', nodeId)
-    // Regenerate
+    const admin = createAdminClient()
+    await admin.from('quizzes').delete().eq('node_id', nodeId)
     return await generateQuizForNode(nodeId)
   } catch (err) {
     return { error: String(err) }
