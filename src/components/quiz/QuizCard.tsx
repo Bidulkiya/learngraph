@@ -1,17 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, Send, Check } from 'lucide-react'
+import { Loader2, Send, Check, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { getQuizHint } from '@/actions/quiz'
 import type { Quiz } from '@/types/quiz'
+import { toast } from 'sonner'
 
 interface QuizCardProps {
   quiz: Quiz
   index: number
   total: number
-  onSubmit: (quizId: string, answer: string) => Promise<void>
+  onSubmit: (quizId: string, answer: string, hintUsed: boolean) => Promise<void>
   disabled?: boolean
 }
 
@@ -19,17 +21,35 @@ export function QuizCard({ quiz, index, total, onSubmit, disabled }: QuizCardPro
   const [selected, setSelected] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [animKey, setAnimKey] = useState(0)
+  const [hint, setHint] = useState<string | null>(null)
+  const [hintLoading, setHintLoading] = useState(false)
+  const [hintUsed, setHintUsed] = useState(false)
 
   // 문제가 바뀔 때마다 애니메이션 트리거 + 입력 초기화
   useEffect(() => {
     setSelected('')
     setAnimKey(k => k + 1)
+    setHint(null)
+    setHintUsed(false)
   }, [quiz.id])
+
+  const handleHint = async (): Promise<void> => {
+    if (hintUsed) return
+    setHintLoading(true)
+    const res = await getQuizHint(quiz.id)
+    setHintLoading(false)
+    if (res.error || !res.data) {
+      toast.error(res.error ?? '힌트 생성 실패')
+      return
+    }
+    setHint(res.data.hint)
+    setHintUsed(true)
+  }
 
   const handleSubmit = async (): Promise<void> => {
     if (!selected.trim()) return
     setSubmitting(true)
-    await onSubmit(quiz.id, selected)
+    await onSubmit(quiz.id, selected, hintUsed)
     setSubmitting(false)
   }
 
@@ -97,24 +117,52 @@ export function QuizCard({ quiz, index, total, onSubmit, disabled }: QuizCardPro
           </div>
         )}
 
-        <Button
-          onClick={handleSubmit}
-          disabled={!selected.trim() || submitting || disabled}
-          className="w-full bg-[#4F6BF6] hover:bg-[#4F6BF6]/90"
-          size="sm"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isMultipleChoice ? '채점 중...' : 'AI 채점 중...'}
-            </>
-          ) : (
-            <>
-              <Send className="mr-2 h-4 w-4" />
-              제출
-            </>
+        {/* 힌트 */}
+        {hint && (
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-300">
+            <div className="mb-1 flex items-center gap-1 text-xs font-semibold">
+              <Lightbulb className="h-3.5 w-3.5" />
+              AI 힌트 (점수 50% 감소)
+            </div>
+            {hint}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {!hintUsed && (
+            <Button
+              onClick={handleHint}
+              disabled={hintLoading || disabled}
+              variant="outline"
+              size="sm"
+            >
+              {hintLoading ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Lightbulb className="mr-1 h-3.5 w-3.5" />
+              )}
+              힌트
+            </Button>
           )}
-        </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!selected.trim() || submitting || disabled}
+            className="flex-1 bg-[#4F6BF6] hover:bg-[#4F6BF6]/90"
+            size="sm"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isMultipleChoice ? '채점 중...' : 'AI 채점 중...'}
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                제출
+              </>
+            )}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

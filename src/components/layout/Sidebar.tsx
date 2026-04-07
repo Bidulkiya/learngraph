@@ -14,6 +14,9 @@ import {
   School,
   KeyRound,
   BookX,
+  Mic,
+  Megaphone,
+  Mail,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +32,8 @@ const menuItems: Record<Role, Array<{ href: string; label: string; icon: React.E
     { href: "/teacher/classes", label: "내 클래스", icon: Users },
     { href: "/teacher/skill-tree", label: "스킬트리 관리", icon: TreePine },
     { href: "/teacher/quizzes", label: "퀴즈 관리", icon: ClipboardList },
+    { href: "/teacher/recording", label: "수업 녹음", icon: Mic },
+    { href: "/teacher/messages", label: "메시지", icon: Mail },
     { href: "/teacher/join", label: "스쿨 가입", icon: KeyRound },
     { href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
   ],
@@ -42,6 +47,8 @@ const menuItems: Record<Role, Array<{ href: string; label: string; icon: React.E
   admin: [
     { href: "/admin", label: "대시보드", icon: LayoutDashboard },
     { href: "/admin/schools", label: "스쿨 관리", icon: School },
+    { href: "/admin/announcements", label: "공지사항", icon: Megaphone },
+    { href: "/admin/messages", label: "메시지", icon: Mail },
   ],
 }
 

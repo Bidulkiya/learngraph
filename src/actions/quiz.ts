@@ -4,8 +4,8 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { quizSchema, essayGradingSchema } from '@/lib/ai/schemas'
-import { QUIZ_PROMPT } from '@/lib/ai/prompts'
+import { quizSchema, essayGradingSchema, quizHintSchema } from '@/lib/ai/schemas'
+import { QUIZ_PROMPT, QUIZ_HINT_PROMPT } from '@/lib/ai/prompts'
 import type { Quiz } from '@/types/quiz'
 
 /**
@@ -40,11 +40,31 @@ export async function generateQuizForNode(
 
     if (!node) return { error: '노드를 찾을 수 없습니다.' }
 
-    // Generate quiz via Claude
+    // 난이도 자동 조절: 최근 5개 quiz_attempts 조회
+    let adjustedDifficulty = node.difficulty ?? 1
+    const { data: recentAttempts } = await admin
+      .from('quiz_attempts')
+      .select('is_correct, attempted_at')
+      .eq('student_id', user.id)
+      .eq('node_id', nodeId)
+      .order('attempted_at', { ascending: false })
+      .limit(5)
+
+    if (recentAttempts && recentAttempts.length >= 3) {
+      const last3 = recentAttempts.slice(0, 3)
+      const last2 = recentAttempts.slice(0, 2)
+      if (last3.every(a => a.is_correct)) {
+        adjustedDifficulty = Math.min(5, adjustedDifficulty + 1)
+      } else if (last2.every(a => !a.is_correct)) {
+        adjustedDifficulty = Math.max(1, adjustedDifficulty - 1)
+      }
+    }
+
+    // Generate quiz via Claude with adjusted difficulty
     const { object: quiz } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: quizSchema,
-      prompt: QUIZ_PROMPT(node.title, node.description ?? '', node.difficulty ?? 1),
+      prompt: QUIZ_PROMPT(node.title, node.description ?? '', adjustedDifficulty),
     })
 
     // Save to DB
@@ -369,5 +389,37 @@ export async function regenerateQuizzes(
     return await generateQuizForNode(nodeId)
   } catch (err) {
     return { error: String(err) }
+  }
+}
+
+/**
+ * AI 퀴즈 힌트 생성 (정답 직접 공개 금지)
+ */
+export async function getQuizHint(
+  quizId: string
+): Promise<{ data?: { hint: string }; error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const admin = createAdminClient()
+    const { data: quiz } = await admin
+      .from('quizzes')
+      .select('question, correct_answer')
+      .eq('id', quizId)
+      .single()
+
+    if (!quiz) return { error: '퀴즈를 찾을 수 없습니다.' }
+
+    const { object } = await generateObject({
+      model: anthropic('claude-sonnet-4-6'),
+      schema: quizHintSchema,
+      prompt: QUIZ_HINT_PROMPT(quiz.question, quiz.correct_answer),
+    })
+
+    return { data: object }
+  } catch (err) {
+    return { error: `힌트 생성 실패: ${err instanceof Error ? err.message : String(err)}` }
   }
 }

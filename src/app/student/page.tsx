@@ -8,23 +8,28 @@ import { getStudentDashboardData } from '@/actions/dashboard'
 import { getTodayMissions } from '@/actions/missions'
 import { getMyAchievements } from '@/actions/achievements'
 import { getTodayReviews } from '@/actions/reminders'
+import { getAnnouncements } from '@/actions/announcements'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
+import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
+import { WeeklyPlanCard } from '@/components/student/WeeklyPlanCard'
 
 export default async function StudentDashboard() {
   const profile = await getCurrentProfile()
   if (!profile) return null
 
-  const [dashboardRes, missionsRes, achievementsRes, reviewsRes] = await Promise.all([
+  const [dashboardRes, missionsRes, achievementsRes, reviewsRes, annRes] = await Promise.all([
     getStudentDashboardData(profile.id),
     getTodayMissions(),
     getMyAchievements(),
     getTodayReviews(),
+    getAnnouncements(),
   ])
 
   const data = dashboardRes.data
   const missions = missionsRes.data ?? []
   const achievements = achievementsRes.data ?? []
   const reviews = reviewsRes.data ?? []
+  const announcements = (annRes.data ?? []).filter(a => a.target_role === 'all' || a.target_role === 'student')
 
   const level = data?.level ?? 1
   const xp = data?.xp ?? 0
@@ -44,6 +49,8 @@ export default async function StudentDashboard() {
         </h1>
         <p className="mt-1 text-gray-500">오늘도 학습을 이어가보세요</p>
       </div>
+
+      <AnnouncementBanner announcements={announcements} />
 
       {/* Level + XP */}
       <Card>
@@ -96,6 +103,8 @@ export default async function StudentDashboard() {
           subtitle={`Lv.${level}`}
         />
       </div>
+
+      <WeeklyPlanCard />
 
       {/* 오늘의 미션 */}
       <Card>

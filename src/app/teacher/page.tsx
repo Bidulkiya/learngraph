@@ -3,15 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { getTeacherDashboardData } from '@/actions/dashboard'
+import { getMyClasses } from '@/actions/school'
+import { getAnnouncements } from '@/actions/announcements'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
 import { HeatmapChart } from '@/components/dashboard/HeatmapChart'
 import { RiskAlert } from '@/components/dashboard/RiskAlert'
+import { StudentGroupsCard } from '@/components/dashboard/StudentGroupsCard'
+import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 
 export default async function TeacherDashboard() {
   const profile = await getCurrentProfile()
   if (!profile) return null
 
-  const { data } = await getTeacherDashboardData(profile.id)
+  const [{ data }, classesRes, annRes] = await Promise.all([
+    getTeacherDashboardData(profile.id),
+    getMyClasses(),
+    getAnnouncements(),
+  ])
+  const myClasses = (classesRes.data ?? []).map(c => ({ id: c.id, name: c.name }))
+  const announcements = (annRes.data ?? []).filter(a => a.target_role === 'all' || a.target_role === 'teacher')
 
   return (
     <div className="space-y-6">
@@ -21,6 +31,8 @@ export default async function TeacherDashboard() {
         </h1>
         <p className="mt-1 text-gray-500">스킬트리와 학생 학습 현황을 확인하세요</p>
       </div>
+
+      <AnnouncementBanner announcements={announcements} />
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -53,6 +65,8 @@ export default async function TeacherDashboard() {
           subtitle="주의 필요"
         />
       </div>
+
+      <StudentGroupsCard classes={myClasses} />
 
       {/* Chart + Risk */}
       <div className="grid gap-4 lg:grid-cols-3">

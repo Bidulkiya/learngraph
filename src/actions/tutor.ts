@@ -5,7 +5,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import OpenAI from 'openai'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { TUTOR_SYSTEM_PROMPT } from '@/lib/ai/prompts'
+import { TUTOR_SYSTEM_PROMPT, TUTOR_SOCRATIC_PROMPT } from '@/lib/ai/prompts'
 
 const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -22,7 +22,8 @@ export interface ChatMessage {
 export async function chatWithTutor(
   messages: ChatMessage[],
   skillTreeId?: string,
-  nodeId?: string
+  nodeId?: string,
+  mode: 'normal' | 'socratic' = 'normal'
 ): Promise<{ data?: { content: string }; error?: string }> {
   try {
     const supabase = await createServerClient()
@@ -58,10 +59,11 @@ export async function chatWithTutor(
       console.error('[chatWithTutor] RAG 검색 실패 (컨텍스트 없이 진행):', ragErr)
     }
 
-    // Claude 호출
+    // Claude 호출 (모드별 시스템 프롬프트)
+    const basePrompt = mode === 'socratic' ? TUTOR_SOCRATIC_PROMPT : TUTOR_SYSTEM_PROMPT
     const systemPrompt = context
-      ? `${TUTOR_SYSTEM_PROMPT}\n\n## 참고 수업 자료\n${context}`
-      : TUTOR_SYSTEM_PROMPT
+      ? `${basePrompt}\n\n## 참고 수업 자료\n${context}`
+      : basePrompt
 
     const { text } = await generateText({
       model: anthropic('claude-sonnet-4-6'),

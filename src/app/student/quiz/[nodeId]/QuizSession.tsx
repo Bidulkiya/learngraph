@@ -66,17 +66,20 @@ export function QuizSession({ nodeId, nodeTitle, nodeDescription, nodeDifficulty
   const currentQuiz = quizzes[currentIndex]
   const correctCount = results.filter(r => r.isCorrect).length
 
-  const handleSubmitAnswer = async (quizId: string, answer: string): Promise<void> => {
+  const handleSubmitAnswer = async (quizId: string, answer: string, hintUsed: boolean): Promise<void> => {
     const res = await submitQuizAnswer(quizId, nodeId, answer)
     if (res.error || !res.data) {
       toast.error(res.error ?? '채점 중 오류가 발생했습니다')
       return
     }
 
+    // 힌트 사용 시 점수 50% 감소
+    const finalScore = hintUsed ? Math.round(res.data.score * 0.5) : res.data.score
+
     const result: AnswerResult = {
       quizId,
       isCorrect: res.data.isCorrect,
-      score: res.data.score,
+      score: finalScore,
       explanation: res.data.explanation,
       aiFeedback: res.data.aiFeedback,
     }

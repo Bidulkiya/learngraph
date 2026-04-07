@@ -1,14 +1,33 @@
 import { BarChart3 } from 'lucide-react'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { getAdminDashboardData } from '@/actions/dashboard'
+import { getMySchools } from '@/actions/school'
+import { getTeacherActivity } from '@/actions/analysis'
+import { getAnnouncements } from '@/actions/announcements'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BottleneckCard } from '@/components/dashboard/BottleneckCard'
+import { TeacherActivityCard } from '@/components/dashboard/TeacherActivityCard'
+import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 
 export default async function AdminDashboard() {
   const profile = await getCurrentProfile()
   if (!profile) return null
 
-  const { data } = await getAdminDashboardData()
+  const [{ data }, schoolsRes, annRes] = await Promise.all([
+    getAdminDashboardData(),
+    getMySchools(),
+    getAnnouncements(),
+  ])
+  const schools = (schoolsRes.data ?? []).map(s => ({ id: s.id, name: s.name }))
+  const announcements = annRes.data ?? []
+
+  // 첫 번째 스쿨의 교사 활동 가져오기
+  const firstSchoolId = schools[0]?.id
+  const teacherActivityRes = firstSchoolId
+    ? await getTeacherActivity(firstSchoolId)
+    : { data: [] }
+  const activities = teacherActivityRes.data ?? []
 
   return (
     <div className="space-y-6">
@@ -18,6 +37,8 @@ export default async function AdminDashboard() {
         </h1>
         <p className="mt-1 text-gray-500">플랫폼 전체 현황을 모니터링하세요</p>
       </div>
+
+      <AnnouncementBanner announcements={announcements} />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -74,6 +95,11 @@ export default async function AdminDashboard() {
           <p className="mt-2 text-xs text-gray-500">모든 학생의 평균 노드 언락률</p>
         </CardContent>
       </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BottleneckCard schools={schools} />
+        <TeacherActivityCard activities={activities} />
+      </div>
     </div>
   )
 }

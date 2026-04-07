@@ -22,8 +22,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { saveMemo, getMemo } from '@/actions/memo'
+import { getConceptConnections } from '@/actions/recommendations'
 import { toast } from 'sonner'
 import type { D3Node } from '@/lib/d3/skill-tree-layout'
+import type { ConceptConnectionOutput } from '@/lib/ai/schemas'
 
 interface NodeDetailPopupProps {
   open: boolean
@@ -45,6 +47,8 @@ export function NodeDetailPopup({
   const [memoLoaded, setMemoLoaded] = useState(false)
   const [memoSaving, setMemoSaving] = useState(false)
   const [memoSaved, setMemoSaved] = useState(false)
+  const [connections, setConnections] = useState<ConceptConnectionOutput | null>(null)
+  const [connectionsLoading, setConnectionsLoading] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 노드 변경 시 메모 로드
@@ -52,6 +56,7 @@ export function NodeDetailPopup({
     if (!open || !node) {
       setMemo('')
       setMemoLoaded(false)
+      setConnections(null)
       return
     }
     setMemoLoaded(false)
@@ -59,6 +64,14 @@ export function NodeDetailPopup({
       if (res.data) setMemo(res.data.content)
       setMemoLoaded(true)
     })
+    // completed 노드는 관련 개념 자동 로드
+    if (node.status === 'completed') {
+      setConnectionsLoading(true)
+      getConceptConnections(node.id).then(res => {
+        if (res.data) setConnections(res.data)
+        setConnectionsLoading(false)
+      })
+    }
   }, [open, node])
 
   // 메모 자동 저장 (디바운스 500ms)
@@ -128,6 +141,27 @@ export function NodeDetailPopup({
               <span className="font-medium text-green-800 dark:text-green-300">
                 완료 — 점수 {quizScore}점
               </span>
+            </div>
+          )}
+
+          {/* 관련 개념 추천 (completed 노드) */}
+          {isCompleted && (
+            <div className="rounded-lg border border-[#7C5CFC]/20 bg-[#7C5CFC]/5 p-3">
+              <p className="mb-2 text-xs font-semibold text-[#7C5CFC]">🔗 관련 개념 추천</p>
+              {connectionsLoading && (
+                <p className="text-xs text-gray-500">AI가 관련 개념을 찾고 있습니다...</p>
+              )}
+              {connections && (
+                <ul className="space-y-1.5">
+                  {connections.connections.map((c, i) => (
+                    <li key={i} className="text-xs">
+                      <span className="font-medium">[{c.subject}]</span>{' '}
+                      <span className="font-semibold">{c.concept}</span>
+                      <p className="mt-0.5 text-gray-600 dark:text-gray-400">{c.relation}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
