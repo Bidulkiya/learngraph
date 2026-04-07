@@ -181,6 +181,14 @@ const supabase = createBrowserClient()
 // RoleGuard 컴포넌트로 UI 레벨 보안
 ```
 
+### 프로젝트 고유 규칙 (예외 없음)
+1. **DB 조회/쓰기는 반드시 `createAdminClient()` 사용.** `createServerClient()`는 `getUser()` 인증 확인에만 사용.
+2. **Server Action은 throw 금지.** 반드시 `{ data, error }` 객체 반환.
+3. **RLS 정책 SQL 작성 시 `CREATE POLICY` 앞에 항상 `DROP POLICY IF EXISTS` 선행.**
+4. **Zod 스키마에서 `z.number()`에 `.min()`/`.max()` 금지.** 범위는 `.describe()`와 프롬프트로 지시.
+5. **Claude API 모델 ID는 코드베이스에서 현재 사용 중인 ID를 확인 후 동일하게 사용.**
+6. **`streamObject`/`streamText` 반환 시 직렬화 가능한 패턴 사용.** use context7 으로 최신 패턴 확인 필수.
+
 ## 환경 변수
 ```env
 # Supabase
