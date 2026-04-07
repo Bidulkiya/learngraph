@@ -1,8 +1,13 @@
 import { getTutorHistory } from '@/actions/tutor'
 import { ChatInterface } from '@/components/tutor/ChatInterface'
 
-export default async function StudentTutorPage() {
+interface Props {
+  searchParams: Promise<{ nodeId?: string }>
+}
+
+export default async function StudentTutorPage({ searchParams }: Props) {
+  const params = await searchParams
   const { data: messages } = await getTutorHistory()
 
-  return <ChatInterface initialMessages={messages ?? []} />
+  return <ChatInterface initialMessages={messages ?? []} nodeId={params.nodeId} />
 }

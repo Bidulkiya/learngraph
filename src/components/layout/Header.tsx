@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useEffect, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { StudyTimer } from "@/components/student/StudyTimer"
 import type { Role } from "@/types/user"
 
 interface HeaderProps {
@@ -69,6 +70,9 @@ export function Header({ role, userName = "사용자" }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Study timer (학생 only) */}
+        {role === 'student' && <StudyTimer />}
+
         {/* Dark mode toggle */}
         <Button variant="ghost" size="icon" onClick={toggleDarkMode} className="h-9 w-9">
           {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

@@ -13,6 +13,7 @@ import {
   ClipboardList,
   School,
   KeyRound,
+  BookX,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -34,6 +35,7 @@ const menuItems: Record<Role, Array<{ href: string; label: string; icon: React.E
   student: [
     { href: "/student", label: "대시보드", icon: LayoutDashboard },
     { href: "/student/skill-tree", label: "내 스킬트리", icon: TreePine },
+    { href: "/student/wrong-answers", label: "오답 노트", icon: BookX },
     { href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
     { href: "/student/join", label: "코드로 가입", icon: KeyRound },
   ],

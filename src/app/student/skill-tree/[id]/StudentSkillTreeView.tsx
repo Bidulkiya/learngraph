@@ -1,13 +1,13 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, TreePine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SkillTreeGraph } from '@/components/skill-tree/SkillTreeGraph'
+import { NodeDetailPopup } from '@/components/skill-tree/NodeDetailPopup'
 import type { D3Node, D3Edge } from '@/lib/d3/skill-tree-layout'
-import { toast } from 'sonner'
 
 interface Props {
   treeTitle: string
@@ -17,18 +17,22 @@ interface Props {
 }
 
 export function StudentSkillTreeView({ treeTitle, treeDescription, nodes, edges }: Props) {
-  const router = useRouter()
   const completed = nodes.filter(n => n.status === 'completed').length
   const total = nodes.length
+  const [popupNode, setPopupNode] = useState<D3Node | null>(null)
 
   const handleNodeClick = (node: D3Node): void => {
-    if (node.status === 'locked') {
-      toast.error('선수 과목을 먼저 완료하세요')
-    } else if (node.status === 'available' || node.status === 'in_progress') {
-      router.push(`/student/quiz/${node.id}`)
-    } else if (node.status === 'completed') {
-      toast.success(`"${node.title}" — 이미 완료한 노드입니다`)
-    }
+    setPopupNode(node)
+  }
+
+  // 선수 노드 계산
+  const getPrerequisites = (nodeId: string): D3Node[] => {
+    const incomingEdges = edges.filter(e => {
+      const targetId = typeof e.target === 'string' ? e.target : e.target.id
+      return targetId === nodeId
+    })
+    const sourceIds = incomingEdges.map(e => (typeof e.source === 'string' ? e.source : e.source.id))
+    return nodes.filter(n => sourceIds.includes(n.id))
   }
 
   return (
@@ -71,6 +75,14 @@ export function StudentSkillTreeView({ treeTitle, treeDescription, nodes, edges 
           onNodeClick={handleNodeClick}
         />
       </div>
+
+      {/* Node detail popup */}
+      <NodeDetailPopup
+        open={!!popupNode}
+        onClose={() => setPopupNode(null)}
+        node={popupNode}
+        prerequisiteNodes={popupNode ? getPrerequisites(popupNode.id) : []}
+      />
     </div>
   )
 }

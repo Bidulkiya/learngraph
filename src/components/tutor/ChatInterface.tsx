@@ -12,9 +12,10 @@ import { toast } from 'sonner'
 
 interface ChatInterfaceProps {
   initialMessages?: ChatMessage[]
+  nodeId?: string
 }
 
-export function ChatInterface({ initialMessages = [] }: ChatInterfaceProps) {
+export function ChatInterface({ initialMessages = [], nodeId }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,7 +35,7 @@ export function ChatInterface({ initialMessages = [] }: ChatInterfaceProps) {
     setInput('')
     setLoading(true)
 
-    const result = await chatWithTutor(newMessages)
+    const result = await chatWithTutor(newMessages, undefined, nodeId)
     if (result.error || !result.data) {
       toast.error(result.error ?? '응답을 받을 수 없습니다')
       setMessages(messages) // rollback

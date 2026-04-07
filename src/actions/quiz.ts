@@ -4,7 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { quizSchema } from '@/lib/ai/schemas'
+import { quizSchema, essayGradingSchema } from '@/lib/ai/schemas'
 import { QUIZ_PROMPT } from '@/lib/ai/prompts'
 import type { Quiz } from '@/types/quiz'
 
@@ -80,7 +80,7 @@ export async function submitQuizAnswer(
   nodeId: string,
   answer: string
 ): Promise<{
-  data?: { isCorrect: boolean; explanation: string; score: number }
+  data?: { isCorrect: boolean; explanation: string; score: number; aiFeedback?: string }
   error?: string
 }> {
   try {
@@ -88,46 +88,93 @@ export async function submitQuizAnswer(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
-    // Get quiz (admin — anon client에서 RLS로 조회 실패 가능)
-    const adminForRead = createAdminClient()
-    const { data: quiz } = await adminForRead
+    const admin = createAdminClient()
+    const { data: quiz } = await admin
       .from('quizzes')
-      .select('correct_answer, explanation, question_type')
+      .select('question, correct_answer, explanation, question_type')
       .eq('id', quizId)
       .single()
 
     if (!quiz) return { error: '퀴즈를 찾을 수 없습니다.' }
 
-    // Grade: exact match for MC, keyword match for short answer
+    // 노드 정보도 가져옴 (서술형 채점 컨텍스트용)
+    const { data: node } = await admin
+      .from('nodes')
+      .select('title, description')
+      .eq('id', nodeId)
+      .single()
+
     let isCorrect = false
+    let score = 0
+    let aiFeedback: string | undefined
+
     if (quiz.question_type === 'multiple_choice') {
+      // 객관식: 정확 매칭
       isCorrect = answer.trim() === quiz.correct_answer.trim()
+      score = isCorrect ? 100 : 0
     } else {
-      // Keyword matching for short answer
-      const normalizedAnswer = answer.trim().toLowerCase()
-      const normalizedCorrect = quiz.correct_answer.trim().toLowerCase()
-      isCorrect = normalizedAnswer.includes(normalizedCorrect) ||
-                  normalizedCorrect.includes(normalizedAnswer) ||
-                  normalizedAnswer === normalizedCorrect
+      // 서술형/주관식: Claude AI 의미 채점
+      try {
+        const { object: grading } = await generateObject({
+          model: anthropic('claude-sonnet-4-6'),
+          schema: essayGradingSchema,
+          prompt: `당신은 친절한 교사입니다. 학생의 서술형 답변을 의미 기반으로 평가하세요.
+
+## 학습 개념
+- 노드 제목: ${node?.title ?? ''}
+- 노드 설명: ${node?.description ?? ''}
+
+## 문제
+${quiz.question}
+
+## 모범 답안
+${quiz.correct_answer}
+
+## 학생 답변
+${answer}
+
+## 평가 규칙
+1. 학생의 답변이 정답의 핵심 개념을 포함하는지 의미 기반으로 평가하세요.
+2. 완벽하지 않아도 핵심을 이해했으면 부분 점수를 주세요.
+3. 70점 이상이면 통과(is_correct=true)로 판정하세요.
+4. 피드백은 한국어로, 구체적으로:
+   - 잘 이해한 부분
+   - 틀리거나 부족한 부분
+   - 보충 학습이 필요한 내용
+5. 점수는 0~100 사이의 정수로 매기세요.`,
+        })
+        isCorrect = grading.is_correct
+        score = Math.round(grading.score)
+        aiFeedback = grading.feedback
+      } catch (gradeErr) {
+        // AI 채점 실패 시 fallback: 키워드 매칭
+        console.error('[submitQuizAnswer] AI 채점 실패, fallback:', gradeErr)
+        const normalizedAnswer = answer.trim().toLowerCase()
+        const normalizedCorrect = quiz.correct_answer.trim().toLowerCase()
+        isCorrect = normalizedAnswer.includes(normalizedCorrect) ||
+                    normalizedCorrect.includes(normalizedAnswer)
+        score = isCorrect ? 80 : 30
+        aiFeedback = '자동 채점이 일시적으로 불가능합니다. 키워드 기반으로 평가했습니다.'
+      }
     }
 
-    // Record attempt (admin bypasses RLS)
-    const admin = createAdminClient()
+    // Record attempt with AI feedback
     await admin.from('quiz_attempts').insert({
       student_id: user.id,
       quiz_id: quizId,
       node_id: nodeId,
       answer,
       is_correct: isCorrect,
-      score: isCorrect ? 100 : 0,
-      feedback: quiz.explanation,
+      score,
+      feedback: aiFeedback ?? quiz.explanation,
     })
 
     return {
       data: {
         isCorrect,
         explanation: quiz.explanation,
-        score: isCorrect ? 100 : 0,
+        score,
+        aiFeedback,
       },
     }
   } catch (err) {
@@ -227,6 +274,41 @@ export async function completeNode(
           }
         }
       }
+    }
+
+    // 복습 알림 자동 생성 (1일/3일/7일 후)
+    const now = new Date()
+    const reminders = [1, 3, 7].map(days => {
+      const d = new Date(now)
+      d.setDate(d.getDate() + days)
+      return {
+        student_id: user.id,
+        node_id: nodeId,
+        remind_at: d.toISOString().slice(0, 10),
+      }
+    })
+    await admin.from('review_reminders').insert(reminders)
+
+    // 미션 진행도 업데이트
+    try {
+      const { updateMissionProgress } = await import('./missions')
+      await updateMissionProgress('unlock_node')
+      // 만점이면 perfect_score 미션도
+      if (score >= 100) {
+        await updateMissionProgress('complete_quiz')
+      } else {
+        await updateMissionProgress('complete_quiz')
+      }
+    } catch (e) {
+      console.error('[completeNode] mission update failed:', e)
+    }
+
+    // 업적 자동 체크
+    try {
+      const { checkAndAwardAchievements } = await import('./achievements')
+      await checkAndAwardAchievements()
+    } catch (e) {
+      console.error('[completeNode] achievements check failed:', e)
     }
 
     return {}

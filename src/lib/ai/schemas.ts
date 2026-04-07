@@ -40,3 +40,21 @@ export const quizSchema = z.object({
 })
 
 export type QuizOutput = z.infer<typeof quizSchema>
+
+// 서술형 퀴즈 AI 채점 스키마
+export const essayGradingSchema = z.object({
+  is_correct: z.boolean().describe('70점 이상이면 true'),
+  score: z.number().describe('0~100 점수 (의미 일치도 기반)'),
+  feedback: z.string().describe('한국어 피드백 — 맞은 부분, 틀린 부분, 보충 설명을 포함'),
+})
+
+export type EssayGradingOutput = z.infer<typeof essayGradingSchema>
+
+// AI 약점 진단 스키마
+export const weaknessAnalysisSchema = z.object({
+  diagnosis: z.string().describe('학생의 학습 약점에 대한 진단 (2-3문장)'),
+  weak_areas: z.array(z.string()).describe('약한 개념/영역 목록'),
+  recommendations: z.array(z.string()).describe('추천 학습 방향 (구체적인 행동)'),
+})
+
+export type WeaknessAnalysisOutput = z.infer<typeof weaknessAnalysisSchema>
