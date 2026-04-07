@@ -1,4 +1,4 @@
-import { Users, GraduationCap, TreePine, ClipboardCheck, BarChart3 } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { getAdminDashboardData } from '@/actions/dashboard'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
@@ -24,28 +24,28 @@ export default async function AdminDashboard() {
         <ProgressCard
           label="교사 수"
           value={data?.totalTeachers ?? 0}
-          icon={GraduationCap}
+          icon="GraduationCap"
           iconColor="#10B981"
           subtitle="등록 교사"
         />
         <ProgressCard
           label="학생 수"
           value={data?.totalStudents ?? 0}
-          icon={Users}
+          icon="Users"
           iconColor="#4F6BF6"
           subtitle="등록 학생"
         />
         <ProgressCard
           label="스킬트리 수"
           value={data?.totalSkillTrees ?? 0}
-          icon={TreePine}
+          icon="TreePine"
           iconColor="#7C5CFC"
           subtitle="생성된 스킬트리"
         />
         <ProgressCard
           label="퀴즈 시도"
           value={data?.totalQuizAttempts ?? 0}
-          icon={ClipboardCheck}
+          icon="ClipboardCheck"
           iconColor="#F59E0B"
           subtitle="전체 시도 수"
         />

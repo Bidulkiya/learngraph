@@ -1,12 +1,42 @@
 'use client'
 
+import {
+  TreePine,
+  Users,
+  Zap,
+  AlertTriangle,
+  GraduationCap,
+  ClipboardCheck,
+  BarChart3,
+  Trophy,
+  Flame,
+  BookOpen,
+  School,
+  type LucideIcon,
+} from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import type { LucideIcon } from 'lucide-react'
+
+// 문자열 → 아이콘 매핑 (Server → Client 직렬화 안전)
+const ICON_MAP: Record<string, LucideIcon> = {
+  TreePine,
+  Users,
+  Zap,
+  AlertTriangle,
+  GraduationCap,
+  ClipboardCheck,
+  BarChart3,
+  Trophy,
+  Flame,
+  BookOpen,
+  School,
+}
+
+export type ProgressCardIcon = keyof typeof ICON_MAP
 
 interface ProgressCardProps {
   label: string
   value: number | string
-  icon: LucideIcon
+  icon: ProgressCardIcon
   iconColor?: string
   subtitle?: string
   progress?: number
@@ -15,11 +45,13 @@ interface ProgressCardProps {
 export function ProgressCard({
   label,
   value,
-  icon: Icon,
+  icon,
   iconColor = '#4F6BF6',
   subtitle,
   progress,
 }: ProgressCardProps) {
+  const Icon = ICON_MAP[icon] ?? TreePine
+
   return (
     <Card>
       <CardContent className="pt-5">

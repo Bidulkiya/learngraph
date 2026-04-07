@@ -1,4 +1,4 @@
-import { TreePine, Users, Zap, AlertTriangle, ClipboardCheck } from 'lucide-react'
+import { ClipboardCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
@@ -27,28 +27,28 @@ export default async function TeacherDashboard() {
         <ProgressCard
           label="내 스킬트리"
           value={data?.skillTreeCount ?? 0}
-          icon={TreePine}
+          icon="TreePine"
           iconColor="#10B981"
           subtitle="생성한 스킬트리"
         />
         <ProgressCard
           label="수강 학생"
           value={data?.totalStudents ?? 0}
-          icon={Users}
+          icon="Users"
           iconColor="#4F6BF6"
           subtitle="고유 학생 수"
         />
         <ProgressCard
           label="평균 언락률"
           value={`${data?.avgUnlockRate ?? 0}%`}
-          icon={Zap}
+          icon="Zap"
           iconColor="#7C5CFC"
           progress={data?.avgUnlockRate ?? 0}
         />
         <ProgressCard
           label="위험군 학생"
           value={data?.riskStudentCount ?? 0}
-          icon={AlertTriangle}
+          icon="AlertTriangle"
           iconColor="#F59E0B"
           subtitle="주의 필요"
         />

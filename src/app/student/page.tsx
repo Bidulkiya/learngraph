@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Trophy, TreePine, Flame, ClipboardCheck, Target, RotateCcw, Award } from 'lucide-react'
+import { ClipboardCheck, Target, RotateCcw, Award } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -76,7 +76,7 @@ export default async function StudentDashboard() {
         <ProgressCard
           label="내 스킬트리 진도"
           value={`${completedNodes}/${totalNodes}`}
-          icon={TreePine}
+          icon="TreePine"
           iconColor="#4F6BF6"
           progress={progressPercent}
           subtitle={`${progressPercent}% 완료`}
@@ -84,14 +84,14 @@ export default async function StudentDashboard() {
         <ProgressCard
           label="학습 스트릭"
           value={`${data?.streakDays ?? 0}일`}
-          icon={Flame}
+          icon="Flame"
           iconColor="#F59E0B"
           subtitle="연속 학습"
         />
         <ProgressCard
           label="총 경험치"
           value={xp}
-          icon={Trophy}
+          icon="Trophy"
           iconColor="#10B981"
           subtitle={`Lv.${level}`}
         />
