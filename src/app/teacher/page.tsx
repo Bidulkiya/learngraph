@@ -1,9 +1,11 @@
-import { ClipboardCheck } from 'lucide-react'
+import Link from 'next/link'
+import { ClipboardCheck, School as SchoolIcon, KeyRound } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { getTeacherDashboardData } from '@/actions/dashboard'
-import { getMyClasses } from '@/actions/school'
+import { getMyClasses, getMySchoolMemberships } from '@/actions/school'
 import { getAnnouncements } from '@/actions/announcements'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
 import { HeatmapChart } from '@/components/dashboard/HeatmapChart'
@@ -15,13 +17,15 @@ export default async function TeacherDashboard() {
   const profile = await getCurrentProfile()
   if (!profile) return null
 
-  const [{ data }, classesRes, annRes] = await Promise.all([
+  const [{ data }, classesRes, annRes, schoolsRes] = await Promise.all([
     getTeacherDashboardData(profile.id),
     getMyClasses(),
     getAnnouncements(),
+    getMySchoolMemberships(),
   ])
   const myClasses = (classesRes.data ?? []).map(c => ({ id: c.id, name: c.name }))
   const announcements = (annRes.data ?? []).filter(a => a.target_role === 'all' || a.target_role === 'teacher')
+  const mySchools = (schoolsRes.data ?? []).filter(s => s.role === 'teacher' && s.status === 'approved')
 
   return (
     <div className="space-y-6">
@@ -33,6 +37,49 @@ export default async function TeacherDashboard() {
       </div>
 
       <AnnouncementBanner announcements={announcements} />
+
+      {/* 내 스쿨 */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <SchoolIcon className="h-4 w-4 text-[#10B981]" />
+            내 스쿨 ({mySchools.length})
+          </CardTitle>
+          <Link href="/teacher/join">
+            <Button size="sm" variant="outline">
+              <KeyRound className="mr-1 h-3.5 w-3.5" />
+              스쿨 가입
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {mySchools.length === 0 ? (
+            <div className="py-4 text-center">
+              <p className="text-sm text-gray-400">아직 소속된 스쿨이 없습니다</p>
+              <p className="mt-1 text-xs text-gray-500">
+                운영자에게 받은 교사 초대 코드로 가입해주세요
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {mySchools.map(s => (
+                <li
+                  key={s.school_id}
+                  className="flex items-center justify-between rounded-lg border p-3 text-sm dark:border-gray-800"
+                >
+                  <div className="flex items-center gap-2">
+                    <SchoolIcon className="h-4 w-4 text-[#10B981]" />
+                    <span className="font-medium">{s.school_name}</span>
+                  </div>
+                  <Badge variant="secondary" className="bg-[#10B981]/10 text-[#10B981]">
+                    가입됨
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

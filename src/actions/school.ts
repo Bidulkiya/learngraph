@@ -294,6 +294,54 @@ export async function createClass(
 // ============================================
 
 /**
+ * 내가 소속된 스쿨 목록 (교사/학생 공용)
+ */
+export async function getMySchoolMemberships(): Promise<{
+  data?: Array<{
+    school_id: string
+    school_name: string
+    role: string
+    status: string
+    joined_at: string
+  }>
+  error?: string
+}> {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const admin = createAdminClient()
+    const { data: memberships } = await admin
+      .from('school_members')
+      .select('school_id, role, status, joined_at')
+      .eq('user_id', user.id)
+
+    if (!memberships || memberships.length === 0) return { data: [] }
+
+    const schoolIds = memberships.map(m => m.school_id)
+    const { data: schools } = await admin
+      .from('schools')
+      .select('id, name')
+      .in('id', schoolIds)
+
+    const nameMap = new Map(schools?.map(s => [s.id, s.name]) ?? [])
+
+    return {
+      data: memberships.map(m => ({
+        school_id: m.school_id,
+        school_name: nameMap.get(m.school_id) ?? '알 수 없음',
+        role: m.role,
+        status: m.status,
+        joined_at: m.joined_at,
+      })),
+    }
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+/**
  * Teacher joins school via teacher_code.
  */
 export async function joinSchoolAsTeacher(
@@ -305,41 +353,38 @@ export async function joinSchoolAsTeacher(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
-    const { data: school } = await admin
+
+    // .maybeSingle()로 안전하게 (레코드 없으면 null, throw 방지)
+    const { data: school, error: schoolErr } = await admin
       .from('schools')
       .select('id, name')
       .eq('teacher_code', teacherCode.trim().toUpperCase())
-      .single()
-
-    if (!school) return { error: '유효하지 않은 교사 코드입니다.' }
-
-    // 이미 가입된 경우 체크
-    const { data: existing } = await admin
-      .from('school_members')
-      .select('status')
-      .eq('school_id', school.id)
-      .eq('user_id', user.id)
       .maybeSingle()
 
-    if (existing) {
-      if (existing.status === 'approved') {
-        return { data: { schoolId: school.id, schoolName: school.name } }
-      }
-      return { error: '이미 가입 요청이 있습니다.' }
+    if (schoolErr) {
+      console.error('[joinSchoolAsTeacher] school lookup:', schoolErr)
+      return { error: '스쿨 조회 실패: ' + schoolErr.message }
     }
+    if (!school) return { error: '유효하지 않은 교사 코드입니다.' }
 
-    // 교사는 즉시 승인
-    const { error } = await admin.from('school_members').insert({
+    // upsert 패턴: 이미 있으면 status를 approved로, 없으면 insert
+    const { error: upsertErr } = await admin.from('school_members').upsert({
       school_id: school.id,
       user_id: user.id,
       role: 'teacher',
       status: 'approved',
-    })
+    }, { onConflict: 'school_id,user_id' })
 
-    if (error) return { error: error.message }
+    if (upsertErr) {
+      console.error('[joinSchoolAsTeacher] upsert:', upsertErr)
+      return { error: '가입 실패: ' + upsertErr.message }
+    }
+
     return { data: { schoolId: school.id, schoolName: school.name } }
   } catch (err) {
-    return { error: String(err) }
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[joinSchoolAsTeacher]', msg)
+    return { error: msg }
   }
 }
 
@@ -654,27 +699,36 @@ export async function getMyClasses(): Promise<{
       .in('id', schoolIds.length > 0 ? schoolIds : ['00000000-0000-0000-0000-000000000000'])
     const schoolNameMap = new Map(schools?.map(s => [s.id, s.name]) ?? [])
 
-    const enriched = await Promise.all(
-      classes.map(async (c) => {
-        const { count: studentCount } = await admin
-          .from('class_enrollments')
-          .select('*', { count: 'exact', head: true })
-          .eq('class_id', c.id)
-          .eq('status', 'approved')
+    // N+1 최적화: 모든 클래스의 enrollments + skill_trees를 한 번에 조회
+    const classIds = classes.map(c => c.id)
+    const [{ data: allEnrollments }, { data: allTrees }] = await Promise.all([
+      admin
+        .from('class_enrollments')
+        .select('class_id')
+        .in('class_id', classIds)
+        .eq('status', 'approved'),
+      admin
+        .from('skill_trees')
+        .select('class_id')
+        .in('class_id', classIds),
+    ])
 
-        const { count: treeCount } = await admin
-          .from('skill_trees')
-          .select('*', { count: 'exact', head: true })
-          .eq('class_id', c.id)
+    // JS에서 count 집계
+    const enrollmentCountMap = new Map<string, number>()
+    allEnrollments?.forEach(e => {
+      enrollmentCountMap.set(e.class_id, (enrollmentCountMap.get(e.class_id) ?? 0) + 1)
+    })
+    const treeCountMap = new Map<string, number>()
+    allTrees?.forEach(t => {
+      if (t.class_id) treeCountMap.set(t.class_id, (treeCountMap.get(t.class_id) ?? 0) + 1)
+    })
 
-        return {
-          ...c,
-          school_name: c.school_id ? schoolNameMap.get(c.school_id) : undefined,
-          student_count: studentCount ?? 0,
-          skill_tree_count: treeCount ?? 0,
-        }
-      })
-    )
+    const enriched = classes.map(c => ({
+      ...c,
+      school_name: c.school_id ? schoolNameMap.get(c.school_id) : undefined,
+      student_count: enrollmentCountMap.get(c.id) ?? 0,
+      skill_tree_count: treeCountMap.get(c.id) ?? 0,
+    }))
 
     return { data: enriched }
   } catch (err) {

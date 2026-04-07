@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { School as SchoolIcon, Loader2, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +10,6 @@ import { joinSchoolAsTeacher } from '@/actions/school'
 import { toast } from 'sonner'
 
 export default function TeacherJoinPage() {
-  const router = useRouter()
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -28,8 +26,8 @@ export default function TeacherJoinPage() {
     }
 
     toast.success(`${res.data.schoolName}에 가입했습니다`)
-    router.push('/teacher')
-    router.refresh()
+    // full navigation — router.push + refresh 조합의 race condition 회피
+    window.location.href = '/teacher'
   }
 
   return (

@@ -134,6 +134,8 @@ export interface AdminDashboardData {
   totalSkillTrees: number
   totalQuizAttempts: number
   avgUnlockRate: number
+  teacherList: Array<{ id: string; name: string; email: string }>
+  studentList: Array<{ id: string; name: string; email: string }>
 }
 
 export async function getAdminDashboardData(): Promise<{ data?: AdminDashboardData; error?: string }> {
@@ -159,6 +161,8 @@ export async function getAdminDashboardData(): Promise<{ data?: AdminDashboardDa
           totalSkillTrees: 0,
           totalQuizAttempts: 0,
           avgUnlockRate: 0,
+          teacherList: [],
+          studentList: [],
         },
       }
     }
@@ -170,9 +174,24 @@ export async function getAdminDashboardData(): Promise<{ data?: AdminDashboardDa
       .in('school_id', schoolIds)
       .eq('status', 'approved')
 
-    const teachers = members?.filter(m => m.role === 'teacher').length ?? 0
-    const students = members?.filter(m => m.role === 'student').length ?? 0
+    const teacherIds = members?.filter(m => m.role === 'teacher').map(m => m.user_id) ?? []
     const studentIds = members?.filter(m => m.role === 'student').map(m => m.user_id) ?? []
+    const teachers = teacherIds.length
+    const students = studentIds.length
+
+    // 멤버 프로필 조회
+    const allMemberIds = [...teacherIds, ...studentIds]
+    const { data: memberProfiles } = await admin
+      .from('profiles')
+      .select('id, name, email, role')
+      .in('id', allMemberIds.length > 0 ? allMemberIds : ['00000000-0000-0000-0000-000000000000'])
+
+    const teacherList = (memberProfiles ?? [])
+      .filter(p => teacherIds.includes(p.id))
+      .map(p => ({ id: p.id, name: p.name, email: p.email }))
+    const studentList = (memberProfiles ?? [])
+      .filter(p => studentIds.includes(p.id))
+      .map(p => ({ id: p.id, name: p.name, email: p.email }))
 
     // 내 스쿨의 클래스 → 스킬트리
     const { data: classes } = await admin
@@ -207,6 +226,8 @@ export async function getAdminDashboardData(): Promise<{ data?: AdminDashboardDa
         totalSkillTrees: treeCount ?? 0,
         totalQuizAttempts: attemptCount ?? 0,
         avgUnlockRate,
+        teacherList,
+        studentList,
       },
     }
   } catch (err) {

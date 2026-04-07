@@ -5,6 +5,7 @@ import { getMySchools } from '@/actions/school'
 import { getTeacherActivity } from '@/actions/analysis'
 import { getAnnouncements } from '@/actions/announcements'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
+import { ClickableStatCard } from '@/components/dashboard/ClickableStatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BottleneckCard } from '@/components/dashboard/BottleneckCard'
 import { TeacherActivityCard } from '@/components/dashboard/TeacherActivityCard'
@@ -42,19 +43,21 @@ export default async function AdminDashboard() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <ProgressCard
-          label="교사 수"
+        <ClickableStatCard
+          label="등록된 선생"
           value={data?.totalTeachers ?? 0}
-          icon="GraduationCap"
+          iconType="teacher"
           iconColor="#10B981"
-          subtitle="등록 교사"
+          subtitle="클릭하여 명단 확인"
+          members={data?.teacherList ?? []}
         />
-        <ProgressCard
-          label="학생 수"
+        <ClickableStatCard
+          label="등록된 학생"
           value={data?.totalStudents ?? 0}
-          icon="Users"
+          iconType="student"
           iconColor="#4F6BF6"
-          subtitle="등록 학생"
+          subtitle="클릭하여 명단 확인"
+          members={data?.studentList ?? []}
         />
         <ProgressCard
           label="스킬트리 수"

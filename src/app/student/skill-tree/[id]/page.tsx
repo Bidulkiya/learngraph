@@ -9,6 +9,7 @@ interface Props {
 export default async function StudentSkillTreeExplorePage({ params }: Props) {
   const { id } = await params
   const profile = await getCurrentProfile()
+  if (!profile) return null
   const admin = createAdminClient()
 
   const { data: tree } = await admin
@@ -23,6 +24,27 @@ export default async function StudentSkillTreeExplorePage({ params }: Props) {
         <p className="text-red-500">스킬트리를 찾을 수 없습니다</p>
       </div>
     )
+  }
+
+  // 권한 체크: 학생은 자기가 승인받은 클래스의 스킬트리만 접근 가능
+  if (tree.class_id) {
+    const { data: enrollment } = await admin
+      .from('class_enrollments')
+      .select('status')
+      .eq('class_id', tree.class_id)
+      .eq('student_id', profile.id)
+      .maybeSingle()
+
+    if (!enrollment || enrollment.status !== 'approved') {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+          <p className="text-red-500">이 스킬트리에 접근할 권한이 없습니다</p>
+          <p className="text-sm text-gray-500">
+            해당 클래스에 수강신청 후 승인을 받아야 접근할 수 있습니다
+          </p>
+        </div>
+      )
+    }
   }
 
   const { data: nodes } = await admin
