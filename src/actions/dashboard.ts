@@ -1,5 +1,6 @@
 'use server'
 
+import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface TeacherDashboardData {
@@ -137,16 +138,64 @@ export interface AdminDashboardData {
 
 export async function getAdminDashboardData(): Promise<{ data?: AdminDashboardData; error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
 
-    const { data: profiles } = await admin.from('profiles').select('role')
-    const teachers = profiles?.filter(p => p.role === 'teacher').length ?? 0
-    const students = profiles?.filter(p => p.role === 'student').length ?? 0
+    // 운영자가 만든 스쿨만
+    const { data: mySchools } = await admin
+      .from('schools')
+      .select('id')
+      .eq('created_by', user.id)
+    const schoolIds = mySchools?.map(s => s.id) ?? []
 
-    const { count: treeCount } = await admin.from('skill_trees').select('*', { count: 'exact', head: true })
-    const { count: attemptCount } = await admin.from('quiz_attempts').select('*', { count: 'exact', head: true })
+    if (schoolIds.length === 0) {
+      return {
+        data: {
+          totalTeachers: 0,
+          totalStudents: 0,
+          totalSkillTrees: 0,
+          totalQuizAttempts: 0,
+          avgUnlockRate: 0,
+        },
+      }
+    }
 
-    const { data: progress } = await admin.from('student_progress').select('status')
+    // 내 스쿨의 멤버만
+    const { data: members } = await admin
+      .from('school_members')
+      .select('user_id, role')
+      .in('school_id', schoolIds)
+      .eq('status', 'approved')
+
+    const teachers = members?.filter(m => m.role === 'teacher').length ?? 0
+    const students = members?.filter(m => m.role === 'student').length ?? 0
+    const studentIds = members?.filter(m => m.role === 'student').map(m => m.user_id) ?? []
+
+    // 내 스쿨의 클래스 → 스킬트리
+    const { data: classes } = await admin
+      .from('classes')
+      .select('id')
+      .in('school_id', schoolIds)
+    const classIds = classes?.map(c => c.id) ?? []
+
+    const { count: treeCount } = await admin
+      .from('skill_trees')
+      .select('*', { count: 'exact', head: true })
+      .in('class_id', classIds.length > 0 ? classIds : ['00000000-0000-0000-0000-000000000000'])
+
+    // 내 스쿨 학생의 퀴즈 시도
+    const { count: attemptCount } = await admin
+      .from('quiz_attempts')
+      .select('*', { count: 'exact', head: true })
+      .in('student_id', studentIds.length > 0 ? studentIds : ['00000000-0000-0000-0000-000000000000'])
+
+    const { data: progress } = await admin
+      .from('student_progress')
+      .select('status')
+      .in('student_id', studentIds.length > 0 ? studentIds : ['00000000-0000-0000-0000-000000000000'])
     const completed = progress?.filter(p => p.status === 'completed').length ?? 0
     const total = progress?.length ?? 0
     const avgUnlockRate = total > 0 ? Math.round((completed / total) * 100) : 0

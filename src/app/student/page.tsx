@@ -9,20 +9,23 @@ import { getTodayMissions } from '@/actions/missions'
 import { getMyAchievements } from '@/actions/achievements'
 import { getTodayReviews } from '@/actions/reminders'
 import { getAnnouncements } from '@/actions/announcements'
+import { getMyFeed } from '@/actions/feed'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 import { WeeklyPlanCard } from '@/components/student/WeeklyPlanCard'
+import { ActivityFeed } from '@/components/feed/ActivityFeed'
 
 export default async function StudentDashboard() {
   const profile = await getCurrentProfile()
   if (!profile) return null
 
-  const [dashboardRes, missionsRes, achievementsRes, reviewsRes, annRes] = await Promise.all([
+  const [dashboardRes, missionsRes, achievementsRes, reviewsRes, annRes, feedRes] = await Promise.all([
     getStudentDashboardData(profile.id),
     getTodayMissions(),
     getMyAchievements(),
     getTodayReviews(),
     getAnnouncements(),
+    getMyFeed(),
   ])
 
   const data = dashboardRes.data
@@ -30,6 +33,7 @@ export default async function StudentDashboard() {
   const achievements = achievementsRes.data ?? []
   const reviews = reviewsRes.data ?? []
   const announcements = (annRes.data ?? []).filter(a => a.target_role === 'all' || a.target_role === 'student')
+  const feed = feedRes.data ?? []
 
   const level = data?.level ?? 1
   const xp = data?.xp ?? 0
@@ -218,6 +222,8 @@ export default async function StudentDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <ActivityFeed initialFeed={feed} />
 
       {/* Recent Quiz Attempts */}
       <Card>

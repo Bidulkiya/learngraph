@@ -309,6 +309,32 @@ export async function completeNode(
     })
     await admin.from('review_reminders').insert(reminders)
 
+    // 활동 피드 기록
+    try {
+      const { data: nodeInfo } = await admin
+        .from('nodes')
+        .select('title, skill_tree_id')
+        .eq('id', nodeId)
+        .single()
+      if (nodeInfo?.skill_tree_id) {
+        const { data: treeInfo } = await admin
+          .from('skill_trees')
+          .select('class_id')
+          .eq('id', nodeInfo.skill_tree_id)
+          .single()
+        const classId = treeInfo?.class_id
+        if (classId) {
+          const { postActivity } = await import('./feed')
+          await postActivity(classId, 'node_unlock', {
+            title: nodeInfo.title ?? '노드',
+            score,
+          })
+        }
+      }
+    } catch (e) {
+      console.error('[completeNode] feed hook failed:', e)
+    }
+
     // 미션 진행도 업데이트
     try {
       const { updateMissionProgress } = await import('./missions')

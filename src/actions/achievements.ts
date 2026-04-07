@@ -150,6 +150,30 @@ export async function checkAndAwardAchievements(): Promise<{
       }
     }
 
+    // 활동 피드 기록 — 새 업적 획득 시
+    if (newAchievements.length > 0) {
+      try {
+        const { data: enrollments } = await admin
+          .from('class_enrollments')
+          .select('class_id')
+          .eq('student_id', user.id)
+          .eq('status', 'approved')
+          .limit(1)
+        const classId = enrollments?.[0]?.class_id
+        if (classId) {
+          const { postActivity } = await import('./feed')
+          for (const ach of newAchievements) {
+            await postActivity(classId, 'badge_earned', {
+              title: ach.title,
+              icon: ach.icon,
+            })
+          }
+        }
+      } catch (e) {
+        console.error('[checkAndAwardAchievements] feed hook failed:', e)
+      }
+    }
+
     return { data: { newAchievements } }
   } catch (err) {
     return { error: String(err) }

@@ -41,6 +41,7 @@ const menuItems: Record<Role, Array<{ href: string; label: string; icon: React.E
     { href: "/student", label: "대시보드", icon: LayoutDashboard },
     { href: "/student/skill-tree", label: "내 스킬트리", icon: TreePine },
     { href: "/student/wrong-answers", label: "오답 노트", icon: BookX },
+    { href: "/student/groups", label: "스터디 그룹", icon: Users },
     { href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
     { href: "/student/join", label: "코드로 가입", icon: KeyRound },
   ],

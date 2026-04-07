@@ -368,22 +368,25 @@ export async function joinWithCode(
       .maybeSingle()
 
     if (schoolByCode) {
-      // 스쿨 가입 (즉시 승인)
-      const { data: existing } = await admin
+      // 스쿨 가입 (즉시 승인) — upsert로 중복 insert 안전
+      const { error: memberErr } = await admin.from('school_members').upsert({
+        school_id: schoolByCode.id,
+        user_id: user.id,
+        role: 'student',
+        status: 'approved',
+      }, { onConflict: 'school_id,user_id' })
+
+      if (memberErr) {
+        console.error('[joinWithCode] school member insert failed:', memberErr)
+        return { error: '스쿨 가입 실패: ' + memberErr.message }
+      }
+
+      // 이미 가입되어 있었다면 status를 approved로 보장
+      await admin
         .from('school_members')
-        .select('status')
+        .update({ status: 'approved' })
         .eq('school_id', schoolByCode.id)
         .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (!existing) {
-        await admin.from('school_members').insert({
-          school_id: schoolByCode.id,
-          user_id: user.id,
-          role: 'student',
-          status: 'approved',
-        })
-      }
 
       // 해당 스쿨의 클래스 목록 반환
       const { data: classes } = await admin
@@ -409,39 +412,26 @@ export async function joinWithCode(
       .maybeSingle()
 
     if (classByCode) {
-      // 스쿨에도 자동 가입 (pending)
+      // 스쿨에도 자동 가입 (pending) — upsert로 안전하게
       if (classByCode.school_id) {
-        const { data: schoolMember } = await admin
-          .from('school_members')
-          .select('status')
-          .eq('school_id', classByCode.school_id)
-          .eq('user_id', user.id)
-          .maybeSingle()
-
-        if (!schoolMember) {
-          await admin.from('school_members').insert({
-            school_id: classByCode.school_id,
-            user_id: user.id,
-            role: 'student',
-            status: 'pending',
-          })
-        }
+        await admin.from('school_members').upsert({
+          school_id: classByCode.school_id,
+          user_id: user.id,
+          role: 'student',
+          status: 'pending',
+        }, { onConflict: 'school_id,user_id' })
       }
 
-      // 클래스 수강신청 생성 (pending)
-      const { data: existingEnrollment } = await admin
-        .from('class_enrollments')
-        .select('status')
-        .eq('class_id', classByCode.id)
-        .eq('student_id', user.id)
-        .maybeSingle()
+      // 클래스 수강신청 (pending) — upsert로 안전하게
+      const { error: enrollErr } = await admin.from('class_enrollments').upsert({
+        class_id: classByCode.id,
+        student_id: user.id,
+        status: 'pending',
+      }, { onConflict: 'class_id,student_id' })
 
-      if (!existingEnrollment) {
-        await admin.from('class_enrollments').insert({
-          class_id: classByCode.id,
-          student_id: user.id,
-          status: 'pending',
-        })
+      if (enrollErr) {
+        console.error('[joinWithCode] enrollment failed:', enrollErr)
+        return { error: '수강신청 실패: ' + enrollErr.message }
       }
 
       return {

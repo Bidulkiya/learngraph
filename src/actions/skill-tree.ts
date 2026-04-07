@@ -169,7 +169,19 @@ export async function saveSkillTree(
       }
     }
 
-    // 5. Vectorize (best-effort, admin client)
+    // 5. 퀴즈 자동 생성 (첫 3개 노드만 — 비용 절약)
+    try {
+      const { generateQuizForNode } = await import('./quiz')
+      const nodesToQuiz = dbNodes.slice(0, 3)
+      // 병렬 호출하면 rate limit 걸릴 수 있으므로 순차
+      for (const node of nodesToQuiz) {
+        await generateQuizForNode(node.id)
+      }
+    } catch (quizErr) {
+      console.error('[saveSkillTree] 초기 퀴즈 생성 실패 (저장은 성공):', quizErr)
+    }
+
+    // 6. Vectorize (best-effort, admin client)
     try {
       await embedAndStoreDocument(originalText, tree.id)
     } catch (vecErr) {
