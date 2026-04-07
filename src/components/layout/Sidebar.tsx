@@ -27,14 +27,12 @@ const menuItems: Record<Role, Array<{ href: string; label: string; icon: React.E
   teacher: [
     { href: "/teacher", label: "대시보드", icon: LayoutDashboard },
     { href: "/teacher/skill-tree", label: "스킬트리 관리", icon: TreePine },
-    { href: "/teacher/students", label: "학생 모니터링", icon: Users },
     { href: "/teacher/quizzes", label: "퀴즈 관리", icon: ClipboardList },
   ],
   student: [
     { href: "/student", label: "대시보드", icon: LayoutDashboard },
     { href: "/student/skill-tree", label: "내 스킬트리", icon: TreePine },
     { href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
-    { href: "/student/achievements", label: "업적", icon: Trophy },
   ],
   admin: [
     { href: "/admin", label: "대시보드", icon: LayoutDashboard },
