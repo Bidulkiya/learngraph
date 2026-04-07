@@ -15,11 +15,12 @@ interface Props {
   treeId: string
   treeTitle: string
   treeDescription: string
+  theme?: string | null
   initialNodes: D3Node[]
   initialEdges: D3Edge[]
 }
 
-export function TeacherSkillTreeView({ treeId, treeTitle, treeDescription, initialNodes, initialEdges }: Props) {
+export function TeacherSkillTreeView({ treeId, treeTitle, treeDescription, theme, initialNodes, initialEdges }: Props) {
   const [editMode, setEditMode] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorMode, setEditorMode] = useState<'edit' | 'add'>('edit')
@@ -100,6 +101,7 @@ export function TeacherSkillTreeView({ treeId, treeTitle, treeDescription, initi
           nodes={nodes}
           edges={edges}
           editable={editMode}
+          theme={theme}
           onNodeClick={handleNodeClick}
           onNodeDragEnd={saveNodePosition}
           onEdgeClick={handleEdgeClick}

@@ -17,6 +17,7 @@ export const skillTreeEdgeSchema = z.object({
 export const skillTreeSchema = z.object({
   title: z.string().describe('스킬트리 제목'),
   description: z.string().describe('스킬트리 전체 설명 (1-2문장)'),
+  subject_hint: z.enum(['science', 'math', 'korean', 'default']).describe('주제 분야 — 시각 테마 결정용'),
   nodes: z.array(skillTreeNodeSchema).describe('개념 노드 목록 (5~20개)'),
   edges: z.array(skillTreeEdgeSchema).describe('노드 간 연결 (선수지식 → 후속개념)'),
 })
@@ -125,3 +126,9 @@ export const parentReportSchema = z.object({
   encouragement: z.string().describe('학생에게 전하는 격려 메시지'),
 })
 export type ParentReportOutput = z.infer<typeof parentReportSchema>
+
+// 노드별 학습 문서 (마크다운)
+export const learningDocSchema = z.object({
+  content: z.string().describe('마크다운 형식의 학습 문서 전체 (### 핵심 설명/핵심 포인트/예시/그림/연관 개념 구조)'),
+})
+export type LearningDocOutput = z.infer<typeof learningDocSchema>

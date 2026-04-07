@@ -14,6 +14,7 @@ type Phase = 'upload' | 'extracting' | 'generating' | 'preview' | 'saving' | 'do
 interface SkillTreeResult {
   title: string
   description: string
+  subject_hint: 'science' | 'math' | 'korean' | 'default'
   nodes: Array<{ id: string; title: string; description: string; difficulty: number }>
   edges: Array<{ source: string; target: string; label?: string }>
 }
@@ -94,7 +95,11 @@ export default function NewSkillTreeForm({ classes }: NewSkillTreeFormProps) {
     setError('')
 
     const result = await saveSkillTree(
-      { title: skillTree.title, description: skillTree.description },
+      {
+        title: skillTree.title,
+        description: skillTree.description,
+        subject_hint: skillTree.subject_hint,
+      },
       skillTree.nodes,
       skillTree.edges,
       extractedText,

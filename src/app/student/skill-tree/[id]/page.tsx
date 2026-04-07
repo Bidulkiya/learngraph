@@ -98,6 +98,7 @@ export default async function StudentSkillTreeExplorePage({ params }: Props) {
     <StudentSkillTreeView
       treeTitle={tree.title}
       treeDescription={tree.description ?? ''}
+      theme={tree.subject_hint ?? 'default'}
       nodes={d3Nodes}
       edges={d3Edges}
     />

@@ -199,6 +199,113 @@ export async function getUnreadMessageCount(): Promise<{ data?: number; error?: 
 }
 
 /**
+ * 읽지 않은 메시지 요약 — 사이드바 배지 + 토스트 알림용.
+ * 가장 최근 발신자 1명의 정보와 전체 unread 수를 함께 반환.
+ */
+export async function getUnreadSummary(): Promise<{
+  data?: {
+    totalUnread: number
+    latestUnread: {
+      senderId: string
+      senderName: string
+      lastMessage: string
+      count: number
+    } | null
+  }
+  error?: string
+}> {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { data: { totalUnread: 0, latestUnread: null } }
+
+    const admin = createAdminClient()
+
+    // 전체 unread count
+    const { count: totalUnread } = await admin
+      .from('direct_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user.id)
+      .is('read_at', null)
+
+    if (!totalUnread || totalUnread === 0) {
+      return { data: { totalUnread: 0, latestUnread: null } }
+    }
+
+    // 가장 최근 읽지 않은 메시지
+    const { data: latestMsg } = await admin
+      .from('direct_messages')
+      .select('sender_id, content, created_at')
+      .eq('receiver_id', user.id)
+      .is('read_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!latestMsg) {
+      return { data: { totalUnread, latestUnread: null } }
+    }
+
+    // 발신자 프로필
+    const { data: senderProfile } = await admin
+      .from('profiles')
+      .select('name')
+      .eq('id', latestMsg.sender_id)
+      .maybeSingle()
+
+    // 해당 발신자의 unread 수
+    const { count: senderUnreadCount } = await admin
+      .from('direct_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user.id)
+      .eq('sender_id', latestMsg.sender_id)
+      .is('read_at', null)
+
+    return {
+      data: {
+        totalUnread,
+        latestUnread: {
+          senderId: latestMsg.sender_id,
+          senderName: senderProfile?.name ?? '알 수 없음',
+          lastMessage: latestMsg.content.length > 60
+            ? latestMsg.content.slice(0, 60) + '...'
+            : latestMsg.content,
+          count: senderUnreadCount ?? 1,
+        },
+      },
+    }
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+/**
+ * 특정 발신자와의 대화를 즉시 '읽음' 처리.
+ * 대화 열 때 호출되어 사이드바 배지가 즉시 업데이트되도록.
+ */
+export async function markConversationRead(
+  otherUserId: string
+): Promise<{ error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const admin = createAdminClient()
+    await admin
+      .from('direct_messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('sender_id', otherUserId)
+      .eq('receiver_id', user.id)
+      .is('read_at', null)
+
+    return {}
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+/**
  * 같은 스쿨 멤버 목록 (메시지 받을 대상)
  */
 export async function getMessageContacts(): Promise<{

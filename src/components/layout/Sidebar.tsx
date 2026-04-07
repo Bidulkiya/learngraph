@@ -22,34 +22,45 @@ import { cn } from "@/lib/utils"
 
 type Role = "teacher" | "student" | "admin"
 
+type MenuKey = 'messages' | 'tutor' | 'dashboard' | 'classes' | 'skill-tree' | 'quizzes' | 'recording' | 'join' | 'wrong-answers' | 'groups' | 'schools' | 'announcements'
+
 interface SidebarProps {
   role: Role
+  unreadMessageCount?: number
 }
 
-const menuItems: Record<Role, Array<{ href: string; label: string; icon: React.ElementType }>> = {
+interface MenuItem {
+  key: MenuKey
+  href: string
+  label: string
+  icon: React.ElementType
+}
+
+// 주의: 교사 메뉴에서 'AI 튜터' 항목을 제거함 (교사는 스킬트리 노드 편집 > AI 테스트 탭으로 체험)
+const menuItems: Record<Role, MenuItem[]> = {
   teacher: [
-    { href: "/teacher", label: "대시보드", icon: LayoutDashboard },
-    { href: "/teacher/classes", label: "내 클래스", icon: Users },
-    { href: "/teacher/skill-tree", label: "스킬트리 관리", icon: TreePine },
-    { href: "/teacher/quizzes", label: "퀴즈 관리", icon: ClipboardList },
-    { href: "/teacher/recording", label: "수업 녹음", icon: Mic },
-    { href: "/teacher/messages", label: "메시지", icon: Mail },
-    { href: "/teacher/join", label: "스쿨 가입", icon: KeyRound },
-    { href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
+    { key: 'dashboard', href: "/teacher", label: "대시보드", icon: LayoutDashboard },
+    { key: 'classes', href: "/teacher/classes", label: "내 클래스", icon: Users },
+    { key: 'skill-tree', href: "/teacher/skill-tree", label: "스킬트리 관리", icon: TreePine },
+    { key: 'quizzes', href: "/teacher/quizzes", label: "퀴즈 관리", icon: ClipboardList },
+    { key: 'recording', href: "/teacher/recording", label: "수업 녹음", icon: Mic },
+    { key: 'messages', href: "/teacher/messages", label: "메시지", icon: Mail },
+    { key: 'join', href: "/teacher/join", label: "스쿨 가입", icon: KeyRound },
   ],
   student: [
-    { href: "/student", label: "대시보드", icon: LayoutDashboard },
-    { href: "/student/skill-tree", label: "내 스킬트리", icon: TreePine },
-    { href: "/student/wrong-answers", label: "오답 노트", icon: BookX },
-    { href: "/student/groups", label: "스터디 그룹", icon: Users },
-    { href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
-    { href: "/student/join", label: "코드로 가입", icon: KeyRound },
+    { key: 'dashboard', href: "/student", label: "대시보드", icon: LayoutDashboard },
+    { key: 'skill-tree', href: "/student/skill-tree", label: "내 스킬트리", icon: TreePine },
+    { key: 'wrong-answers', href: "/student/wrong-answers", label: "오답 노트", icon: BookX },
+    { key: 'groups', href: "/student/groups", label: "스터디 그룹", icon: Users },
+    { key: 'tutor', href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
+    { key: 'messages', href: "/student/messages", label: "메시지", icon: Mail },
+    { key: 'join', href: "/student/join", label: "코드로 가입", icon: KeyRound },
   ],
   admin: [
-    { href: "/admin", label: "대시보드", icon: LayoutDashboard },
-    { href: "/admin/schools", label: "스쿨 관리", icon: School },
-    { href: "/admin/announcements", label: "공지사항", icon: Megaphone },
-    { href: "/admin/messages", label: "메시지", icon: Mail },
+    { key: 'dashboard', href: "/admin", label: "대시보드", icon: LayoutDashboard },
+    { key: 'schools', href: "/admin/schools", label: "스쿨 관리", icon: School },
+    { key: 'announcements', href: "/admin/announcements", label: "공지사항", icon: Megaphone },
+    { key: 'messages', href: "/admin/messages", label: "메시지", icon: Mail },
   ],
 }
 
@@ -59,7 +70,7 @@ const roleConfig: Record<Role, { label: string; color: string; icon: React.Eleme
   admin: { label: "운영자", color: "text-[#F59E0B]", icon: Shield },
 }
 
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar({ role, unreadMessageCount = 0 }: SidebarProps) {
   const pathname = usePathname()
   const config = roleConfig[role]
   const items = menuItems[role]
@@ -88,19 +99,25 @@ export function Sidebar({ role }: SidebarProps) {
         {items.map((item) => {
           const isActive = pathname === item.href || (item.href !== `/${role}` && pathname.startsWith(item.href))
           const Icon = item.icon
+          const showBadge = item.key === 'messages' && unreadMessageCount > 0
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-[#4F6BF6]/10 text-[#4F6BF6] dark:bg-[#4F6BF6]/20"
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-white"
               )}
             >
               <Icon className="h-5 w-5" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {showBadge && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white shadow-sm">
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                </span>
+              )}
             </Link>
           )
         })}

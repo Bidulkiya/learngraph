@@ -12,11 +12,12 @@ import type { D3Node, D3Edge } from '@/lib/d3/skill-tree-layout'
 interface Props {
   treeTitle: string
   treeDescription: string
+  theme?: string | null
   nodes: D3Node[]
   edges: D3Edge[]
 }
 
-export function StudentSkillTreeView({ treeTitle, treeDescription, nodes, edges }: Props) {
+export function StudentSkillTreeView({ treeTitle, treeDescription, theme, nodes, edges }: Props) {
   const completed = nodes.filter(n => n.status === 'completed').length
   const total = nodes.length
   const [popupNode, setPopupNode] = useState<D3Node | null>(null)
@@ -72,6 +73,7 @@ export function StudentSkillTreeView({ treeTitle, treeDescription, nodes, edges 
           nodes={nodes}
           edges={edges}
           editable={false}
+          theme={theme}
           onNodeClick={handleNodeClick}
         />
       </div>

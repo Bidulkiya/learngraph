@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { useRouter } from 'next/navigation'
 import {
   getConversation,
   getConversations,
   sendMessage,
   getMessageContacts,
+  markConversationRead,
   type Conversation,
   type DirectMessage,
 } from '@/actions/messages'
@@ -24,6 +26,7 @@ interface Contact {
 }
 
 export function MessengerView({ currentUserId }: { currentUserId: string }) {
+  const router = useRouter()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const [selected, setSelected] = useState<string | null>(null)
@@ -42,6 +45,19 @@ export function MessengerView({ currentUserId }: { currentUserId: string }) {
       setLoading(false)
     })
   }, [])
+
+  // 대화 선택: 즉시 읽음 처리 + 로컬 상태 업데이트 + 사이드바 동기화
+  const handleSelectConversation = async (userId: string): Promise<void> => {
+    setSelected(userId)
+    // 즉시 UI 업데이트: unread_count 0으로
+    setConversations(prev =>
+      prev.map(c => (c.user_id === userId ? { ...c, unread_count: 0 } : c))
+    )
+    // 서버에서도 즉시 읽음 처리 (getConversation도 처리하지만 레이아웃 refresh 위해 명시 호출)
+    await markConversationRead(userId)
+    // 사이드바 배지 업데이트를 위해 layout refresh
+    router.refresh()
+  }
 
   // 선택된 대화 로드
   useEffect(() => {
@@ -125,7 +141,7 @@ export function MessengerView({ currentUserId }: { currentUserId: string }) {
                 {filteredContacts.map(c => (
                   <li key={c.user_id}>
                     <button
-                      onClick={() => setSelected(c.user_id)}
+                      onClick={() => handleSelectConversation(c.user_id)}
                       className={`flex w-full items-center gap-2 border-b p-3 text-left text-sm hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900 ${
                         selected === c.user_id ? 'bg-[#4F6BF6]/5' : ''
                       }`}

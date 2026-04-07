@@ -74,10 +74,10 @@ export async function generateSkillTree(
 
 /**
  * Save a generated skill tree to the database.
- * Also triggers document vectorization for RAG.
+ * Also triggers document vectorization for RAG + AI 학습 문서 일괄 생성.
  */
 export async function saveSkillTree(
-  treeData: { title: string; description: string },
+  treeData: { title: string; description: string; subject_hint?: string },
   nodes: Array<{ id: string; title: string; description: string; difficulty: number }>,
   edges: Array<{ source: string; target: string; label?: string }>,
   originalText: string,
@@ -91,12 +91,13 @@ export async function saveSkillTree(
 
     const admin = createAdminClient()
 
-    // 1. Create skill tree record (classId 포함)
+    // 1. Create skill tree record (classId + subject_hint 포함)
     const { data: tree, error: treeError } = await admin
       .from('skill_trees')
       .insert({
         title: treeData.title,
         description: treeData.description,
+        subject_hint: treeData.subject_hint ?? 'default',
         created_by: user.id,
         class_id: classId ?? null,
         status: 'published',
@@ -181,7 +182,36 @@ export async function saveSkillTree(
       console.error('[saveSkillTree] 초기 퀴즈 생성 실패 (저장은 성공):', quizErr)
     }
 
-    // 6. Vectorize (best-effort, admin client)
+    // 6. 노드별 학습 문서 AI 생성 (best-effort, 병렬로 빠르게)
+    try {
+      const { generateLearningDocForNode } = await import('./learning-doc')
+      const subjectHint = treeData.subject_hint ?? 'default'
+      // 병렬 호출 — 최대 5개씩 배치
+      const batchSize = 5
+      for (let i = 0; i < dbNodes.length; i += batchSize) {
+        const batch = dbNodes.slice(i, i + batchSize)
+        await Promise.all(
+          batch.map(async (node) => {
+            const res = await generateLearningDocForNode(
+              node.title,
+              node.description ?? '',
+              tree.title,
+              subjectHint
+            )
+            if (res.data) {
+              await admin
+                .from('nodes')
+                .update({ learning_content: res.data })
+                .eq('id', node.id)
+            }
+          })
+        )
+      }
+    } catch (docErr) {
+      console.error('[saveSkillTree] 학습 문서 생성 실패 (저장은 성공):', docErr)
+    }
+
+    // 7. Vectorize (best-effort, admin client)
     try {
       await embedAndStoreDocument(originalText, tree.id)
     } catch (vecErr) {

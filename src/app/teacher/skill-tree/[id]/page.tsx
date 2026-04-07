@@ -42,6 +42,7 @@ export default async function TeacherSkillTreeDetailPage({ params }: Props) {
       treeId={tree.id}
       treeTitle={tree.title}
       treeDescription={tree.description ?? ''}
+      theme={tree.subject_hint ?? 'default'}
       initialNodes={d3Nodes}
       initialEdges={d3Edges}
     />
