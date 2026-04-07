@@ -80,7 +80,8 @@ export async function saveSkillTree(
   treeData: { title: string; description: string },
   nodes: Array<{ id: string; title: string; description: string; difficulty: number }>,
   edges: Array<{ source: string; target: string; label?: string }>,
-  originalText: string
+  originalText: string,
+  classId?: string
 ): Promise<{ id?: string; error?: string }> {
   try {
     // 인증 확인 (anon key 클라이언트)
@@ -88,17 +89,16 @@ export async function saveSkillTree(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
-    // 쓰기 작업은 admin 클라이언트 사용 — RLS 재귀 문제 우회
-    // 인증은 위에서 이미 확인했으므로 안전
     const admin = createAdminClient()
 
-    // 1. Create skill tree record
+    // 1. Create skill tree record (classId 포함)
     const { data: tree, error: treeError } = await admin
       .from('skill_trees')
       .insert({
         title: treeData.title,
         description: treeData.description,
         created_by: user.id,
+        class_id: classId ?? null,
         status: 'published',
       })
       .select()
@@ -145,7 +145,31 @@ export async function saveSkillTree(
       if (edgesError) return { error: '엣지 저장 실패: ' + edgesError.message }
     }
 
-    // 4. Vectorize (best-effort, admin client)
+    // 4. Initialize student_progress for class students (if class assigned)
+    if (classId) {
+      const { data: enrolledStudents } = await admin
+        .from('class_enrollments')
+        .select('student_id')
+        .eq('class_id', classId)
+        .eq('status', 'approved')
+
+      if (enrolledStudents && enrolledStudents.length > 0) {
+        const targetIds = new Set(edgeInserts.map(e => e.target_node_id))
+        const progressRows = enrolledStudents.flatMap(s =>
+          dbNodes.map(n => ({
+            student_id: s.student_id,
+            node_id: n.id,
+            skill_tree_id: tree.id,
+            status: targetIds.has(n.id) ? 'locked' : 'available',
+          }))
+        )
+        await admin.from('student_progress').upsert(progressRows, {
+          onConflict: 'student_id,node_id',
+        })
+      }
+    }
+
+    // 5. Vectorize (best-effort, admin client)
     try {
       await embedAndStoreDocument(originalText, tree.id)
     } catch (vecErr) {

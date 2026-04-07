@@ -6,14 +6,13 @@ import {
   BookOpen,
   GraduationCap,
   LayoutDashboard,
-  Library,
   MessageSquare,
   Shield,
   TreePine,
-  Trophy,
   Users,
-  BarChart3,
   ClipboardList,
+  School,
+  KeyRound,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -26,19 +25,21 @@ interface SidebarProps {
 const menuItems: Record<Role, Array<{ href: string; label: string; icon: React.ElementType }>> = {
   teacher: [
     { href: "/teacher", label: "대시보드", icon: LayoutDashboard },
+    { href: "/teacher/classes", label: "내 클래스", icon: Users },
     { href: "/teacher/skill-tree", label: "스킬트리 관리", icon: TreePine },
     { href: "/teacher/quizzes", label: "퀴즈 관리", icon: ClipboardList },
+    { href: "/teacher/join", label: "스쿨 가입", icon: KeyRound },
+    { href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
   ],
   student: [
     { href: "/student", label: "대시보드", icon: LayoutDashboard },
     { href: "/student/skill-tree", label: "내 스킬트리", icon: TreePine },
     { href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },
+    { href: "/student/join", label: "코드로 가입", icon: KeyRound },
   ],
   admin: [
     { href: "/admin", label: "대시보드", icon: LayoutDashboard },
-    { href: "/admin/templates", label: "마스터 템플릿", icon: Library },
-    { href: "/admin/analytics", label: "전체 분석", icon: BarChart3 },
-    { href: "/admin/users", label: "사용자 관리", icon: Users },
+    { href: "/admin/schools", label: "스쿨 관리", icon: School },
   ],
 }
 
