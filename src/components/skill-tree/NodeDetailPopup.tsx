@@ -29,6 +29,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { saveMemo, getMemo } from '@/actions/memo'
 import { getConceptConnections } from '@/actions/recommendations'
 import { getNodeLearningDoc } from '@/actions/learning-doc'
+import { FlashcardDeck } from './FlashcardDeck'
+import { Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import type { D3Node } from '@/lib/d3/skill-tree-layout'
 import type { ConceptConnectionOutput } from '@/lib/ai/schemas'
@@ -329,9 +331,10 @@ export function NodeDetailPopup({
 
           {!isLocked && (
             <Tabs defaultValue="actions" className="mt-2">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className={`grid w-full ${isCompleted ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <TabsTrigger value="actions">학습</TabsTrigger>
                 <TabsTrigger value="document">학습 문서</TabsTrigger>
+                {isCompleted && <TabsTrigger value="flashcards"><Layers className="mr-1 h-3 w-3" />카드</TabsTrigger>}
                 <TabsTrigger value="memo">메모</TabsTrigger>
               </TabsList>
               <TabsContent value="actions" className="space-y-2">
@@ -414,6 +417,11 @@ export function NodeDetailPopup({
                   </>
                 )}
               </TabsContent>
+              {isCompleted && (
+                <TabsContent value="flashcards" className="space-y-2">
+                  <FlashcardDeck nodeId={node.id} />
+                </TabsContent>
+              )}
               <TabsContent value="memo" className="space-y-2">
                 <textarea
                   value={memo}

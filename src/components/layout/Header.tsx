@@ -26,12 +26,14 @@ const roleLabels: Record<Role, string> = {
   teacher: "교사",
   student: "학생",
   admin: "운영자",
+  parent: "학부모",
 }
 
 const roleBadgeColors: Record<Role, string> = {
   teacher: "bg-[#10B981]/10 text-[#10B981] border-[#10B981]/30",
   student: "bg-[#4F6BF6]/10 text-[#4F6BF6] border-[#4F6BF6]/30",
   admin: "bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/30",
+  parent: "bg-pink-500/10 text-pink-500 border-pink-300",
 }
 
 export function Header({ role, userName = "사용자" }: HeaderProps) {

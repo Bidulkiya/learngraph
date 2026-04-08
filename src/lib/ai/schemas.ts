@@ -182,3 +182,25 @@ export const crossCurriculumSchema = z.object({
   })).describe('과목을 넘나드는 개념 연결 (3-6개)'),
 })
 export type CrossCurriculumOutput = z.infer<typeof crossCurriculumSchema>
+
+// ============================================
+// Phase 10: 6개 고급 기능 스키마
+// ============================================
+
+// 4. 주간 학습 브리핑
+export const weeklyBriefingSchema = z.object({
+  summary: z.string().describe('지난 한 주의 클래스 전체 학습 상황 종합 요약 (한국어 3-4문장)'),
+  highlights: z.array(z.string()).describe('주요 성과/긍정적 변화 2-3개 (한국어 짧은 문장)'),
+  concerns: z.array(z.string()).describe('우려 사항/주의 필요 1-2개 (한국어 짧은 문장)'),
+  action_items: z.array(z.string()).describe('교사 권장 행동 2-3개 (구체적이고 실행 가능한, 한국어)'),
+})
+export type WeeklyBriefingOutput = z.infer<typeof weeklyBriefingSchema>
+
+// 5. 플래시카드 (5장)
+export const flashcardsSchema = z.object({
+  cards: z.array(z.object({
+    front: z.string().describe('카드 앞면 — 질문 또는 개념 (짧게, 한국어)'),
+    back: z.string().describe('카드 뒷면 — 답 또는 핵심 설명 (간결하게, 한국어)'),
+  })).describe('핵심 개념 5장의 플래시카드'),
+})
+export type FlashcardsOutput = z.infer<typeof flashcardsSchema>

@@ -210,7 +210,7 @@ ${answer}
 export async function completeNode(
   nodeId: string,
   score: number
-): Promise<{ error?: string }> {
+): Promise<{ data?: { certificateIssued: boolean }; error?: string }> {
   try {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -375,7 +375,25 @@ export async function completeNode(
       console.error('[completeNode] achievements check failed:', e)
     }
 
-    return {}
+    // 플래시카드 자동 생성 (best-effort, 있으면 스킵)
+    try {
+      const { generateFlashcards } = await import('./flashcard')
+      await generateFlashcards(nodeId)
+    } catch (e) {
+      console.error('[completeNode] flashcard generation failed:', e)
+    }
+
+    // 스킬트리 100% 완료 체크 → 인증서 자동 발급
+    let certificateIssued = false
+    try {
+      const { issueCertificate } = await import('./certificate')
+      const certRes = await issueCertificate(node.skill_tree_id)
+      certificateIssued = !!certRes.data
+    } catch (e) {
+      console.error('[completeNode] certificate issuance failed:', e)
+    }
+
+    return { data: { certificateIssued } }
   } catch (err) {
     return { error: String(err) }
   }
@@ -506,7 +524,44 @@ export async function regenerateQuizzes(
 }
 
 /**
- * AI 퀴즈 힌트 생성 (정답 직접 공개 금지)
+ * 특정 퀴즈에 대해 이 학생의 시도 횟수 + 힌트 잠금 상태 조회.
+ * 노력 기반 힌트 시스템 — 3회 시도 후에만 힌트 잠금 해제.
+ */
+export async function getQuizAttemptInfo(
+  quizId: string
+): Promise<{
+  data?: { attemptCount: number; hintUnlocked: boolean; attemptsRemaining: number }
+  error?: string
+}> {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const admin = createAdminClient()
+    const { count } = await admin
+      .from('quiz_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('student_id', user.id)
+      .eq('quiz_id', quizId)
+
+    const attemptCount = count ?? 0
+    const HINT_UNLOCK_THRESHOLD = 3
+    return {
+      data: {
+        attemptCount,
+        hintUnlocked: attemptCount >= HINT_UNLOCK_THRESHOLD,
+        attemptsRemaining: Math.max(0, HINT_UNLOCK_THRESHOLD - attemptCount),
+      },
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
+ * AI 퀴즈 힌트 생성 (정답 직접 공개 금지).
+ * 노력 기반 잠금: 학생이 해당 퀴즈를 3회 이상 시도한 경우에만 힌트 제공.
  */
 export async function getQuizHint(
   quizId: string
@@ -517,6 +572,19 @@ export async function getQuizHint(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+
+    // 노력 기반 잠금 체크 — 3회 이상 시도해야 힌트 활성화
+    const { count } = await admin
+      .from('quiz_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('student_id', user.id)
+      .eq('quiz_id', quizId)
+
+    const attemptCount = count ?? 0
+    if (attemptCount < 3) {
+      return { error: `힌트는 ${3 - attemptCount}번 더 시도한 후에 열립니다. 스스로 풀어보세요!` }
+    }
+
     const { data: quiz } = await admin
       .from('quizzes')
       .select('question, correct_answer')

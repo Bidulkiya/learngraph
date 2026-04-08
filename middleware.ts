@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-const PROTECTED_ROUTES = ["/teacher", "/student", "/admin"]
+const PROTECTED_ROUTES = ["/teacher", "/student", "/admin", "/parent"]
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({ request })
@@ -72,6 +72,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       if (pathname.startsWith("/teacher") && role !== "teacher") return redirectTo(`/${role}`)
       if (pathname.startsWith("/student") && role !== "student") return redirectTo(`/${role}`)
       if (pathname.startsWith("/admin") && role !== "admin") return redirectTo(`/${role}`)
+      if (pathname.startsWith("/parent") && role !== "parent") return redirectTo(`/${role}`)
     }
   }
 

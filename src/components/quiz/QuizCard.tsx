@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Loader2, Send, Check, Lightbulb } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Loader2, Send, Check, Lightbulb, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getQuizHint } from '@/actions/quiz'
+import { getQuizHint, getQuizAttemptInfo } from '@/actions/quiz'
 import type { Quiz } from '@/types/quiz'
 import { toast } from 'sonner'
 
@@ -25,14 +24,33 @@ interface QuizCardProps {
 export function QuizCard({ quiz, index, total, onSubmit, disabled }: QuizCardProps) {
   const [selected, setSelected] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  // animKey: mount 직후 한 번 애니메이션 트리거 — 단순 0으로 충분 (key prop으로 매번 새 mount이므로)
   const animKey = 0
   const [hint, setHint] = useState<string | null>(null)
   const [hintLoading, setHintLoading] = useState(false)
   const [hintUsed, setHintUsed] = useState(false)
+  // 노력 기반 힌트 잠금 상태
+  const [hintUnlocked, setHintUnlocked] = useState(false)
+  const [attemptsRemaining, setAttemptsRemaining] = useState(3)
+
+  // 마운트 시 힌트 잠금 상태 조회
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    let cancelled = false
+    getQuizAttemptInfo(quiz.id).then(res => {
+      if (cancelled || !res.data) return
+      setHintUnlocked(res.data.hintUnlocked)
+      setAttemptsRemaining(res.data.attemptsRemaining)
+    })
+    return () => { cancelled = true }
+  }, [quiz.id])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleHint = async (): Promise<void> => {
     if (hintUsed) return
+    if (!hintUnlocked) {
+      toast.info(`${attemptsRemaining}번 더 시도해야 힌트가 열려요. 스스로 풀어보세요! 💪`)
+      return
+    }
     setHintLoading(true)
     const res = await getQuizHint(quiz.id)
     setHintLoading(false)
@@ -133,13 +151,17 @@ export function QuizCard({ quiz, index, total, onSubmit, disabled }: QuizCardPro
               disabled={hintLoading || disabled}
               variant="outline"
               size="sm"
+              className={hintUnlocked ? 'border-yellow-300 text-yellow-700 hover:bg-yellow-50' : 'text-gray-400'}
+              title={hintUnlocked ? '힌트가 열렸어요!' : `${attemptsRemaining}번 더 시도 후 열림`}
             >
               {hintLoading ? (
                 <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-              ) : (
+              ) : hintUnlocked ? (
                 <Lightbulb className="mr-1 h-3.5 w-3.5" />
+              ) : (
+                <Lock className="mr-1 h-3.5 w-3.5" />
               )}
-              힌트
+              {hintUnlocked ? '힌트 (열림!)' : `힌트 (${attemptsRemaining}회 남음)`}
             </Button>
           )}
           <Button

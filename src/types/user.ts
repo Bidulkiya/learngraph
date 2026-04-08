@@ -1,4 +1,6 @@
-export type Role = 'teacher' | 'student' | 'admin'
+export type Role = 'teacher' | 'student' | 'admin' | 'parent'
+
+export type LearningStyle = 'visual' | 'textual' | 'practical'
 
 export interface Profile {
   id: string
@@ -11,4 +13,5 @@ export interface Profile {
   streak_days: number
   last_active_at: string
   created_at: string
+  learning_style?: LearningStyle | null
 }

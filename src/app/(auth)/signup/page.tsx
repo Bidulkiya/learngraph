@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { BookOpen, Eye, EyeOff, GraduationCap, Shield, Loader2 } from "lucide-react"
+import { BookOpen, Eye, EyeOff, GraduationCap, Shield, Loader2, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,7 @@ import type { Role } from "@/types/user"
 const roles: Array<{ value: Role; label: string; icon: React.ElementType; color: string; desc: string }> = [
   { value: "teacher", label: "교사", icon: GraduationCap, color: "#10B981", desc: "스킬트리 생성 · 학생 관리" },
   { value: "student", label: "학생", icon: BookOpen, color: "#4F6BF6", desc: "스킬트리 탐험 · 퀴즈 풀기" },
+  { value: "parent", label: "학부모", icon: Heart, color: "#EC4899", desc: "자녀 학습 현황 확인" },
   { value: "admin", label: "운영자", icon: Shield, color: "#F59E0B", desc: "템플릿 관리 · 전체 분석" },
 ]
 
@@ -153,7 +154,7 @@ export default function SignupPage() {
             {/* Role Selection */}
             <div className="space-y-2">
               <Label>역할 선택</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {roles.map((r) => {
                   const Icon = r.icon
                   const selected = role === r.value

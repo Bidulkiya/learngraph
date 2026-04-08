@@ -14,6 +14,7 @@ import { RiskAlert } from '@/components/dashboard/RiskAlert'
 import { RiskAlertCard } from '@/components/dashboard/RiskAlertCard'
 import { EmotionOverviewCard } from '@/components/dashboard/EmotionOverviewCard'
 import { StudentGroupsCard } from '@/components/dashboard/StudentGroupsCard'
+import { WeeklyBriefingCard } from '@/components/dashboard/WeeklyBriefingCard'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 
 export default async function TeacherDashboard() {
@@ -51,6 +52,9 @@ export default async function TeacherDashboard() {
       </div>
 
       <AnnouncementBanner announcements={announcements} />
+
+      {/* Phase 10: 주간 브리핑 */}
+      <WeeklyBriefingCard classes={myClasses} />
 
       {/* 내 스쿨 */}
       <Card>

@@ -17,12 +17,13 @@ import {
   Mic,
   Megaphone,
   Mail,
+  Heart,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Role = "teacher" | "student" | "admin"
+type Role = "teacher" | "student" | "admin" | "parent"
 
-type MenuKey = 'messages' | 'tutor' | 'dashboard' | 'classes' | 'skill-tree' | 'quizzes' | 'recording' | 'join' | 'wrong-answers' | 'groups' | 'schools' | 'announcements'
+type MenuKey = 'messages' | 'tutor' | 'dashboard' | 'classes' | 'skill-tree' | 'quizzes' | 'recording' | 'join' | 'wrong-answers' | 'groups' | 'schools' | 'announcements' | 'link-student'
 
 interface SidebarProps {
   role: Role
@@ -62,12 +63,17 @@ const menuItems: Record<Role, MenuItem[]> = {
     { key: 'announcements', href: "/admin/announcements", label: "공지사항", icon: Megaphone },
     { key: 'messages', href: "/admin/messages", label: "메시지", icon: Mail },
   ],
+  parent: [
+    { key: 'dashboard', href: "/parent", label: "자녀 학습 현황", icon: LayoutDashboard },
+    { key: 'link-student', href: "/parent/link", label: "자녀 연결", icon: KeyRound },
+  ],
 }
 
 const roleConfig: Record<Role, { label: string; color: string; icon: React.ElementType }> = {
   teacher: { label: "교사", color: "text-[#10B981]", icon: GraduationCap },
   student: { label: "학생", color: "text-[#4F6BF6]", icon: BookOpen },
   admin: { label: "운영자", color: "text-[#F59E0B]", icon: Shield },
+  parent: { label: "학부모", color: "text-pink-500", icon: Heart },
 }
 
 export function Sidebar({ role, unreadMessageCount = 0 }: SidebarProps) {

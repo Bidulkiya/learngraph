@@ -5,7 +5,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import OpenAI from 'openai'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { TUTOR_SYSTEM_PROMPT, TUTOR_SOCRATIC_PROMPT, TUTOR_EMOTION_ADAPTATION } from '@/lib/ai/prompts'
+import { TUTOR_SYSTEM_PROMPT, TUTOR_SOCRATIC_PROMPT, TUTOR_EMOTION_ADAPTATION, TUTOR_LEARNING_STYLE } from '@/lib/ai/prompts'
 
 const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -79,11 +79,41 @@ export async function chatWithTutor(
       console.error('[chatWithTutor] emotion 조회 실패 (기본 톤 사용):', emoErr)
     }
 
-    // Claude 호출 (모드별 시스템 프롬프트 + 감정 적응)
+    // 학습 스타일 조회
+    let styleAdaptation = ''
+    try {
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('learning_style')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (profile?.learning_style && TUTOR_LEARNING_STYLE[profile.learning_style]) {
+        styleAdaptation = TUTOR_LEARNING_STYLE[profile.learning_style]
+      }
+    } catch {}
+
+    // 노력 기반 단계적 도움: 같은 노드에 대한 대화 히스토리 조회
+    let effortContext = ''
+    if (nodeId) {
+      try {
+        const { count } = await admin
+          .from('tutor_conversations')
+          .select('*', { count: 'exact', head: true })
+          .eq('student_id', user.id)
+          .eq('node_id', nodeId)
+          .eq('role', 'user')
+        const questionCount = count ?? 0
+        effortContext = `[학생 질문 횟수 (이 노드): ${questionCount + 1}회]\n도움 단계: ${questionCount === 0 ? '1단계 - 스스로 생각 유도' : questionCount === 1 ? '2단계 - 방향 힌트' : '3단계 이상 - 구체적 설명 제공'}`
+      } catch {}
+    }
+
+    // Claude 호출 (모드별 시스템 프롬프트 + 감정 + 스타일 + 노력)
     const basePrompt = mode === 'socratic' ? TUTOR_SOCRATIC_PROMPT : TUTOR_SYSTEM_PROMPT
     const systemPrompt = [
       basePrompt,
       emotionAdaptation,
+      styleAdaptation,
+      effortContext,
       context ? `## 참고 수업 자료\n${context}` : '',
     ].filter(Boolean).join('\n\n')
 

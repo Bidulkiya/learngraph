@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { ClipboardCheck, Target, RotateCcw, Award } from 'lucide-react'
+import { redirect } from 'next/navigation'
+import { ClipboardCheck, Target, RotateCcw, Award, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,24 +11,40 @@ import { getMyAchievements } from '@/actions/achievements'
 import { getTodayReviews } from '@/actions/reminders'
 import { getAnnouncements } from '@/actions/announcements'
 import { getMyFeed } from '@/actions/feed'
+import { getMyCertificates } from '@/actions/certificate'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 import { WeeklyPlanCard } from '@/components/student/WeeklyPlanCard'
 import { ActivityFeed } from '@/components/feed/ActivityFeed'
 import { ConceptMapCard } from '@/components/dashboard/ConceptMapCard'
+import { ParentInviteCard } from '@/components/student/ParentInviteCard'
+import { MyCertificatesCard } from '@/components/student/MyCertificatesCard'
+
+const STYLE_INFO: Record<string, { emoji: string; label: string }> = {
+  visual: { emoji: '👁️', label: '시각형' },
+  textual: { emoji: '📖', label: '텍스트형' },
+  practical: { emoji: '💪', label: '실습형' },
+}
 
 export default async function StudentDashboard() {
   const profile = await getCurrentProfile()
   if (!profile) return null
 
-  const [dashboardRes, missionsRes, achievementsRes, reviewsRes, annRes, feedRes] = await Promise.all([
+  // 학습 스타일 미진단 학생 → 온보딩으로
+  if (!profile.learning_style) {
+    redirect('/student/onboarding')
+  }
+
+  const [dashboardRes, missionsRes, achievementsRes, reviewsRes, annRes, feedRes, certsRes] = await Promise.all([
     getStudentDashboardData(profile.id),
     getTodayMissions(),
     getMyAchievements(),
     getTodayReviews(),
     getAnnouncements(undefined, { unreadOnly: true }),
     getMyFeed(),
+    getMyCertificates(),
   ])
+  const certificates = certsRes.data ?? []
 
   const data = dashboardRes.data
   const missions = missionsRes.data ?? []
@@ -46,13 +63,30 @@ export default async function StudentDashboard() {
   const earnedAchievements = achievements.filter(a => a.earned)
   const lockedAchievements = achievements.filter(a => !a.earned)
 
+  const styleInfo = profile.learning_style ? STYLE_INFO[profile.learning_style] : null
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          안녕하세요, {profile.name} 학생 👋
-        </h1>
-        <p className="mt-1 text-gray-500">오늘도 학습을 이어가보세요</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            안녕하세요, {profile.name} 학생 👋
+          </h1>
+          <p className="mt-1 flex items-center gap-2 text-gray-500">
+            오늘도 학습을 이어가보세요
+            {styleInfo && (
+              <Badge variant="outline" className="ml-1 bg-[#4F6BF6]/5 text-xs">
+                {styleInfo.emoji} 내 학습 스타일: {styleInfo.label}
+              </Badge>
+            )}
+          </p>
+        </div>
+        <Link href="/student/onboarding">
+          <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[#4F6BF6]">
+            <Sparkles className="mr-1 h-3 w-3" />
+            재진단
+          </Button>
+        </Link>
       </div>
 
       <AnnouncementBanner announcements={announcements} />
@@ -214,6 +248,12 @@ export default async function StudentDashboard() {
 
       {/* Phase 9: 크로스커리큘럼 지식 맵 */}
       <ConceptMapCard studentId={profile.id} />
+
+      {/* Phase 10: 수료 인증서 + 학부모 초대 */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <MyCertificatesCard certificates={certificates} studentName={profile.name} />
+        <ParentInviteCard />
+      </div>
 
       {/* 내 업적 */}
       <Card>

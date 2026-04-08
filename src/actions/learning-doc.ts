@@ -102,7 +102,7 @@ async function assertCanReadNode(
 
 /**
  * 노드 학습 문서 AI 생성 — 내부 헬퍼.
- * saveSkillTree에서 일괄 호출. style_guide가 있으면 프롬프트에 주입.
+ * saveSkillTree에서 일괄 호출. style_guide와 learning_style이 있으면 프롬프트에 주입.
  * 입력 길이 검증으로 비용 과다 방지.
  */
 export async function generateLearningDocForNode(
@@ -110,7 +110,8 @@ export async function generateLearningDocForNode(
   nodeDescription: string,
   treeTitle: string,
   subjectHint: string,
-  styleGuide?: string | null
+  styleGuide?: string | null,
+  learningStyle?: string | null
 ): Promise<{ data?: string; error?: string }> {
   try {
     if (!nodeTitle.trim() || nodeTitle.length > 500) {
@@ -125,13 +126,71 @@ export async function generateLearningDocForNode(
     const { object } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: learningDocSchema,
-      prompt: LEARNING_DOC_PROMPT(nodeTitle, nodeDescription, treeTitle, subjectHint, styleGuide ?? undefined),
+      prompt: LEARNING_DOC_PROMPT(
+        nodeTitle,
+        nodeDescription,
+        treeTitle,
+        subjectHint,
+        styleGuide ?? undefined,
+        learningStyle ?? undefined
+      ),
     })
     return { data: object.content }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[generateLearningDocForNode]', msg)
     return { error: msg }
+  }
+}
+
+/**
+ * 학생이 자기 노드를 열 때 호출되는 단일 문서 생성 (개인 맞춤 학습 스타일 적용).
+ * 기존에 learning_content가 있으면 그대로 반환, 없으면 학생 스타일에 맞게 생성해서 저장.
+ */
+export async function getOrCreatePersonalizedDoc(
+  nodeId: string
+): Promise<{ data?: string; error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const admin = createAdminClient()
+    const auth = await assertCanReadNode(admin, user.id, nodeId)
+    if (!auth.ok) return { error: auth.error }
+
+    const { data: node } = await admin
+      .from('nodes')
+      .select('title, description, learning_content, skill_tree_id')
+      .eq('id', nodeId)
+      .maybeSingle()
+    if (!node) return { error: '노드를 찾을 수 없습니다.' }
+
+    // 이미 있으면 그대로 반환
+    if (node.learning_content) return { data: node.learning_content }
+
+    // 없으면 학생 learning_style + tree 정보로 생성
+    const [{ data: profile }, { data: tree }] = await Promise.all([
+      admin.from('profiles').select('learning_style').eq('id', user.id).maybeSingle(),
+      admin.from('skill_trees').select('title, subject_hint, style_guide').eq('id', node.skill_tree_id).maybeSingle(),
+    ])
+
+    if (!tree) return { error: '스킬트리를 찾을 수 없습니다.' }
+
+    const gen = await generateLearningDocForNode(
+      node.title,
+      node.description ?? '',
+      tree.title,
+      tree.subject_hint ?? 'default',
+      tree.style_guide,
+      profile?.learning_style ?? null
+    )
+    if (gen.error || !gen.data) return { error: gen.error ?? '생성 실패' }
+
+    await admin.from('nodes').update({ learning_content: gen.data }).eq('id', nodeId)
+    return { data: gen.data }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
   }
 }
 
