@@ -4,8 +4,8 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { learningDocSchema } from '@/lib/ai/schemas'
-import { LEARNING_DOC_PROMPT, LEARNING_DOC_REVISE_PROMPT } from '@/lib/ai/prompts'
+import { learningDocSchema, teacherStyleSchema } from '@/lib/ai/schemas'
+import { LEARNING_DOC_PROMPT, LEARNING_DOC_REVISE_PROMPT, TEACHER_STYLE_ANALYSIS_PROMPT } from '@/lib/ai/prompts'
 
 /**
  * 노드의 스킬트리 소유자(교사) 권한 확인.
@@ -15,7 +15,11 @@ async function assertTeacherCanEditNode(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   nodeId: string
-): Promise<{ ok: boolean; error?: string; node?: { id: string; title: string; description: string | null; skill_tree_id: string; learning_content: string | null } }> {
+): Promise<{
+  ok: boolean
+  error?: string
+  node?: { id: string; title: string; description: string | null; skill_tree_id: string; learning_content: string | null }
+}> {
   const { data: node } = await admin
     .from('nodes')
     .select('id, title, description, skill_tree_id, learning_content')
@@ -97,29 +101,31 @@ async function assertCanReadNode(
 }
 
 /**
- * 노드 학습 문서 AI 생성 — 내부 헬퍼 (not a Server Action).
- * saveSkillTree에서 일괄 호출. export는 되지만 인증 없이는 무의미한 파라미터만 받음.
+ * 노드 학습 문서 AI 생성 — 내부 헬퍼.
+ * saveSkillTree에서 일괄 호출. style_guide가 있으면 프롬프트에 주입.
+ * 입력 길이 검증으로 비용 과다 방지.
  */
 export async function generateLearningDocForNode(
   nodeTitle: string,
   nodeDescription: string,
   treeTitle: string,
-  subjectHint: string
+  subjectHint: string,
+  styleGuide?: string | null
 ): Promise<{ data?: string; error?: string }> {
   try {
-    // 이 함수는 파라미터만 받아서 AI를 호출하므로 DB 접근 없음.
-    // saveSkillTree 등 내부 호출자가 이미 인증 체크를 수행한 후 호출해야 함.
-    // 입력 길이 검증으로 비용 과다 방지.
     if (!nodeTitle.trim() || nodeTitle.length > 500) {
       return { error: '유효하지 않은 입력입니다.' }
     }
     if (nodeDescription.length > 5000) {
       return { error: '설명이 너무 깁니다.' }
     }
+    if (styleGuide && styleGuide.length > 5000) {
+      return { error: '스타일 가이드가 너무 깁니다.' }
+    }
     const { object } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: learningDocSchema,
-      prompt: LEARNING_DOC_PROMPT(nodeTitle, nodeDescription, treeTitle, subjectHint),
+      prompt: LEARNING_DOC_PROMPT(nodeTitle, nodeDescription, treeTitle, subjectHint, styleGuide ?? undefined),
     })
     return { data: object.content }
   } catch (err) {
@@ -146,7 +152,7 @@ export async function regenerateLearningDoc(
 
     const { data: tree } = await admin
       .from('skill_trees')
-      .select('title, subject_hint')
+      .select('title, subject_hint, style_guide')
       .eq('id', auth.node.skill_tree_id)
       .maybeSingle()
 
@@ -156,7 +162,8 @@ export async function regenerateLearningDoc(
       auth.node.title,
       auth.node.description ?? '',
       tree.title,
-      tree.subject_hint ?? 'default'
+      tree.subject_hint ?? 'default',
+      tree.style_guide
     )
     if (gen.error || !gen.data) return { error: gen.error ?? '생성 실패' }
 
@@ -214,30 +221,61 @@ export async function reviseLearningDoc(
 }
 
 /**
- * 교사가 직접 작성한 학습 문서를 저장 (AI 문서를 대체)
+ * 교사가 직접 작성한 학습 문서를 저장 (AI 문서를 대체).
+ * 추가로: 교사 작성 문서로부터 스타일 가이드를 추출하여 skill_trees.style_guide에 저장.
+ * 이후 같은 스킬트리의 다른 노드 생성 시 이 가이드가 프롬프트에 주입된다.
  */
 export async function saveLearningDocManually(
   nodeId: string,
   content: string
-): Promise<{ error?: string }> {
+): Promise<{ data?: { styleAnalyzed: boolean }; error?: string }> {
   try {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     if (content.length > 50000) return { error: '학습 문서가 너무 깁니다 (최대 50000자).' }
+    if (!content.trim()) return { error: '학습 문서 내용을 입력해주세요.' }
 
     const admin = createAdminClient()
     const auth = await assertTeacherCanEditNode(admin, user.id, nodeId)
-    if (!auth.ok) return { error: auth.error }
+    if (!auth.ok || !auth.node) return { error: auth.error }
 
+    // 1. 학습 문서 저장
     const { error } = await admin
       .from('nodes')
       .update({ learning_content: content })
       .eq('id', nodeId)
 
     if (error) return { error: error.message }
-    return {}
+
+    // 2. 교사 스타일 분석 (best-effort, 실패해도 저장은 성공)
+    let styleAnalyzed = false
+    try {
+      const { data: tree } = await admin
+        .from('skill_trees')
+        .select('id, title, style_guide')
+        .eq('id', auth.node.skill_tree_id)
+        .maybeSingle()
+
+      // 아직 스타일 가이드가 없을 때만 새로 분석 (덮어쓰기 방지 — 1회성 학습)
+      if (tree && !tree.style_guide && content.length >= 100) {
+        const { object } = await generateObject({
+          model: anthropic('claude-sonnet-4-6'),
+          schema: teacherStyleSchema,
+          prompt: TEACHER_STYLE_ANALYSIS_PROMPT(auth.node.title, tree.title, content),
+        })
+        await admin
+          .from('skill_trees')
+          .update({ style_guide: object.style_guide })
+          .eq('id', tree.id)
+        styleAnalyzed = true
+      }
+    } catch (styleErr) {
+      console.error('[saveLearningDocManually] 스타일 분석 실패 (저장은 성공):', styleErr)
+    }
+
+    return { data: { styleAnalyzed } }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }

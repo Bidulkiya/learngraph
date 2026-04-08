@@ -127,8 +127,14 @@ export const parentReportSchema = z.object({
 })
 export type ParentReportOutput = z.infer<typeof parentReportSchema>
 
-// 노드별 학습 문서 (마크다운)
+// 노드별 학습 문서 (HTML 학습지)
 export const learningDocSchema = z.object({
-  content: z.string().describe('마크다운 형식의 학습 문서 전체 (### 핵심 설명/핵심 포인트/예시/그림/연관 개념 구조)'),
+  content: z.string().describe('HTML 형식의 학습지 전체 (<div class="ws-doc">로 시작하는 인라인 스타일 HTML 조각). <html>/<head>/<body> 태그 없이 div fragment만 출력.'),
 })
 export type LearningDocOutput = z.infer<typeof learningDocSchema>
+
+// 교사 스타일 분석 결과
+export const teacherStyleSchema = z.object({
+  style_guide: z.string().describe('교사가 작성한 학습 문서의 스타일을 종합 분석한 가이드 (200~400자 1문단). 다른 AI가 모방할 수 있도록 구체적으로.'),
+})
+export type TeacherStyleOutput = z.infer<typeof teacherStyleSchema>

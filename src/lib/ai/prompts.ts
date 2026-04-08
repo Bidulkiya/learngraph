@@ -29,49 +29,108 @@ ${content}
 `
 
 /**
- * 노드별 학습 문서 생성 프롬프트 — 마크다운 형식
+ * 노드별 학습 문서 생성 프롬프트 — HTML 학습지 형식.
+ * 인쇄용 학습지 수준의 디자인된 HTML을 생성한다.
  */
 export const LEARNING_DOC_PROMPT = (
   nodeTitle: string,
   nodeDescription: string,
   treeTitle: string,
-  subjectHint: string
-): string => `
+  subjectHint: string,
+  styleGuide?: string
+): string => {
+  // 과목별 색상 가이드
+  const subjectColors: Record<string, { primary: string; secondary: string; accent: string }> = {
+    science: { primary: '#6366F1', secondary: '#A855F7', accent: '#F0F4FF' },
+    math: { primary: '#3B82F6', secondary: '#0EA5E9', accent: '#EFF6FF' },
+    korean: { primary: '#D97706', secondary: '#CA8A04', accent: '#FFFBEB' },
+    default: { primary: '#4F6BF6', secondary: '#7C5CFC', accent: '#F0F4FF' },
+  }
+  const colors = subjectColors[subjectHint] ?? subjectColors.default
+
+  return `
 당신은 교육 자료 설계 전문가입니다.
-아래 학습 개념에 대한 학생용 학습 문서를 마크다운 형식으로 작성하세요.
+아래 학습 개념에 대해 **실제 인쇄 학습지 수준**의 HTML 학습지를 생성하세요.
+교과서/워크북 디자인을 떠올리며 시각적으로 풍부하고 학생이 한눈에 이해할 수 있는 학습지를 만드세요.
 
 ## 컨텍스트
 - 스킬트리: ${treeTitle}
 - 주제 분야: ${subjectHint}
 - 학습 개념 제목: ${nodeTitle}
 - 개념 요약: ${nodeDescription}
+${styleGuide ? `\n## 교사 스타일 가이드 (반드시 반영)\n교사가 업로드한 문서의 스타일을 분석한 결과입니다. 이 가이드의 톤·구성·형식을 최대한 따라서 작성하세요.\n${styleGuide}\n` : ''}
 
-## 학습 문서 구성 (이 순서대로, 마크다운 헤딩 사용)
-### 📖 핵심 설명
-개념의 정의와 왜 중요한지 2-3문단으로 설명. 친절한 구어체로.
+## 출력 형식 (매우 중요)
+\`<div class="ws-doc">\` 으로 감싼 **HTML 조각**을 출력하세요. \`<html>\`, \`<head>\`, \`<body>\`, \`<!DOCTYPE>\` 태그는 포함하지 마세요. 외부 CSS 파일도 참조하지 마세요.
 
-### 💡 핵심 포인트
-3-5개의 bullet로 반드시 기억해야 할 것 정리.
+## 색상 팔레트 (반드시 사용)
+- Primary: ${colors.primary}
+- Secondary: ${colors.secondary}
+- Accent (배경): ${colors.accent}
 
-### 🌟 예시
-구체적인 예시 1-2개. 학생이 일상에서 떠올릴 수 있는 비유 포함.
+## 학습지 섹션 구성 (이 순서대로 모두 포함)
 
-### 🎨 그림으로 이해하기
-"이 개념은 다음과 같이 시각화할 수 있습니다:" 로 시작하여, 그림/다이어그램으로 설명할 부분을 말로 묘사. (실제 그림 대신 설명)
+### 1. 단원명 배너
+\`<div class="ws-banner" style="background: linear-gradient(135deg, ${colors.primary}, ${colors.secondary}); color: white; padding: 18px 24px; border-radius: 12px; margin-bottom: 20px;">\`
+- 큰 글씨로 단원 제목 (h1)
+- 작은 글씨로 부제 (예: "스킬트리: ${treeTitle}")
 
-### 🔗 연관 개념
-이 개념과 연결되는 다른 개념 2-3개를 간단히 언급.
+### 2. 학습 목표 박스
+\`<div class="ws-goals" style="background: ${colors.accent}; border-left: 4px solid ${colors.primary}; padding: 14px 18px; border-radius: 8px; margin-bottom: 24px;">\`
+- 제목: 🎯 학습 목표
+- 3-4개의 학습 목표 ul 리스트
 
-## 규칙
-1. 전체 분량: 800~1500자 (너무 길지 않게)
-2. 학생 눈높이에 맞는 친절한 설명, 존댓말 사용
-3. 수식이 필요한 경우 \`\`\` 코드블록이 아닌 일반 텍스트로
-4. 반드시 마크다운 형식 (### 헤딩, **강조**, - 리스트 등)
-5. 한국어로 작성
+### 3. 핵심 개념 (번호 + 키워드 하이라이트)
+각 개념을 \`<div class="ws-concept" style="margin-bottom: 22px;">\` 로 감싸고:
+- 번호 원형 배지 + 굵은 키워드 (\`<span style="background: ${colors.primary}; color: white; border-radius: 50%; ...">1</span>\`)
+- 핵심 키워드는 \`<mark style="background: #FEF3C7; padding: 2px 4px;">\` 로 하이라이트
+- 2-3문단의 친절한 설명
+
+### 4. 시각 자료 표 (HTML 표)
+\`<table style="width: 100%; border-collapse: collapse; margin: 18px 0;">\`
+- 헤더: \`<th style="background: ${colors.primary}; color: white; padding: 10px; border: 1px solid #ddd;">\`
+- 줄 교대 배경: 짝수 행 #F9FAFB, 홀수 행 #FFFFFF
+- 비교/분류/속성 정리 표 (2-4열)
+
+### 5. CSS 다이어그램 (구조도/플로우)
+\`<div class="ws-diagram" style="background: #F9FAFB; padding: 18px; border-radius: 10px; margin: 18px 0; text-align: center;">\`
+- 박스(\`<div style="display: inline-block; padding: 10px 16px; background: ${colors.primary}; color: white; border-radius: 8px;">\`)와 화살표(\`→\`)로 단순한 플로우 구현
+- 또는 nested div로 계층 구조 표현
+- 실제 그림이 아닌 CSS만으로 구조 시각화
+
+### 6. 예시 문제 (3가지 유형 모두 포함)
+\`<div class="ws-problems" style="background: #FFFBEB; border: 1px dashed ${colors.secondary}; padding: 16px; border-radius: 10px; margin: 18px 0;">\`
+- 제목: 📝 연습 문제
+- (a) **빈칸 채우기**: "다음 빈칸을 채우세요: 광합성은 빛 에너지를 이용해 ____와 ____를 결합하여 ____을(를) 만드는 과정이다." 빈칸은 \`<u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>\` 로 표시
+- (b) **O/X 문제**: 2개. \`( O / X )\` 형태
+- (c) **선택형**: 4지선다 1개
+
+### 7. 핵심 정리 박스
+\`<div class="ws-summary" style="background: ${colors.accent}; border: 2px solid ${colors.primary}; border-radius: 12px; padding: 18px; margin: 18px 0;">\`
+- 제목: ✨ 한눈에 정리
+- 3-4개의 핵심을 짧은 문장 ul로
+
+### 8. 읽기 질문 (탐구 활동)
+\`<div class="ws-questions" style="background: #F0FDF4; border-left: 4px solid #10B981; padding: 14px 18px; border-radius: 8px;">\`
+- 제목: 🤔 더 생각해 보기
+- 번호 ol 리스트 3개 (학생이 책에서 답을 찾으며 사색할 만한 질문)
+
+## 작성 규칙
+1. **모든 스타일은 인라인 style 속성으로** (외부 CSS 금지, class만 부가 식별용).
+2. **이모지 적극 활용** (섹션 제목, 강조 등).
+3. **짧고 명료한 문장**, 학생 눈높이의 존댓말.
+4. 수식은 일반 텍스트 (예: "y = ax + b").
+5. 한국어로 작성.
+6. **전체 분량**: 약 1500~3000자 (HTML 태그 제외).
+7. \`<script>\` 태그 절대 금지. \`onclick\` 등 이벤트 핸들러 금지.
+8. \`<img>\` 태그는 사용하지 마세요 (src 외부 리소스 금지).
+9. 색상은 명시된 팔레트만 사용.
+10. 출력 시작은 반드시 \`<div class="ws-doc">\` 이며, 마지막은 \`</div>\` 입니다.
 `
+}
 
 /**
- * 학습 문서 AI 수정 프롬프트 (교사가 수정 요청 시)
+ * 학습 문서 AI 수정 프롬프트 (교사가 수정 요청 시) — HTML
  */
 export const LEARNING_DOC_REVISE_PROMPT = (
   currentDoc: string,
@@ -79,23 +138,56 @@ export const LEARNING_DOC_REVISE_PROMPT = (
   nodeTitle: string
 ): string => `
 당신은 교육 자료 편집 전문가입니다.
-교사가 아래 학습 문서에 대한 수정 요청을 보냈습니다. 요청을 반영하여 문서를 개선하세요.
+교사가 아래 HTML 학습지에 대한 수정 요청을 보냈습니다. 요청을 반영하여 학습지를 개선하세요.
 
 ## 개념
 ${nodeTitle}
 
-## 현재 학습 문서
+## 현재 HTML 학습지
 ${currentDoc}
 
 ## 교사 수정 요청
 ${userRequest}
 
 ## 규칙
-1. 전체 구조(### 핵심 설명, ### 핵심 포인트, ### 예시, ### 그림으로 이해하기, ### 연관 개념)는 유지하세요.
-2. 요청을 반영하여 필요한 부분만 수정하세요.
-3. 마크다운 형식을 유지하세요.
-4. 수정된 전체 문서를 반환하세요 (요약이나 설명 없이).
-5. 한국어로 작성하세요.
+1. 전체 구조(단원명 배너 / 학습 목표 / 핵심 개념 / 시각 자료 표 / 다이어그램 / 예시 문제 / 핵심 정리 / 읽기 질문)는 유지하세요.
+2. 요청을 반영하여 필요한 부분만 수정하세요. 다른 부분은 그대로 두세요.
+3. **반드시 HTML 형식을 유지**하세요. 인라인 style 속성도 그대로 유지/조정하세요.
+4. \`<script>\`, \`onclick\`, \`<img src>\` 외부 참조는 절대 추가하지 마세요.
+5. 수정된 전체 HTML 학습지를 반환하세요 (요약이나 설명 텍스트 없이, 코드블록 없이).
+6. 출력 시작은 \`<div class="ws-doc">\` 이며 마지막은 \`</div>\` 입니다.
+7. 한국어로 작성하세요.
+`
+
+/**
+ * 교사가 직접 작성한 학습 문서의 스타일을 분석하는 프롬프트.
+ * 같은 스킬트리의 다른 노드 학습 문서 생성 시 프롬프트에 주입할 가이드 추출.
+ */
+export const TEACHER_STYLE_ANALYSIS_PROMPT = (
+  nodeTitle: string,
+  treeTitle: string,
+  teacherDoc: string
+): string => `
+당신은 교육 자료 분석 전문가입니다.
+한 교사가 ${treeTitle} 스킬트리의 ${nodeTitle} 노드에 대해 직접 학습 문서를 작성하여 업로드했습니다.
+이 문서의 **스타일 가이드**를 추출하세요. 이 가이드는 같은 스킬트리의 다른 노드 학습 문서를 AI가 생성할 때 참고할 것입니다.
+
+## 교사가 작성한 학습 문서
+${teacherDoc}
+
+## 분석 항목 (각 1-2문장으로 요약)
+1. **구성/섹션 패턴**: 어떤 순서로 어떤 섹션을 두는가?
+2. **톤/말투**: 친근한 구어체인가, 정중한 존댓말인가, 단문/장문 비율은?
+3. **시각 요소**: 표/리스트/강조/색상 사용 정도. 어떤 시각 요소를 선호하는가?
+4. **설명 깊이**: 개념 설명을 얕게 폭넓게 vs 깊고 좁게?
+5. **예시 스타일**: 일상 비유 vs 학술적 예시 vs 단계별 풀이?
+6. **연습 문제 패턴**: 어떤 유형의 문제를 선호하는가?
+7. **특이 사항**: 교사만의 독특한 표현/구조/철학이 있다면?
+
+## 출력 형식
+위 7가지를 자유롭게 1개의 문단(약 200~400자)으로 종합 정리하세요.
+"이 교사의 문서는 ..." 으로 시작하여 다른 AI가 모방할 수 있도록 구체적으로 작성하세요.
+한국어로 작성하세요.
 `
 
 export const QUIZ_PROMPT = (

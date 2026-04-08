@@ -241,6 +241,7 @@ export async function saveSkillTree(
     }
 
     // 6. 노드별 학습 문서 AI 생성 (best-effort, 병렬로 빠르게)
+    // 새로 생성된 스킬트리는 아직 style_guide가 없으므로 null 전달.
     try {
       const { generateLearningDocForNode } = await import('./learning-doc')
       const subjectHint = treeData.subject_hint ?? 'default'
@@ -254,7 +255,8 @@ export async function saveSkillTree(
               node.title,
               node.description ?? '',
               tree.title,
-              subjectHint
+              subjectHint,
+              null
             )
             if (res.data) {
               await admin
