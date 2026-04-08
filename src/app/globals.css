@@ -195,6 +195,30 @@
   --tree-accent: #fbbf24;
 }
 
+/* SkillTreeGraph v2 — 글래스모피즘 + 모던 다크 */
+@keyframes lg-twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.95; }
+}
+@keyframes lg-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.18); opacity: 0.15; }
+}
+@keyframes lg-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.lg-skill-tree { will-change: transform; }
+.lg-skill-tree svg { display: block; }
+.lg-skill-tree .pulse-ring {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.lg-skill-tree .progress-ring {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
 /* 프린트 스타일 */
 @media print {
   aside, header, .print\:hidden { display: none !important; }

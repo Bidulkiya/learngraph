@@ -137,7 +137,9 @@ export function NodeDetailPopup({
   const [allowDownload, setAllowDownload] = useState(true)
   const [allowPrint, setAllowPrint] = useState(true)
 
-  // 노드 변경 시 메모 + 학습문서 로드
+  // 노드 변경 시 메모 + 학습문서 로드.
+  // 이 effect는 data fetching + dialog reset 패턴이라 setState는 의도된 것 (cancelled 가드로 stale state 방지).
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open || !node) {
       setMemo('')
@@ -146,8 +148,10 @@ export function NodeDetailPopup({
       setLearningDoc(null)
       return
     }
+    let cancelled = false
     setMemoLoaded(false)
     getMemo(node.id).then(res => {
+      if (cancelled) return
       if (res.data) setMemo(res.data.content)
       setMemoLoaded(true)
     })
@@ -155,6 +159,7 @@ export function NodeDetailPopup({
     if (node.status !== 'locked') {
       setDocLoading(true)
       getNodeLearningDoc(node.id).then(res => {
+        if (cancelled) return
         if (res.data) {
           setLearningDoc(res.data.content)
           setAllowDownload(res.data.allowDownload)
@@ -167,11 +172,14 @@ export function NodeDetailPopup({
     if (node.status === 'completed') {
       setConnectionsLoading(true)
       getConceptConnections(node.id).then(res => {
+        if (cancelled) return
         if (res.data) setConnections(res.data)
         setConnectionsLoading(false)
       })
     }
+    return () => { cancelled = true }
   }, [open, node])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // 학습 문서 다운로드 (HTML 파일)
   const handleDownload = (): void => {

@@ -36,13 +36,12 @@ const roleBadgeColors: Record<Role, string> = {
 
 export function Header({ role, userName = "사용자" }: HeaderProps) {
   const router = useRouter()
-  const [dark, setDark] = useState(false)
+  // 초기값을 렌더 시점이 아니라 lazy initializer로 — useEffect 카스케이드 제거
+  const [dark, setDark] = useState<boolean>(() => {
+    if (typeof document === 'undefined') return false
+    return document.documentElement.classList.contains("dark")
+  })
   const [loggingOut, setLoggingOut] = useState(false)
-
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark")
-    setDark(isDark)
-  }, [])
 
   function toggleDarkMode(): void {
     const next = !dark

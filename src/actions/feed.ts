@@ -164,7 +164,8 @@ export async function getClassFeed(
 }
 
 /**
- * 학생 소속 클래스의 통합 피드
+ * 학생 소속 클래스의 통합 피드.
+ * N+1 최적화: 모든 클래스에 대해 한 번에 IN 쿼리 + 권한 체크는 본인 enrollment로 보장됨.
  */
 export async function getMyFeed(): Promise<{ data?: FeedItem[]; error?: string }> {
   try {
@@ -183,16 +184,53 @@ export async function getMyFeed(): Promise<{ data?: FeedItem[]; error?: string }
     const classIds = enrollments?.map(e => e.class_id) ?? []
     if (classIds.length === 0) return { data: [] }
 
-    // 모든 클래스의 피드 가져와서 merge
-    const allFeeds: FeedItem[] = []
-    for (const cid of classIds) {
-      const res = await getClassFeed(cid)
-      if (res.data) allFeeds.push(...res.data)
-    }
+    // ✅ 전체 피드 + 프로필 + 리액션을 3개 쿼리로 일괄 조회 (N+1 제거)
+    const [{ data: feed }, /* placeholder */] = await Promise.all([
+      admin
+        .from('activity_feed')
+        .select('id, user_id, action_type, detail, created_at')
+        .in('class_id', classIds)
+        .order('created_at', { ascending: false })
+        .limit(20),
+    ])
 
-    // 시간순 정렬
-    allFeeds.sort((a, b) => b.created_at.localeCompare(a.created_at))
-    return { data: allFeeds.slice(0, 20) }
+    if (!feed || feed.length === 0) return { data: [] }
+
+    const userIds = [...new Set(feed.map(f => f.user_id).filter(Boolean))] as string[]
+    const feedIds = feed.map(f => f.id)
+
+    const [profilesRes, reactionsRes] = await Promise.all([
+      admin.from('profiles').select('id, name').in('id', userIds),
+      admin.from('feed_reactions').select('feed_id, emoji, user_id').in('feed_id', feedIds),
+    ])
+
+    const nameMap = new Map(profilesRes.data?.map(p => [p.id, p.name]) ?? [])
+
+    const reactionMap = new Map<string, Map<string, { count: number; by_me: boolean }>>()
+    reactionsRes.data?.forEach(r => {
+      if (!reactionMap.has(r.feed_id)) reactionMap.set(r.feed_id, new Map())
+      const emojiMap = reactionMap.get(r.feed_id)!
+      const cur = emojiMap.get(r.emoji) ?? { count: 0, by_me: false }
+      cur.count += 1
+      if (r.user_id === user.id) cur.by_me = true
+      emojiMap.set(r.emoji, cur)
+    })
+
+    const result: FeedItem[] = feed.map(f => ({
+      id: f.id,
+      user_id: f.user_id,
+      user_name: nameMap.get(f.user_id) ?? '익명',
+      action_type: f.action_type as FeedActionType,
+      detail: (f.detail ?? {}) as Record<string, unknown>,
+      created_at: f.created_at,
+      reactions: Array.from((reactionMap.get(f.id) ?? new Map()).entries()).map(([emoji, v]) => ({
+        emoji,
+        count: v.count,
+        by_me: v.by_me,
+      })),
+    }))
+
+    return { data: result }
   } catch (err) {
     return { error: String(err) }
   }

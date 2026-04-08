@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, Loader2, Trophy, RotateCcw, BookOpen, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -37,17 +37,23 @@ export function QuizSession({ nodeId, nodeTitle, nodeDescription, nodeDifficulty
   const [results, setResults] = useState<AnswerResult[]>([])
   const [currentResult, setCurrentResult] = useState<AnswerResult | null>(null)
   const [error, setError] = useState('')
-  const [startTime] = useState(Date.now())
+  // Date.now()는 impure 함수 — useState init이 아닌 useRef에서 첫 mount 시점에 한 번 측정
+  const startTimeRef = useRef<number>(0)
   const [elapsedSec, setElapsedSec] = useState(0)
 
-  // 타이머
+  // 타이머 + 시작 시각 기록 (mount 시점)
+  useEffect(() => {
+    startTimeRef.current = Date.now()
+  }, [])
+
   useEffect(() => {
     if (state === 'summary' || state === 'loading') return
     const interval = setInterval(() => {
-      setElapsedSec(Math.floor((Date.now() - startTime) / 1000))
+      if (startTimeRef.current === 0) return
+      setElapsedSec(Math.floor((Date.now() - startTimeRef.current) / 1000))
     }, 1000)
     return () => clearInterval(interval)
-  }, [state, startTime])
+  }, [state])
 
   // 퀴즈 로드
   useEffect(() => {
@@ -212,9 +218,10 @@ export function QuizSession({ nodeId, nodeTitle, nodeDescription, nodeDifficulty
         </Card>
       )}
 
-      {/* 풀이 */}
+      {/* 풀이 — key prop으로 quiz 변경 시 컴포넌트 자동 reset (cascade rerender 방지) */}
       {state === 'answering' && currentQuiz && (
         <QuizCard
+          key={currentQuiz.id}
           quiz={currentQuiz}
           index={currentIndex}
           total={quizzes.length}

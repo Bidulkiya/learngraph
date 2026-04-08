@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Loader2, Send, Check, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,21 +17,19 @@ interface QuizCardProps {
   disabled?: boolean
 }
 
+/**
+ * 호출자에서 `key={quiz.id}`로 props 변경 시 컴포넌트가 unmount→mount되어
+ * useState가 자연스럽게 초기화된다. 따라서 useEffect로 reset할 필요가 없다.
+ * (React 19 권장 패턴 — cascade rerender 회피)
+ */
 export function QuizCard({ quiz, index, total, onSubmit, disabled }: QuizCardProps) {
   const [selected, setSelected] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [animKey, setAnimKey] = useState(0)
+  // animKey: mount 직후 한 번 애니메이션 트리거 — 단순 0으로 충분 (key prop으로 매번 새 mount이므로)
+  const animKey = 0
   const [hint, setHint] = useState<string | null>(null)
   const [hintLoading, setHintLoading] = useState(false)
   const [hintUsed, setHintUsed] = useState(false)
-
-  // 문제가 바뀔 때마다 애니메이션 트리거 + 입력 초기화
-  useEffect(() => {
-    setSelected('')
-    setAnimKey(k => k + 1)
-    setHint(null)
-    setHintUsed(false)
-  }, [quiz.id])
 
   const handleHint = async (): Promise<void> => {
     if (hintUsed) return

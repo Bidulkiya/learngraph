@@ -191,25 +191,6 @@ export async function getConversations(): Promise<{
   }
 }
 
-export async function getUnreadMessageCount(): Promise<{ data?: number; error?: string }> {
-  try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { data: 0 }
-
-    const admin = createAdminClient()
-    const { count } = await admin
-      .from('direct_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('receiver_id', user.id)
-      .is('read_at', null)
-
-    return { data: count ?? 0 }
-  } catch (err) {
-    return { error: String(err) }
-  }
-}
-
 /**
  * 읽지 않은 메시지 요약 — 사이드바 배지 + 토스트 알림용.
  * 가장 최근 발신자 1명의 정보와 전체 unread 수를 함께 반환.

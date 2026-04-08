@@ -214,51 +214,72 @@ export async function getTeacherActivity(
       .select('id, name, last_active_at')
       .in('id', teacherIds)
 
-    const result = await Promise.all(
-      (profiles ?? []).map(async t => {
-        const { count: treeCount } = await admin
-          .from('skill_trees')
-          .select('*', { count: 'exact', head: true })
-          .eq('created_by', t.id)
+    // ✅ N+1 최적화: 교사별 5쿼리를 4번의 bulk IN 쿼리로 통합
+    const [{ data: allTrees }, /* skip */] = await Promise.all([
+      admin.from('skill_trees').select('id, created_by').in('created_by', teacherIds),
+    ])
+    const allTreeIds = (allTrees ?? []).map(t => t.id)
+    const treeIdToTeacher = new Map((allTrees ?? []).map(t => [t.id, t.created_by]))
+    const treeCountByTeacher = new Map<string, number>()
+    ;(allTrees ?? []).forEach(t => {
+      treeCountByTeacher.set(t.created_by, (treeCountByTeacher.get(t.created_by) ?? 0) + 1)
+    })
 
-        const { data: teacherTrees } = await admin
-          .from('skill_trees')
-          .select('id')
-          .eq('created_by', t.id)
-        const tTreeIds = teacherTrees?.map(x => x.id) ?? []
+    const safeTreeIds = allTreeIds.length > 0 ? allTreeIds : ['00000000-0000-0000-0000-000000000000']
+    const [nodesRes, /* */] = await Promise.all([
+      admin.from('nodes').select('id, skill_tree_id').in('skill_tree_id', safeTreeIds),
+    ])
+    const allNodes = nodesRes.data ?? []
+    const nodeIdToTeacher = new Map<string, string>()
+    allNodes.forEach(n => {
+      const teacherId = treeIdToTeacher.get(n.skill_tree_id)
+      if (teacherId) nodeIdToTeacher.set(n.id, teacherId)
+    })
+    const allNodeIds = allNodes.map(n => n.id)
+    const safeNodeIds = allNodeIds.length > 0 ? allNodeIds : ['00000000-0000-0000-0000-000000000000']
 
-        const { data: teacherNodes } = await admin
-          .from('nodes')
-          .select('id')
-          .in('skill_tree_id', tTreeIds.length > 0 ? tTreeIds : ['00000000-0000-0000-0000-000000000000'])
-        const tNodeIds = teacherNodes?.map(n => n.id) ?? []
+    const [quizzesRes, progressRes] = await Promise.all([
+      admin.from('quizzes').select('id, node_id').in('node_id', safeNodeIds),
+      admin.from('student_progress').select('student_id, status, node_id').in('node_id', safeNodeIds),
+    ])
 
-        const { count: quizCount } = await admin
-          .from('quizzes')
-          .select('*', { count: 'exact', head: true })
-          .in('node_id', tNodeIds.length > 0 ? tNodeIds : ['00000000-0000-0000-0000-000000000000'])
+    // 집계
+    const quizCountByTeacher = new Map<string, number>()
+    quizzesRes.data?.forEach(q => {
+      const teacherId = nodeIdToTeacher.get(q.node_id)
+      if (teacherId) quizCountByTeacher.set(teacherId, (quizCountByTeacher.get(teacherId) ?? 0) + 1)
+    })
+    const studentsByTeacher = new Map<string, Set<string>>()
+    const completedByTeacher = new Map<string, number>()
+    const totalByTeacher = new Map<string, number>()
+    progressRes.data?.forEach(p => {
+      const teacherId = nodeIdToTeacher.get(p.node_id)
+      if (!teacherId) return
+      if (!studentsByTeacher.has(teacherId)) studentsByTeacher.set(teacherId, new Set())
+      studentsByTeacher.get(teacherId)!.add(p.student_id)
+      totalByTeacher.set(teacherId, (totalByTeacher.get(teacherId) ?? 0) + 1)
+      if (p.status === 'completed') {
+        completedByTeacher.set(teacherId, (completedByTeacher.get(teacherId) ?? 0) + 1)
+      }
+    })
 
-        const { data: teacherProgress } = await admin
-          .from('student_progress')
-          .select('student_id, status')
-          .in('node_id', tNodeIds.length > 0 ? tNodeIds : ['00000000-0000-0000-0000-000000000000'])
-
-        const uniqueStudents = new Set(teacherProgress?.map(p => p.student_id) ?? [])
-        const completed = teacherProgress?.filter(p => p.status === 'completed').length ?? 0
-        const total = teacherProgress?.length ?? 0
-        const avgRate = total > 0 ? Math.round((completed / total) * 100) : 0
-
-        return {
-          teacher_id: t.id,
-          teacher_name: t.name,
-          skill_tree_count: treeCount ?? 0,
-          quiz_count: quizCount ?? 0,
-          student_count: uniqueStudents.size,
-          avg_unlock_rate: avgRate,
-          last_active: t.last_active_at,
-        }
-      })
-    )
+    const result = (profiles ?? []).map(t => {
+      const treeCount = treeCountByTeacher.get(t.id) ?? 0
+      const quizCount = quizCountByTeacher.get(t.id) ?? 0
+      const uniqueStudents = studentsByTeacher.get(t.id) ?? new Set()
+      const completed = completedByTeacher.get(t.id) ?? 0
+      const total = totalByTeacher.get(t.id) ?? 0
+      const avgRate = total > 0 ? Math.round((completed / total) * 100) : 0
+      return {
+        teacher_id: t.id,
+        teacher_name: t.name,
+        skill_tree_count: treeCount,
+        quiz_count: quizCount,
+        student_count: uniqueStudents.size,
+        avg_unlock_rate: avgRate,
+        last_active: t.last_active_at,
+      }
+    })
 
     return { data: result }
   } catch (err) {

@@ -39,14 +39,21 @@ export function ClassCardActions({ classId, classCode }: { classId: string; clas
     setTimeout(() => setCopied(false), 2000)
   }
 
+  // Dialog 열림 시 enrollment fetch.
+  // setState는 fetch trigger 용도로 의도된 것 (cancelled 가드로 stale state 방지).
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
+    let cancelled = false
     setLoading(true)
     getClassEnrollments(classId).then((res) => {
+      if (cancelled) return
       setEnrollments(res.data ?? [])
       setLoading(false)
     })
+    return () => { cancelled = true }
   }, [open, classId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleApprove = async (id: string): Promise<void> => {
     const res = await approveEnrollment(id)

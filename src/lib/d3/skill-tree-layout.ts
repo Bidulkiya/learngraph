@@ -23,10 +23,10 @@ export interface D3Edge extends d3.SimulationLinkDatum<D3Node> {
 
 /**
  * 스킬트리 force simulation 생성.
- * - linkDistance 190 (노드 간 거리 넓힘)
- * - charge -550 (반발력 강화)
+ * - linkDistance 200 (노드 간 거리 넓힘)
+ * - charge -650 (반발력 강화)
  * - forceY: 난이도 1 → 상단, 난이도 5 → 하단 (계층 트리 형태)
- * - collision radius 64 (노드 겹침 방지 강화)
+ * - collision radius getNodeSize+38
  */
 export function createSkillTreeSimulation(
   nodes: D3Node[],
@@ -34,9 +34,9 @@ export function createSkillTreeSimulation(
   width: number,
   height: number
 ): d3.Simulation<D3Node, D3Edge> {
-  const topPadding = 90
-  const bottomPadding = 60
-  const usableHeight = Math.max(height - topPadding - bottomPadding, 300)
+  const topPadding = 100
+  const bottomPadding = 70
+  const usableHeight = Math.max(height - topPadding - bottomPadding, 320)
 
   // 난이도별 Y 위치 (1 → 상단 근처, 5 → 하단 근처)
   const yByDifficulty = (d: D3Node): number => {
@@ -50,103 +50,251 @@ export function createSkillTreeSimulation(
       'link',
       d3.forceLink<D3Node, D3Edge>(edges)
         .id(d => d.id)
-        .distance(190)
-        .strength(0.35)
+        .distance(200)
+        .strength(0.32)
     )
-    .force('charge', d3.forceManyBody<D3Node>().strength(-550).distanceMax(700))
-    .force('center', d3.forceCenter(width / 2, height / 2).strength(0.05))
-    .force('collision', d3.forceCollide<D3Node>().radius(d => getNodeSize(d.difficulty) + 34).strength(1))
-    // 난이도 기반 Y (수직 계층)
-    .force('y', d3.forceY<D3Node>(yByDifficulty).strength(0.45))
-    // 약한 X 센터링 (좌우로 퍼지도록)
-    .force('x', d3.forceX<D3Node>(width / 2).strength(0.04))
-    .alphaDecay(0.035)
+    .force('charge', d3.forceManyBody<D3Node>().strength(-650).distanceMax(800))
+    .force('center', d3.forceCenter(width / 2, height / 2).strength(0.04))
+    .force('collision', d3.forceCollide<D3Node>().radius(d => getNodeSize(d.difficulty) + 38).strength(1))
+    .force('y', d3.forceY<D3Node>(yByDifficulty).strength(0.5))
+    .force('x', d3.forceX<D3Node>(width / 2).strength(0.035))
+    .alphaDecay(0.032)
     .velocityDecay(0.5)
 }
 
 // ============================================
-// 테마 시스템 (과목별)
+// 테마 시스템 v2 — 글래스모피즘 + 모던 다크
 // ============================================
 
+export interface NodeColors {
+  // 원형 그라데이션 안쪽 → 바깥쪽
+  inner: string
+  outer: string
+  // 글래스 노드 외곽 ring 색상
+  ring: string
+  // glow 색상 (rgba)
+  glow: string
+}
+
 export interface ThemeConfig {
-  background: string           // SVG 배경 그라데이션
-  backgroundPattern?: string    // 배경 패턴 (격자, 점 등)
-  nodeGradient: {
-    locked: [string, string]
-    available: [string, string]
-    in_progress: [string, string]
-    completed: [string, string]
+  // 배경 그라데이션
+  bgFrom: string
+  bgTo: string
+  // 배경 효과 (stars / grid / paper / none)
+  backgroundPattern: 'stars' | 'grid' | 'paper' | 'none'
+  // 노드 색상 (status별)
+  nodeColors: {
+    locked: NodeColors
+    available: NodeColors
+    in_progress: NodeColors
+    completed: NodeColors
   }
-  linkColor: string
-  linkOpacity: number
+  // 연결선
+  link: {
+    from: string  // 출발 색상
+    to: string    // 도착 색상
+    opacity: number
+  }
+  // 텍스트
   labelColor: string
   difficultyColor: string
-  glowColor: string
+  // 노드 형상 (circle | hexagon)
+  nodeShape: 'circle' | 'hexagon'
+  // 노드 안에 표시할 이모지 (subject별)
+  emoji: {
+    locked: string
+    available: string
+    in_progress: string
+    completed: string
+  }
+  // 데코레이션 링 표시 여부 (과학 — 원자 궤도)
+  showOrbitRing: boolean
 }
 
 const THEMES: Record<SkillTreeTheme, ThemeConfig> = {
   science: {
-    // 진한 남색 + 별/원자 느낌
-    background: 'radial-gradient(ellipse at center, #1e1b4b 0%, #0f0c29 100%)',
+    bgFrom: '#0a0a2e',
+    bgTo: '#1a0533',
     backgroundPattern: 'stars',
-    nodeGradient: {
-      locked: ['#334155', '#1e293b'],
-      available: ['#a855f7', '#6b21a8'],        // 보라
-      in_progress: ['#6366f1', '#3730a3'],      // 청색
-      completed: ['#22d3ee', '#0891b2'],        // 시안
+    nodeColors: {
+      locked: {
+        inner: '#3b3a5c',
+        outer: '#1a1a2e',
+        ring: '#4a4a6e',
+        glow: 'rgba(100, 100, 150, 0.0)',
+      },
+      available: {
+        inner: '#a78bfa', // violet-400
+        outer: '#5b21b6', // violet-800
+        ring: '#c4b5fd',
+        glow: 'rgba(167, 139, 250, 0.55)',
+      },
+      in_progress: {
+        inner: '#818cf8', // indigo-400
+        outer: '#3730a3', // indigo-800
+        ring: '#a5b4fc',
+        glow: 'rgba(129, 140, 248, 0.55)',
+      },
+      completed: {
+        inner: '#67e8f9', // cyan-300
+        outer: '#0e7490', // cyan-700
+        ring: '#a5f3fc',
+        glow: 'rgba(103, 232, 249, 0.65)',
+      },
     },
-    linkColor: '#818cf8',
-    linkOpacity: 0.55,
-    labelColor: '#f0f9ff',
+    link: {
+      from: '#a78bfa',
+      to: '#67e8f9',
+      opacity: 0.55,
+    },
+    labelColor: '#f5f3ff',
     difficultyColor: '#c7d2fe',
-    glowColor: 'rgba(168, 85, 247, 0.65)',
+    nodeShape: 'circle',
+    emoji: {
+      locked: '🔒',
+      available: '🔬',
+      in_progress: '⚛️',
+      completed: '✨',
+    },
+    showOrbitRing: true,
   },
   math: {
-    // 진한 파랑 + 기하학 격자
-    background: 'linear-gradient(180deg, #0b1a3e 0%, #0a1128 100%)',
+    bgFrom: '#0a1628',
+    bgTo: '#0f2647',
     backgroundPattern: 'grid',
-    nodeGradient: {
-      locked: ['#334155', '#1e293b'],
-      available: ['#38bdf8', '#0369a1'],        // 하늘
-      in_progress: ['#3b82f6', '#1e40af'],      // 청
-      completed: ['#06b6d4', '#0e7490'],        // 시안
+    nodeColors: {
+      locked: {
+        inner: '#334155',
+        outer: '#0f172a',
+        ring: '#475569',
+        glow: 'rgba(100, 116, 139, 0.0)',
+      },
+      available: {
+        inner: '#7dd3fc', // sky-300
+        outer: '#075985', // sky-800
+        ring: '#bae6fd',
+        glow: 'rgba(125, 211, 252, 0.55)',
+      },
+      in_progress: {
+        inner: '#60a5fa', // blue-400
+        outer: '#1d4ed8', // blue-700
+        ring: '#93c5fd',
+        glow: 'rgba(96, 165, 250, 0.55)',
+      },
+      completed: {
+        inner: '#22d3ee', // cyan-400
+        outer: '#155e75', // cyan-800
+        ring: '#67e8f9',
+        glow: 'rgba(34, 211, 238, 0.6)',
+      },
     },
-    linkColor: '#60a5fa',
-    linkOpacity: 0.6,
+    link: {
+      from: '#60a5fa',
+      to: '#22d3ee',
+      opacity: 0.6,
+    },
     labelColor: '#eff6ff',
     difficultyColor: '#bfdbfe',
-    glowColor: 'rgba(56, 189, 248, 0.7)',
+    nodeShape: 'hexagon',
+    emoji: {
+      locked: '🔒',
+      available: '📐',
+      in_progress: '🔢',
+      completed: '✅',
+    },
+    showOrbitRing: false,
   },
   korean: {
-    // 따뜻한 갈색 + 고전 한지 느낌
-    background: 'linear-gradient(180deg, #3e2723 0%, #1c0f0b 100%)',
+    bgFrom: '#1a1008',
+    bgTo: '#2d1f0e',
     backgroundPattern: 'paper',
-    nodeGradient: {
-      locked: ['#57534e', '#292524'],
-      available: ['#fbbf24', '#b45309'],        // 금색
-      in_progress: ['#d97706', '#78350f'],      // 황토
-      completed: ['#f59e0b', '#92400e'],        // 진한 금
+    nodeColors: {
+      locked: {
+        inner: '#4a3520',
+        outer: '#1f1610',
+        ring: '#6b4f30',
+        glow: 'rgba(120, 80, 40, 0.0)',
+      },
+      available: {
+        inner: '#fcd34d', // amber-300
+        outer: '#92400e', // amber-800
+        ring: '#fde68a',
+        glow: 'rgba(252, 211, 77, 0.55)',
+      },
+      in_progress: {
+        inner: '#fbbf24', // amber-400
+        outer: '#78350f', // amber-900
+        ring: '#fcd34d',
+        glow: 'rgba(251, 191, 36, 0.55)',
+      },
+      completed: {
+        inner: '#fde68a', // amber-200
+        outer: '#b45309', // amber-700
+        ring: '#fef3c7',
+        glow: 'rgba(253, 230, 138, 0.65)',
+      },
     },
-    linkColor: '#fcd34d',
-    linkOpacity: 0.5,
+    link: {
+      from: '#fcd34d',
+      to: '#d97706',
+      opacity: 0.55,
+    },
     labelColor: '#fef3c7',
     difficultyColor: '#fde68a',
-    glowColor: 'rgba(251, 191, 36, 0.7)',
+    nodeShape: 'circle',
+    emoji: {
+      locked: '🔒',
+      available: '📜',
+      in_progress: '✍️',
+      completed: '🏯',
+    },
+    showOrbitRing: false,
   },
   default: {
-    // 기본 밝은 테마
-    background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-    nodeGradient: {
-      locked: ['#cbd5e1', '#94a3b8'],
-      available: ['#fbbf24', '#f59e0b'],
-      in_progress: ['#60a5fa', '#4F6BF6'],
-      completed: ['#34d399', '#10B981'],
+    bgFrom: '#0f1117',
+    bgTo: '#1a1d2e',
+    backgroundPattern: 'none',
+    nodeColors: {
+      locked: {
+        inner: '#475569',
+        outer: '#1e293b',
+        ring: '#64748b',
+        glow: 'rgba(100, 116, 139, 0.0)',
+      },
+      available: {
+        inner: '#818cf8',
+        outer: '#3730a3',
+        ring: '#a5b4fc',
+        glow: 'rgba(129, 140, 248, 0.55)',
+      },
+      in_progress: {
+        inner: '#60a5fa',
+        outer: '#1d4ed8',
+        ring: '#93c5fd',
+        glow: 'rgba(96, 165, 250, 0.55)',
+      },
+      completed: {
+        inner: '#a78bfa',
+        outer: '#6d28d9',
+        ring: '#c4b5fd',
+        glow: 'rgba(167, 139, 250, 0.6)',
+      },
     },
-    linkColor: '#cbd5e1',
-    linkOpacity: 0.75,
-    labelColor: '#ffffff',
-    difficultyColor: '#64748b',
-    glowColor: 'rgba(79, 107, 246, 0.5)',
+    link: {
+      from: '#818cf8',
+      to: '#a78bfa',
+      opacity: 0.6,
+    },
+    labelColor: '#f8fafc',
+    difficultyColor: '#cbd5e1',
+    nodeShape: 'circle',
+    emoji: {
+      locked: '🔒',
+      available: '📘',
+      in_progress: '📖',
+      completed: '⭐',
+    },
+    showOrbitRing: false,
   },
 }
 
@@ -157,27 +305,8 @@ export function getTheme(theme?: string | null): ThemeConfig {
   return THEMES.default
 }
 
-export function getNodeColor(status: string): string {
-  switch (status) {
-    case 'completed': return '#10B981'
-    case 'available': return '#F59E0B'
-    case 'in_progress': return '#4F6BF6'
-    case 'locked': return '#94A3B8'
-    default: return '#94A3B8'
-  }
-}
-
-export function getNodeGlow(status: string): string {
-  switch (status) {
-    case 'completed': return '0 0 20px rgba(16, 185, 129, 0.6)'
-    case 'available': return '0 0 20px rgba(245, 158, 11, 0.6)'
-    case 'in_progress': return '0 0 15px rgba(79, 107, 246, 0.4)'
-    default: return 'none'
-  }
-}
-
 export function getNodeSize(difficulty: number): number {
-  const base = 30
+  const base = 32
   return base + (difficulty - 1) * 4
 }
 
@@ -189,4 +318,19 @@ export function getStatusLabel(status: string): string {
     case 'locked': return '잠김'
     default: return '잠김'
   }
+}
+
+/**
+ * 육각형 path 생성 (math 테마용).
+ * 중심 (0,0), 반지름 r 기준.
+ */
+export function hexagonPath(r: number): string {
+  const points: string[] = []
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2
+    const x = r * Math.cos(angle)
+    const y = r * Math.sin(angle)
+    points.push(`${x.toFixed(2)},${y.toFixed(2)}`)
+  }
+  return `M${points.join('L')}Z`
 }

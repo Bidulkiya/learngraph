@@ -39,7 +39,7 @@ function VerifyContent() {
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#4F6BF6]" />
-              <span>메일 안의 "이메일 확인" 링크를 클릭하세요</span>
+              <span>메일 안의 &ldquo;이메일 확인&rdquo; 링크를 클릭하세요</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#4F6BF6]" />

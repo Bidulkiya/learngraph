@@ -108,21 +108,31 @@ export async function getMySchools(): Promise<{ data?: Array<School & { teacher_
       .eq('created_by', user.id)
       .order('created_at', { ascending: false })
 
-    if (!schools) return { data: [] }
+    if (!schools || schools.length === 0) return { data: [] }
 
-    const schoolsWithCounts = await Promise.all(
-      schools.map(async (s) => {
-        const { data: members } = await admin
-          .from('school_members')
-          .select('role')
-          .eq('school_id', s.id)
-          .eq('status', 'approved')
+    // ✅ N+1 최적화: 모든 스쿨의 멤버를 1번의 IN 쿼리로
+    const schoolIds = schools.map(s => s.id)
+    const { data: allMembers } = await admin
+      .from('school_members')
+      .select('school_id, role')
+      .in('school_id', schoolIds)
+      .eq('status', 'approved')
 
-        const teacher_count = members?.filter(m => m.role === 'teacher').length ?? 0
-        const student_count = members?.filter(m => m.role === 'student').length ?? 0
-        return { ...s, teacher_count, student_count }
-      })
-    )
+    const teacherCountMap = new Map<string, number>()
+    const studentCountMap = new Map<string, number>()
+    allMembers?.forEach(m => {
+      if (m.role === 'teacher') {
+        teacherCountMap.set(m.school_id, (teacherCountMap.get(m.school_id) ?? 0) + 1)
+      } else if (m.role === 'student') {
+        studentCountMap.set(m.school_id, (studentCountMap.get(m.school_id) ?? 0) + 1)
+      }
+    })
+
+    const schoolsWithCounts = schools.map(s => ({
+      ...s,
+      teacher_count: teacherCountMap.get(s.id) ?? 0,
+      student_count: studentCountMap.get(s.id) ?? 0,
+    }))
 
     return { data: schoolsWithCounts }
   } catch (err) {

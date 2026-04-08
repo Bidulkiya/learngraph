@@ -79,12 +79,15 @@ export function NodeEditor({ open, onClose, node, onSave, onDelete, mode = 'edit
     setDocViewMode('preview')
   }
 
-  // 노드 변경 시 상태 초기화 + 학습 문서 로드
+  // 노드 변경 시 상태 초기화 + 학습 문서 로드.
+  // 이 effect는 data fetching + popup reset 패턴이라 setState는 의도된 것 (cancelled 가드로 stale state 방지).
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open || !node || mode === 'add') {
       setLearningDoc('')
       return
     }
+    let cancelled = false
     setTitle(node.title)
     setDescription(node.description)
     setDifficulty(node.difficulty)
@@ -93,6 +96,7 @@ export function NodeEditor({ open, onClose, node, onSave, onDelete, mode = 'edit
     setShowRevisionInput(false)
     setDocLoading(true)
     getNodeLearningDoc(node.id).then(res => {
+      if (cancelled) return
       if (res.data) {
         setLearningDoc(res.data.content ?? '')
         setAllowDownload(res.data.allowDownload)
@@ -100,7 +104,9 @@ export function NodeEditor({ open, onClose, node, onSave, onDelete, mode = 'edit
       }
       setDocLoading(false)
     })
+    return () => { cancelled = true }
   }, [open, node, mode])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSave = async (): Promise<void> => {
     if (!title.trim()) return

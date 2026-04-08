@@ -126,7 +126,7 @@ export function TeacherQuizManager({ skillTrees }: { skillTrees: SkillTreeWithNo
             </CardContent></Card>
           ) : quizzes.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-gray-500">
-              이 노드에 퀴즈가 없습니다. "AI 재생성" 버튼을 눌러 생성하세요.
+              이 노드에 퀴즈가 없습니다. &ldquo;AI 재생성&rdquo; 버튼을 눌러 생성하세요.
             </CardContent></Card>
           ) : (
             quizzes.map((q, i) => (
