@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Sparkles, Loader2, Calendar } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Sparkles, Loader2, Calendar, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,18 +10,35 @@ import type { WeeklyPlanOutput } from '@/lib/ai/schemas'
 import { toast } from 'sonner'
 
 export function WeeklyPlanCard() {
-  const [loading, setLoading] = useState(false)
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [generating, setGenerating] = useState(false)
   const [plan, setPlan] = useState<WeeklyPlanOutput | null>(null)
 
-  const handleGenerate = async (): Promise<void> => {
-    setLoading(true)
-    const res = await getWeeklyPlan()
-    setLoading(false)
+  // 마운트 시 캐시 확인 (AI 호출 안 함, DB만 조회)
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    let cancelled = false
+    setLoadingInitial(true)
+    getWeeklyPlan(false).then(res => {
+      if (cancelled) return
+      if (res.data) setPlan(res.data)
+      setLoadingInitial(false)
+    })
+    return () => { cancelled = true }
+  }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // 수동 재생성 (AI 호출, 이번 주 계획 덮어쓰기)
+  const handleRegenerate = async (): Promise<void> => {
+    setGenerating(true)
+    const res = await getWeeklyPlan(true)
+    setGenerating(false)
     if (res.error || !res.data) {
       toast.error(res.error ?? '계획 생성 실패')
       return
     }
     setPlan(res.data)
+    toast.success('주간 계획이 새로 생성되었습니다')
   }
 
   return (
@@ -33,17 +50,21 @@ export function WeeklyPlanCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {!plan ? (
+        {loadingInitial ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-[#7C5CFC]" />
+          </div>
+        ) : !plan ? (
           <div className="flex flex-col items-center gap-3 py-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               AI가 당신의 진도와 약점을 분석해서 이번 주 최적 학습 계획을 세워드립니다
             </p>
             <Button
-              onClick={handleGenerate}
-              disabled={loading}
+              onClick={handleRegenerate}
+              disabled={generating}
               className="bg-[#7C5CFC] hover:bg-[#7C5CFC]/90"
             >
-              {loading ? (
+              {generating ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Calendar className="mr-2 h-4 w-4" />
@@ -71,8 +92,19 @@ export function WeeklyPlanCard() {
                 💜 {plan.motivation}
               </p>
             </div>
-            <Button onClick={handleGenerate} variant="outline" size="sm" className="w-full">
-              다시 생성
+            <Button
+              onClick={handleRegenerate}
+              disabled={generating}
+              variant="outline"
+              size="sm"
+              className="w-full"
+            >
+              {generating ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-1 h-3 w-3" />
+              )}
+              이번 주 계획 다시 생성
             </Button>
           </div>
         )}

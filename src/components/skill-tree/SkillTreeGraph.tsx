@@ -467,18 +467,15 @@ export function SkillTreeGraph({
       .text(d => `${d.title}\n${d.description}\n상태: ${getStatusLabel(d.status)}`)
 
     // ─── 12. 인터랙션 ───
+    // 주의: hover scale은 CSS `.node-shape:hover` 규칙이 담당 (globals.css 참고).
+    // <g class="node">의 transform은 오직 simulation.on('tick')만 관리해야
+    // scale 트랜지션과 tick이 같은 attribute를 다투는 race condition이 없다.
+    // 여기서는 filter 변경과 엣지 하이라이트만 JS로 처리.
     node.on('mouseenter', function (_event, d) {
       const sel = d3.select(this)
       sel.select<SVGElement>('.node-shape')
         .style('filter', `url(#glow-strong-${d.status})`)
         .attr('stroke-width', 3.5)
-      sel.attr('transform-origin', 'center')
-      // scale 트랜지션
-      const t = sel.transition().duration(180)
-      t.attrTween('transform', () => {
-        const x0 = d.x ?? 0, y0 = d.y ?? 0
-        return (tt) => `translate(${x0},${y0}) scale(${1 + tt * 0.15})`
-      })
       // 연결된 엣지 하이라이트
       link
         .attr('stroke-opacity', e => {
@@ -498,11 +495,6 @@ export function SkillTreeGraph({
       sel.select<SVGElement>('.node-shape')
         .style('filter', d.status === 'locked' ? 'none' : `url(#glow-${d.status})`)
         .attr('stroke-width', 2)
-      const t = sel.transition().duration(180)
-      t.attrTween('transform', () => {
-        const x0 = d.x ?? 0, y0 = d.y ?? 0
-        return (tt) => `translate(${x0},${y0}) scale(${1.15 - tt * 0.15})`
-      })
       // 엣지 원복
       link
         .attr('stroke-opacity', e => {

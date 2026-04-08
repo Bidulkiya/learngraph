@@ -219,6 +219,21 @@
   transform-box: fill-box;
 }
 
+/*
+ * Hover scale은 반드시 .node-shape (circle/path) 자체의 CSS transform에 적용.
+ * node group <g>의 transform은 d3 simulation.on('tick')이 매 프레임 관리하므로
+ * 거기에 scale을 얹으면 race condition으로 노드가 튄다.
+ * transform-box: fill-box + transform-origin: center 조합으로 원의 중심 기준 scale.
+ */
+.lg-skill-tree g.node .node-shape {
+  transition: transform 0.2s ease-out, filter 0.25s ease, stroke-width 0.25s ease;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.lg-skill-tree g.node:hover .node-shape {
+  transform: scale(1.15);
+}
+
 /* 프린트 스타일 */
 @media print {
   aside, header, .print\:hidden { display: none !important; }
