@@ -5,7 +5,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import OpenAI from 'openai'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { TUTOR_SYSTEM_PROMPT, TUTOR_SOCRATIC_PROMPT } from '@/lib/ai/prompts'
+import { TUTOR_SYSTEM_PROMPT, TUTOR_SOCRATIC_PROMPT, TUTOR_EMOTION_ADAPTATION } from '@/lib/ai/prompts'
 
 const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -59,11 +59,33 @@ export async function chatWithTutor(
       console.error('[chatWithTutor] RAG 검색 실패 (컨텍스트 없이 진행):', ragErr)
     }
 
-    // Claude 호출 (모드별 시스템 프롬프트)
+    // 학생의 최신 emotion_report 조회 → mood에 따라 톤 적응
+    let emotionAdaptation = ''
+    try {
+      let emotionQuery = admin
+        .from('emotion_reports')
+        .select('mood')
+        .eq('student_id', user.id)
+        .order('report_date', { ascending: false })
+        .limit(1)
+      if (skillTreeId) {
+        emotionQuery = emotionQuery.eq('skill_tree_id', skillTreeId)
+      }
+      const { data: emotionReport } = await emotionQuery.maybeSingle()
+      if (emotionReport?.mood && TUTOR_EMOTION_ADAPTATION[emotionReport.mood]) {
+        emotionAdaptation = TUTOR_EMOTION_ADAPTATION[emotionReport.mood]
+      }
+    } catch (emoErr) {
+      console.error('[chatWithTutor] emotion 조회 실패 (기본 톤 사용):', emoErr)
+    }
+
+    // Claude 호출 (모드별 시스템 프롬프트 + 감정 적응)
     const basePrompt = mode === 'socratic' ? TUTOR_SOCRATIC_PROMPT : TUTOR_SYSTEM_PROMPT
-    const systemPrompt = context
-      ? `${basePrompt}\n\n## 참고 수업 자료\n${context}`
-      : basePrompt
+    const systemPrompt = [
+      basePrompt,
+      emotionAdaptation,
+      context ? `## 참고 수업 자료\n${context}` : '',
+    ].filter(Boolean).join('\n\n')
 
     const { text } = await generateText({
       model: anthropic('claude-sonnet-4-6'),

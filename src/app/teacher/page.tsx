@@ -7,9 +7,12 @@ import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { getTeacherDashboardData } from '@/actions/dashboard'
 import { getMyClasses, getMySchoolMemberships } from '@/actions/school'
 import { getAnnouncements } from '@/actions/announcements'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ProgressCard } from '@/components/dashboard/ProgressCard'
 import { HeatmapChart } from '@/components/dashboard/HeatmapChart'
 import { RiskAlert } from '@/components/dashboard/RiskAlert'
+import { RiskAlertCard } from '@/components/dashboard/RiskAlertCard'
+import { EmotionOverviewCard } from '@/components/dashboard/EmotionOverviewCard'
 import { StudentGroupsCard } from '@/components/dashboard/StudentGroupsCard'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 
@@ -26,6 +29,17 @@ export default async function TeacherDashboard() {
   const myClasses = (classesRes.data ?? []).map(c => ({ id: c.id, name: c.name }))
   const announcements = (annRes.data ?? []).filter(a => a.target_role === 'all' || a.target_role === 'teacher')
   const mySchools = (schoolsRes.data ?? []).filter(s => s.role === 'teacher' && s.status === 'approved')
+
+  // 본인 첫 스킬트리 ID — 감정 분석 대상
+  const admin = createAdminClient()
+  const { data: firstTree } = await admin
+    .from('skill_trees')
+    .select('id')
+    .eq('created_by', profile.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const defaultSkillTreeId = firstTree?.id as string | undefined
 
   return (
     <div className="space-y-6">
@@ -111,6 +125,12 @@ export default async function TeacherDashboard() {
           iconColor="#F59E0B"
           subtitle="주의 필요"
         />
+      </div>
+
+      {/* Phase 9: 감정 + 위험 경보 (특색 기능) */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <EmotionOverviewCard classes={myClasses} defaultSkillTreeId={defaultSkillTreeId} />
+        <RiskAlertCard classes={myClasses} />
       </div>
 
       <StudentGroupsCard classes={myClasses} />

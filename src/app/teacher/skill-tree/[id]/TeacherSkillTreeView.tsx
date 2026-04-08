@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SkillTreeGraph } from '@/components/skill-tree/SkillTreeGraph'
 import { NodeEditor } from '@/components/skill-tree/NodeEditor'
+import { SimulationDialog } from '@/components/skill-tree/SimulationDialog'
 import { useSkillTree } from '@/hooks/useSkillTree'
 import type { D3Node, D3Edge } from '@/lib/d3/skill-tree-layout'
 import { toast } from 'sonner'
@@ -78,6 +79,7 @@ export function TeacherSkillTreeView({ treeId, treeTitle, treeDescription, theme
         </div>
 
         <div className="flex items-center gap-2">
+          <SimulationDialog treeId={treeId} treeTitle={treeTitle} />
           {editMode && (
             <Button onClick={handleAddNode} size="sm" variant="outline">
               <Plus className="mr-1 h-4 w-4" />

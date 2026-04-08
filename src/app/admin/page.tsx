@@ -9,6 +9,7 @@ import { ClickableStatCard } from '@/components/dashboard/ClickableStatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BottleneckCard } from '@/components/dashboard/BottleneckCard'
 import { TeacherActivityCard } from '@/components/dashboard/TeacherActivityCard'
+import { RiskPieChart } from '@/components/dashboard/RiskPieChart'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 
 export default async function AdminDashboard() {
@@ -99,10 +100,13 @@ export default async function AdminDashboard() {
         </CardContent>
       </Card>
 
+      {/* Phase 9: 전체 위험 현황 + 병목 분석 */}
       <div className="grid gap-4 lg:grid-cols-2">
+        <RiskPieChart />
         <BottleneckCard schools={schools} />
-        <TeacherActivityCard activities={activities} />
       </div>
+
+      <TeacherActivityCard activities={activities} />
     </div>
   )
 }

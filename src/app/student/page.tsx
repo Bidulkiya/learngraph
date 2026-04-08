@@ -14,6 +14,7 @@ import { ProgressCard } from '@/components/dashboard/ProgressCard'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 import { WeeklyPlanCard } from '@/components/student/WeeklyPlanCard'
 import { ActivityFeed } from '@/components/feed/ActivityFeed'
+import { ConceptMapCard } from '@/components/dashboard/ConceptMapCard'
 
 export default async function StudentDashboard() {
   const profile = await getCurrentProfile()
@@ -160,34 +161,59 @@ export default async function StudentDashboard() {
         </CardContent>
       </Card>
 
-      {/* 복습 추천 */}
+      {/* 복습 추천 — 긴급도별 색상 표시 */}
       {reviews.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <RotateCcw className="h-4 w-4 text-[#F59E0B]" />
-              복습 추천
+              오늘의 복습 ({reviews.length}건)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {reviews.slice(0, 3).map(r => (
-                <li
-                  key={r.id}
-                  className="flex items-center justify-between rounded-lg border bg-yellow-50 p-3 text-sm dark:border-gray-800 dark:bg-yellow-950/30"
-                >
-                  <span className="font-medium">{r.node_title}을 복습하세요!</span>
-                  <Link href={`/student/quiz/${r.node_id}`}>
-                    <Button size="sm" variant="outline">
-                      복습하기
-                    </Button>
-                  </Link>
-                </li>
-              ))}
+              {reviews.slice(0, 5).map(r => {
+                const urgencyConfig = {
+                  overdue: {
+                    bg: 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30',
+                    badge: 'bg-red-500 text-white',
+                    label: '기한 지남',
+                  },
+                  today: {
+                    bg: 'border-yellow-300 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30',
+                    badge: 'bg-yellow-500 text-white',
+                    label: '오늘',
+                  },
+                  soon: {
+                    bg: 'border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950/30',
+                    badge: 'bg-green-500 text-white',
+                    label: '여유',
+                  },
+                }[r.urgency]
+                return (
+                  <li
+                    key={r.id}
+                    className={`flex items-center justify-between rounded-lg border p-3 text-sm ${urgencyConfig.bg}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge className={urgencyConfig.badge}>{urgencyConfig.label}</Badge>
+                      <span className="font-medium">{r.node_title}</span>
+                    </div>
+                    <Link href={`/student/quiz/${r.node_id}`}>
+                      <Button size="sm" variant="outline">
+                        복습하기
+                      </Button>
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
           </CardContent>
         </Card>
       )}
+
+      {/* Phase 9: 크로스커리큘럼 지식 맵 */}
+      <ConceptMapCard studentId={profile.id} />
 
       {/* 내 업적 */}
       <Card>

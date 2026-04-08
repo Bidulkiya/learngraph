@@ -138,3 +138,47 @@ export const teacherStyleSchema = z.object({
   style_guide: z.string().describe('교사가 작성한 학습 문서의 스타일을 종합 분석한 가이드 (200~400자 1문단). 다른 AI가 모방할 수 있도록 구체적으로.'),
 })
 export type TeacherStyleOutput = z.infer<typeof teacherStyleSchema>
+
+// ============================================
+// Phase 9: 5개 특색 기능 스키마
+// ============================================
+
+// 1. 학습 감정 추적
+export const emotionReportSchema = z.object({
+  overall_mood: z.enum(['confident', 'neutral', 'struggling', 'frustrated']).describe('학생의 전반적 학습 감정 상태'),
+  mood_score: z.number().describe('0-100 정수, 높을수록 긍정적 (0=극도 좌절, 100=완전 자신감)'),
+  insights: z.string().describe('학생 상태에 대한 한국어 분석 (2-3문장)'),
+  recommendation: z.string().describe('교사가 취해야 할 권장 행동 (한국어 1-2문장)'),
+  node_emotions: z.array(z.object({
+    node_title: z.string().describe('노드 제목'),
+    emotion: z.string().describe('해당 노드에서 학생이 느낀 감정 (예: 자신감/혼란/포기 등)'),
+  })).describe('노드별 감정 (최근 시도한 노드 위주, 최대 5개)'),
+})
+export type EmotionReportOutput = z.infer<typeof emotionReportSchema>
+
+// 2. 스킬트리 사전 시뮬레이션
+export const simulationSchema = z.object({
+  overall_pass_rate: z.number().describe('전체 예상 통과율 0-100 정수'),
+  bottleneck_nodes: z.array(z.object({
+    node_title: z.string().describe('병목 노드 제목'),
+    predicted_pass_rate: z.number().describe('예상 통과율 0-100'),
+    cause: z.string().describe('병목 원인 분석 (한국어 1-2문장)'),
+    suggestion: z.string().describe('개선 제안 (한국어 1-2문장)'),
+  })).describe('병목 후보 노드 (3-5개)'),
+  difficulty_curve: z.string().describe('난이도 흐름 평가 (한국어 2-3문장)'),
+  overall_feedback: z.string().describe('스킬트리 전체에 대한 종합 평가 (한국어 2-3문장)'),
+})
+export type SimulationOutput = z.infer<typeof simulationSchema>
+
+// 3. 크로스커리큘럼 지식 연결
+export const crossCurriculumSchema = z.object({
+  connections: z.array(z.object({
+    from_node: z.string().describe('출발 개념 (학생이 배운 노드 제목)'),
+    from_subject: z.string().describe('출발 과목 (예: 수학/과학/국어)'),
+    to_node: z.string().describe('도착 개념'),
+    to_subject: z.string().describe('도착 과목'),
+    relation: z.string().describe('두 개념을 잇는 관계 설명 (한국어 1-2문장)'),
+    benefit: z.string().describe('이 연결을 알면 학생에게 어떤 도움이 되는지 (한국어 1-2문장)'),
+  })).describe('과목을 넘나드는 개념 연결 (3-6개)'),
+})
+export type CrossCurriculumOutput = z.infer<typeof crossCurriculumSchema>
