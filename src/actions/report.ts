@@ -29,6 +29,28 @@ export async function generateParentReport(
 
     const admin = createAdminClient()
 
+    // 권한: 본인이거나, 학생의 담당 교사이거나, admin만
+    if (user.id !== studentId) {
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      let allowed = profile?.role === 'admin'
+      if (!allowed && profile?.role === 'teacher') {
+        const { data: enrollments } = await admin
+          .from('class_enrollments')
+          .select('class_id, classes!inner(teacher_id)')
+          .eq('student_id', studentId)
+          .eq('status', 'approved')
+        allowed = !!enrollments?.some(e => {
+          const cls = Array.isArray(e.classes) ? e.classes[0] : e.classes
+          return cls?.teacher_id === user.id
+        })
+      }
+      if (!allowed) return { error: '이 학생의 리포트를 생성할 권한이 없습니다.' }
+    }
+
     const { data: student } = await admin
       .from('profiles')
       .select('name, streak_days, xp, week_study_minutes')

@@ -8,7 +8,97 @@ import { learningDocSchema } from '@/lib/ai/schemas'
 import { LEARNING_DOC_PROMPT, LEARNING_DOC_REVISE_PROMPT } from '@/lib/ai/prompts'
 
 /**
- * 노드 단일 항목에 대한 학습 문서 생성 (내부용 — saveSkillTree에서 일괄 호출)
+ * 노드의 스킬트리 소유자(교사) 권한 확인.
+ * 또는 클래스 담당 교사.
+ */
+async function assertTeacherCanEditNode(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  nodeId: string
+): Promise<{ ok: boolean; error?: string; node?: { id: string; title: string; description: string | null; skill_tree_id: string; learning_content: string | null } }> {
+  const { data: node } = await admin
+    .from('nodes')
+    .select('id, title, description, skill_tree_id, learning_content')
+    .eq('id', nodeId)
+    .maybeSingle()
+  if (!node) return { ok: false, error: '노드를 찾을 수 없습니다.' }
+
+  const { data: tree } = await admin
+    .from('skill_trees')
+    .select('created_by, class_id')
+    .eq('id', node.skill_tree_id)
+    .maybeSingle()
+  if (!tree) return { ok: false, error: '스킬트리를 찾을 수 없습니다.' }
+
+  if (tree.created_by === userId) return { ok: true, node }
+
+  if (tree.class_id) {
+    const { data: cls } = await admin
+      .from('classes')
+      .select('teacher_id')
+      .eq('id', tree.class_id)
+      .maybeSingle()
+    if (cls?.teacher_id === userId) return { ok: true, node }
+  }
+
+  return { ok: false, error: '이 노드를 수정할 권한이 없습니다.' }
+}
+
+/**
+ * 학생이 해당 노드의 학습 문서를 볼 수 있는지 확인.
+ * 교사/운영자는 전부 허용. 학생은 승인된 enrollment가 있어야 함.
+ */
+async function assertCanReadNode(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  nodeId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: node } = await admin
+    .from('nodes')
+    .select('skill_tree_id')
+    .eq('id', nodeId)
+    .maybeSingle()
+  if (!node) return { ok: false, error: '노드를 찾을 수 없습니다.' }
+
+  const { data: tree } = await admin
+    .from('skill_trees')
+    .select('created_by, class_id')
+    .eq('id', node.skill_tree_id)
+    .maybeSingle()
+  if (!tree) return { ok: false, error: '스킬트리를 찾을 수 없습니다.' }
+
+  if (tree.created_by === userId) return { ok: true }
+
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle()
+  if (profile?.role === 'admin') return { ok: true }
+
+  if (tree.class_id) {
+    const { data: cls } = await admin
+      .from('classes')
+      .select('teacher_id')
+      .eq('id', tree.class_id)
+      .maybeSingle()
+    if (cls?.teacher_id === userId) return { ok: true }
+
+    const { data: enrollment } = await admin
+      .from('class_enrollments')
+      .select('status')
+      .eq('class_id', tree.class_id)
+      .eq('student_id', userId)
+      .maybeSingle()
+    if (enrollment?.status === 'approved') return { ok: true }
+  }
+
+  return { ok: false, error: '이 노드에 접근할 권한이 없습니다.' }
+}
+
+/**
+ * 노드 학습 문서 AI 생성 — 내부 헬퍼 (not a Server Action).
+ * saveSkillTree에서 일괄 호출. export는 되지만 인증 없이는 무의미한 파라미터만 받음.
  */
 export async function generateLearningDocForNode(
   nodeTitle: string,
@@ -17,6 +107,15 @@ export async function generateLearningDocForNode(
   subjectHint: string
 ): Promise<{ data?: string; error?: string }> {
   try {
+    // 이 함수는 파라미터만 받아서 AI를 호출하므로 DB 접근 없음.
+    // saveSkillTree 등 내부 호출자가 이미 인증 체크를 수행한 후 호출해야 함.
+    // 입력 길이 검증으로 비용 과다 방지.
+    if (!nodeTitle.trim() || nodeTitle.length > 500) {
+      return { error: '유효하지 않은 입력입니다.' }
+    }
+    if (nodeDescription.length > 5000) {
+      return { error: '설명이 너무 깁니다.' }
+    }
     const { object } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: learningDocSchema,
@@ -42,27 +141,20 @@ export async function regenerateLearningDoc(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
-
-    // 노드 + 스킬트리 정보 조회
-    const { data: node } = await admin
-      .from('nodes')
-      .select('id, title, description, skill_tree_id')
-      .eq('id', nodeId)
-      .maybeSingle()
-
-    if (!node) return { error: '노드를 찾을 수 없습니다.' }
+    const auth = await assertTeacherCanEditNode(admin, user.id, nodeId)
+    if (!auth.ok || !auth.node) return { error: auth.error }
 
     const { data: tree } = await admin
       .from('skill_trees')
       .select('title, subject_hint')
-      .eq('id', node.skill_tree_id)
+      .eq('id', auth.node.skill_tree_id)
       .maybeSingle()
 
     if (!tree) return { error: '스킬트리를 찾을 수 없습니다.' }
 
     const gen = await generateLearningDocForNode(
-      node.title,
-      node.description ?? '',
+      auth.node.title,
+      auth.node.description ?? '',
       tree.title,
       tree.subject_hint ?? 'default'
     )
@@ -93,22 +185,18 @@ export async function reviseLearningDoc(
     if (!user) return { error: '인증이 필요합니다.' }
 
     if (!userRequest.trim()) return { error: '수정 요청 내용을 입력해주세요.' }
+    if (userRequest.length > 1000) return { error: '수정 요청이 너무 깁니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertTeacherCanEditNode(admin, user.id, nodeId)
+    if (!auth.ok || !auth.node) return { error: auth.error }
 
-    const { data: node } = await admin
-      .from('nodes')
-      .select('id, title, learning_content')
-      .eq('id', nodeId)
-      .maybeSingle()
-
-    if (!node) return { error: '노드를 찾을 수 없습니다.' }
-    if (!node.learning_content) return { error: '아직 학습 문서가 없습니다. 먼저 생성해주세요.' }
+    if (!auth.node.learning_content) return { error: '아직 학습 문서가 없습니다. 먼저 생성해주세요.' }
 
     const { object } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
       schema: learningDocSchema,
-      prompt: LEARNING_DOC_REVISE_PROMPT(node.learning_content, userRequest, node.title),
+      prompt: LEARNING_DOC_REVISE_PROMPT(auth.node.learning_content, userRequest, auth.node.title),
     })
 
     const { error: updateErr } = await admin
@@ -137,7 +225,12 @@ export async function saveLearningDocManually(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    if (content.length > 50000) return { error: '학습 문서가 너무 깁니다 (최대 50000자).' }
+
     const admin = createAdminClient()
+    const auth = await assertTeacherCanEditNode(admin, user.id, nodeId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin
       .from('nodes')
       .update({ learning_content: content })
@@ -164,6 +257,9 @@ export async function updateNodePermissions(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertTeacherCanEditNode(admin, user.id, nodeId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin
       .from('nodes')
       .update({
@@ -187,7 +283,14 @@ export async function getNodeLearningDoc(nodeId: string): Promise<{
   error?: string
 }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+    const auth = await assertCanReadNode(admin, user.id, nodeId)
+    if (!auth.ok) return { error: auth.error }
+
     const { data: node } = await admin
       .from('nodes')
       .select('title, learning_content, allow_download, allow_print')

@@ -26,14 +26,34 @@ export async function createAnnouncement(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 입력 검증
+    if (!title.trim()) return { error: '제목을 입력해주세요.' }
+    if (title.length > 200) return { error: '제목이 너무 깁니다.' }
+    if (content.length > 5000) return { error: '내용이 너무 깁니다 (최대 5000자).' }
+    if (!['all', 'teacher', 'student'].includes(targetRole)) {
+      return { error: '유효하지 않은 대상입니다.' }
+    }
+
     const admin = createAdminClient()
+
+    // 권한: 스쿨 소유자만 공지 작성 가능
+    const { data: school } = await admin
+      .from('schools')
+      .select('created_by')
+      .eq('id', schoolId)
+      .maybeSingle()
+    if (!school) return { error: '스쿨을 찾을 수 없습니다.' }
+    if (school.created_by !== user.id) {
+      return { error: '이 스쿨에 공지를 작성할 권한이 없습니다.' }
+    }
+
     const { data, error } = await admin
       .from('announcements')
       .insert({
         school_id: schoolId,
         author_id: user.id,
-        title,
-        content,
+        title: title.trim(),
+        content: content.trim(),
         target_role: targetRole,
       })
       .select('id')
@@ -47,7 +67,8 @@ export async function createAnnouncement(
 }
 
 export async function getAnnouncements(
-  schoolId?: string
+  schoolId?: string,
+  options: { unreadOnly?: boolean } = {}
 ): Promise<{ data?: Announcement[]; error?: string }> {
   try {
     const supabase = await createServerClient()
@@ -103,11 +124,16 @@ export async function getAnnouncements(
       .in('id', authorIds.length > 0 ? authorIds : ['00000000-0000-0000-0000-000000000000'])
     const authorMap = new Map(authors?.map(a => [a.id, a.name]) ?? [])
 
-    const result: Announcement[] = announcements.map(a => ({
+    let result: Announcement[] = announcements.map(a => ({
       ...a,
       author_name: a.author_id ? authorMap.get(a.author_id) : undefined,
       is_read: readSet.has(a.id),
     }))
+
+    // 읽지 않은 공지만 요청 시 필터링
+    if (options.unreadOnly) {
+      result = result.filter(a => !a.is_read)
+    }
 
     return { data: result }
   } catch (err) {

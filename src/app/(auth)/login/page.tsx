@@ -14,6 +14,8 @@ import type { Role } from "@/types/user"
 function LoginForm() {
   const searchParams = useSearchParams()
   const justRegistered = searchParams.get("registered") === "true"
+  const justVerified = searchParams.get("verified") === "true"
+  const authError = searchParams.get("error") === "auth_callback_failed"
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -37,8 +39,11 @@ function LoginForm() {
       if (signInError) {
         if (signInError.message.includes("Invalid login credentials")) {
           setError("이메일 또는 비밀번호가 올바르지 않습니다.")
-        } else if (signInError.message.includes("Email not confirmed")) {
-          setError("이메일 인증이 필요합니다. 이메일을 확인해주세요.")
+        } else if (
+          signInError.message.includes("Email not confirmed") ||
+          signInError.message.includes("email_not_confirmed")
+        ) {
+          setError("이메일 인증이 완료되지 않았습니다. 받은 메일함에서 인증 링크를 클릭해주세요.")
         } else {
           setError(signInError.message)
         }
@@ -75,9 +80,19 @@ function LoginForm() {
 
   return (
     <>
-      {justRegistered && (
+      {justVerified && (
+        <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+          ✓ 이메일 인증이 완료되었습니다. 로그인해주세요.
+        </div>
+      )}
+      {justRegistered && !justVerified && (
         <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
           회원가입이 완료되었습니다. 로그인해주세요.
+        </div>
+      )}
+      {authError && (
+        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          이메일 인증 링크가 유효하지 않거나 만료되었습니다. 다시 시도해주세요.
         </div>
       )}
 

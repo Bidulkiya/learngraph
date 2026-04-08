@@ -15,6 +15,9 @@ export async function saveMemo(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 입력 검증
+    if (content.length > 10000) return { error: '메모가 너무 깁니다 (최대 10000자).' }
+
     const admin = createAdminClient()
     const { error } = await admin
       .from('node_memos')

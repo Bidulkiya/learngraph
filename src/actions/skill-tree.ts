@@ -21,9 +21,16 @@ export async function extractPdfText(
   formData: FormData
 ): Promise<{ text?: string; error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const file = formData.get('file') as File | null
     if (!file) return { error: '파일이 선택되지 않았습니다.' }
     if (file.size > 10 * 1024 * 1024) return { error: '파일 크기는 10MB 이하여야 합니다.' }
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      return { error: 'PDF 파일만 지원합니다.' }
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const result = await pdfParse(buffer)
@@ -54,6 +61,20 @@ export async function generateSkillTree(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다. 다시 로그인해주세요.' }
+
+    // 교사/운영자만 생성 가능 + 입력 크기 제한 (비용 폭주 방지)
+    const admin = createAdminClient()
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
+      return { error: '교사만 스킬트리를 생성할 수 있습니다.' }
+    }
+    if (!fileContent.trim() || fileContent.length > 200_000) {
+      return { error: '콘텐츠가 비어있거나 너무 깁니다 (최대 200,000자).' }
+    }
 
     const { object } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
@@ -89,7 +110,44 @@ export async function saveSkillTree(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 입력 검증
+    if (!treeData.title.trim()) return { error: '스킬트리 제목을 입력해주세요.' }
+    if (treeData.title.length > 200) return { error: '제목이 너무 깁니다.' }
+    if (treeData.description.length > 2000) return { error: '설명이 너무 깁니다.' }
+    if (!Array.isArray(nodes) || nodes.length === 0) return { error: '노드가 비어있습니다.' }
+    if (nodes.length > 100) return { error: '노드가 너무 많습니다 (최대 100개).' }
+
     const admin = createAdminClient()
+
+    // 교사/운영자만 저장 가능
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
+      return { error: '교사만 스킬트리를 저장할 수 있습니다.' }
+    }
+
+    // classId가 지정된 경우 본인이 담당 교사인지 확인
+    if (classId) {
+      const { data: cls } = await admin
+        .from('classes')
+        .select('teacher_id, school_id')
+        .eq('id', classId)
+        .maybeSingle()
+      if (!cls) return { error: '클래스를 찾을 수 없습니다.' }
+      let allowed = cls.teacher_id === user.id
+      if (!allowed && cls.school_id) {
+        const { data: school } = await admin
+          .from('schools')
+          .select('created_by')
+          .eq('id', cls.school_id)
+          .maybeSingle()
+        if (school?.created_by === user.id) allowed = true
+      }
+      if (!allowed) return { error: '이 클래스에 스킬트리를 배정할 권한이 없습니다.' }
+    }
 
     // 1. Create skill tree record (classId + subject_hint 포함)
     const { data: tree, error: treeError } = await admin
@@ -228,13 +286,88 @@ export async function saveSkillTree(
 
 // =============================================
 // Phase 4: Node/Edge CRUD Server Actions
+// 보안: 모든 mutation은 인증 체크 + 노드 소유자(교사) 검증 필수
 // =============================================
+
+/**
+ * 노드가 속한 스킬트리의 소유자인지 확인 (교사만).
+ * 또는 해당 스킬트리를 생성한 admin인지.
+ */
+async function assertNodeOwnership(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  nodeId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: node } = await admin
+    .from('nodes')
+    .select('skill_tree_id, skill_trees(created_by, class_id)')
+    .eq('id', nodeId)
+    .maybeSingle()
+  if (!node) return { ok: false, error: '노드를 찾을 수 없습니다.' }
+  const tree = Array.isArray(node.skill_trees) ? node.skill_trees[0] : node.skill_trees
+  if (!tree) return { ok: false, error: '스킬트리를 찾을 수 없습니다.' }
+  if (tree.created_by === userId) return { ok: true }
+  // 클래스의 teacher_id인지 확인
+  if (tree.class_id) {
+    const { data: cls } = await admin
+      .from('classes')
+      .select('teacher_id')
+      .eq('id', tree.class_id)
+      .maybeSingle()
+    if (cls?.teacher_id === userId) return { ok: true }
+  }
+  return { ok: false, error: '이 노드를 수정할 권한이 없습니다.' }
+}
+
+async function assertTreeOwnership(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  treeId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: tree } = await admin
+    .from('skill_trees')
+    .select('created_by, class_id')
+    .eq('id', treeId)
+    .maybeSingle()
+  if (!tree) return { ok: false, error: '스킬트리를 찾을 수 없습니다.' }
+  if (tree.created_by === userId) return { ok: true }
+  if (tree.class_id) {
+    const { data: cls } = await admin
+      .from('classes')
+      .select('teacher_id')
+      .eq('id', tree.class_id)
+      .maybeSingle()
+    if (cls?.teacher_id === userId) return { ok: true }
+  }
+  return { ok: false, error: '이 스킬트리를 수정할 권한이 없습니다.' }
+}
+
+async function assertEdgeOwnership(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  edgeId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: edge } = await admin
+    .from('node_edges')
+    .select('skill_tree_id')
+    .eq('id', edgeId)
+    .maybeSingle()
+  if (!edge) return { ok: false, error: '엣지를 찾을 수 없습니다.' }
+  return assertTreeOwnership(admin, userId, edge.skill_tree_id)
+}
 
 export async function updateNodePosition(
   nodeId: string, x: number, y: number
 ): Promise<{ error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+    const auth = await assertNodeOwnership(admin, user.id, nodeId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin
       .from('nodes')
       .update({ position_x: x, position_y: y })
@@ -250,10 +383,26 @@ export async function updateNode(
   nodeId: string, title: string, description: string, difficulty: number
 ): Promise<{ error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    // 입력 검증
+    if (!title.trim()) return { error: '제목을 입력해주세요.' }
+    if (title.length > 200) return { error: '제목이 너무 깁니다.' }
+    if (description.length > 2000) return { error: '설명이 너무 깁니다.' }
+    const diffInt = Math.floor(Number(difficulty))
+    if (!Number.isFinite(diffInt) || diffInt < 1 || diffInt > 5) {
+      return { error: '난이도는 1-5 사이 정수여야 합니다.' }
+    }
+
     const admin = createAdminClient()
+    const auth = await assertNodeOwnership(admin, user.id, nodeId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin
       .from('nodes')
-      .update({ title, description, difficulty })
+      .update({ title: title.trim(), description: description.trim(), difficulty: diffInt })
       .eq('id', nodeId)
     if (error) return { error: error.message }
     return {}
@@ -266,10 +415,25 @@ export async function addNode(
   skillTreeId: string, title: string, description: string, difficulty: number
 ): Promise<{ id?: string; error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    if (!title.trim()) return { error: '제목을 입력해주세요.' }
+    if (title.length > 200) return { error: '제목이 너무 깁니다.' }
+    if (description.length > 2000) return { error: '설명이 너무 깁니다.' }
+    const diffInt = Math.floor(Number(difficulty))
+    if (!Number.isFinite(diffInt) || diffInt < 1 || diffInt > 5) {
+      return { error: '난이도는 1-5 사이 정수여야 합니다.' }
+    }
+
     const admin = createAdminClient()
+    const auth = await assertTreeOwnership(admin, user.id, skillTreeId)
+    if (!auth.ok) return { error: auth.error }
+
     const { data, error } = await admin
       .from('nodes')
-      .insert({ skill_tree_id: skillTreeId, title, description, difficulty, order_index: 0 })
+      .insert({ skill_tree_id: skillTreeId, title: title.trim(), description: description.trim(), difficulty: diffInt, order_index: 0 })
       .select('id')
       .single()
     if (error) return { error: error.message }
@@ -281,7 +445,14 @@ export async function addNode(
 
 export async function deleteNode(nodeId: string): Promise<{ error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+    const auth = await assertNodeOwnership(admin, user.id, nodeId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin.from('nodes').delete().eq('id', nodeId)
     if (error) return { error: error.message }
     return {}
@@ -294,7 +465,24 @@ export async function addEdge(
   skillTreeId: string, sourceId: string, targetId: string
 ): Promise<{ id?: string; error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+    const auth = await assertTreeOwnership(admin, user.id, skillTreeId)
+    if (!auth.ok) return { error: auth.error }
+
+    // 두 노드가 모두 동일 스킬트리에 속하는지 확인
+    const { data: nodes } = await admin
+      .from('nodes')
+      .select('id, skill_tree_id')
+      .in('id', [sourceId, targetId])
+    if (!nodes || nodes.length !== 2) return { error: '노드를 찾을 수 없습니다.' }
+    if (nodes.some(n => n.skill_tree_id !== skillTreeId)) {
+      return { error: '다른 스킬트리의 노드는 연결할 수 없습니다.' }
+    }
+
     const { data, error } = await admin
       .from('node_edges')
       .insert({ skill_tree_id: skillTreeId, source_node_id: sourceId, target_node_id: targetId })
@@ -309,7 +497,14 @@ export async function addEdge(
 
 export async function deleteEdge(edgeId: string): Promise<{ error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+    const auth = await assertEdgeOwnership(admin, user.id, edgeId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin.from('node_edges').delete().eq('id', edgeId)
     if (error) return { error: error.message }
     return {}
@@ -318,15 +513,55 @@ export async function deleteEdge(edgeId: string): Promise<{ error?: string }> {
   }
 }
 
+/**
+ * 스킬트리 상세 조회 (교사 편집 페이지용).
+ * 인증 + 권한 체크: 교사 소유이거나, 학생이 승인된 enrollment가 있을 때.
+ */
 export async function fetchSkillTreeDetail(treeId: string) {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
     const { data: tree, error: treeErr } = await admin
       .from('skill_trees')
       .select('*')
       .eq('id', treeId)
       .single()
-    if (treeErr || !tree) return { error: treeErr?.message ?? 'Not found' }
+    if (treeErr || !tree) return { error: treeErr?.message ?? '스킬트리를 찾을 수 없습니다.' }
+
+    // 권한 체크: 교사 소유자거나 class 담당 교사거나 승인된 학생이거나 admin
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    let canAccess = tree.created_by === user.id
+    if (!canAccess && tree.class_id) {
+      // 담당 교사
+      const { data: cls } = await admin
+        .from('classes')
+        .select('teacher_id')
+        .eq('id', tree.class_id)
+        .maybeSingle()
+      if (cls?.teacher_id === user.id) canAccess = true
+      // 또는 승인된 학생
+      if (!canAccess) {
+        const { data: enrollment } = await admin
+          .from('class_enrollments')
+          .select('status')
+          .eq('class_id', tree.class_id)
+          .eq('student_id', user.id)
+          .maybeSingle()
+        if (enrollment?.status === 'approved') canAccess = true
+      }
+    }
+    // admin은 전부 허용
+    if (!canAccess && profile?.role === 'admin') canAccess = true
+
+    if (!canAccess) return { error: '이 스킬트리에 접근할 권한이 없습니다.' }
 
     const { data: nodes } = await admin
       .from('nodes')

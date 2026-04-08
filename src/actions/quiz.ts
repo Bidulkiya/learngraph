@@ -364,12 +364,49 @@ export async function completeNode(
 }
 
 /**
+ * 노드 → 스킬트리 교사 소유자 확인 (quiz 관리 권한).
+ */
+async function assertNodeTeacherAccess(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  nodeId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: node } = await admin
+    .from('nodes')
+    .select('skill_tree_id')
+    .eq('id', nodeId)
+    .maybeSingle()
+  if (!node) return { ok: false, error: '노드를 찾을 수 없습니다.' }
+  const { data: tree } = await admin
+    .from('skill_trees')
+    .select('created_by, class_id')
+    .eq('id', node.skill_tree_id)
+    .maybeSingle()
+  if (!tree) return { ok: false, error: '스킬트리를 찾을 수 없습니다.' }
+  if (tree.created_by === userId) return { ok: true }
+  if (tree.class_id) {
+    const { data: cls } = await admin
+      .from('classes')
+      .select('teacher_id')
+      .eq('id', tree.class_id)
+      .maybeSingle()
+    if (cls?.teacher_id === userId) return { ok: true }
+  }
+  return { ok: false, error: '이 노드를 수정할 권한이 없습니다.' }
+}
+
+/**
  * Get quizzes for a node (for teacher quiz management).
+ * 교사 또는 해당 노드에 접근 권한이 있는 학생.
  */
 export async function getQuizzesForNode(
   nodeId: string
 ): Promise<{ data?: Quiz[]; error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
     const { data, error } = await admin
       .from('quizzes')
@@ -391,7 +428,32 @@ export async function updateQuiz(
   updates: { question?: string; correct_answer?: string; explanation?: string; options?: string[] }
 ): Promise<{ error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+    // 퀴즈 → 노드 → 스킬트리 소유자 확인
+    const { data: quiz } = await admin
+      .from('quizzes')
+      .select('node_id')
+      .eq('id', quizId)
+      .maybeSingle()
+    if (!quiz) return { error: '퀴즈를 찾을 수 없습니다.' }
+    const auth = await assertNodeTeacherAccess(admin, user.id, quiz.node_id)
+    if (!auth.ok) return { error: auth.error }
+
+    // 입력 검증
+    if (updates.question !== undefined && updates.question.length > 2000) {
+      return { error: '문제가 너무 깁니다.' }
+    }
+    if (updates.correct_answer !== undefined && updates.correct_answer.length > 2000) {
+      return { error: '정답이 너무 깁니다.' }
+    }
+    if (updates.explanation !== undefined && updates.explanation.length > 5000) {
+      return { error: '해설이 너무 깁니다.' }
+    }
+
     const { error } = await admin
       .from('quizzes')
       .update(updates)
@@ -410,7 +472,14 @@ export async function regenerateQuizzes(
   nodeId: string
 ): Promise<{ data?: Quiz[]; error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+    const auth = await assertNodeTeacherAccess(admin, user.id, nodeId)
+    if (!auth.ok) return { error: auth.error }
+
     await admin.from('quizzes').delete().eq('node_id', nodeId)
     return await generateQuizForNode(nodeId)
   } catch (err) {

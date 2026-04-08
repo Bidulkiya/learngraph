@@ -57,10 +57,25 @@ export async function createSchool(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    if (!name.trim()) return { error: '스쿨 이름을 입력해주세요.' }
+    if (name.length > 100) return { error: '스쿨 이름이 너무 깁니다.' }
+    if (description.length > 1000) return { error: '설명이 너무 깁니다.' }
+
     const admin = createAdminClient()
+
+    // 운영자(admin) 역할만 스쿨 생성 가능
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (profile?.role !== 'admin') {
+      return { error: '운영자만 스쿨을 생성할 수 있습니다.' }
+    }
+
     const { data, error } = await admin
       .from('schools')
-      .insert({ name, description, created_by: user.id })
+      .insert({ name: name.trim(), description: description.trim(), created_by: user.id })
       .select()
       .single()
 
@@ -132,6 +147,19 @@ export async function getSchoolDetail(
       .single()
 
     if (!school) return { error: '스쿨을 찾을 수 없습니다.' }
+
+    // 권한: 스쿨 소유자(admin) 또는 승인된 멤버만
+    if (school.created_by !== user.id) {
+      const { data: membership } = await admin
+        .from('school_members')
+        .select('status, role')
+        .eq('school_id', schoolId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (!membership || membership.status !== 'approved') {
+        return { error: '이 스쿨을 조회할 권한이 없습니다.' }
+      }
+    }
 
     // Members
     const { data: members } = await admin
@@ -209,6 +237,26 @@ export async function getSchoolDetail(
   }
 }
 
+/**
+ * 특정 스쿨의 소유자(created_by) 인지 확인.
+ */
+async function assertSchoolOwnership(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  schoolId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: school } = await admin
+    .from('schools')
+    .select('created_by')
+    .eq('id', schoolId)
+    .maybeSingle()
+  if (!school) return { ok: false, error: '스쿨을 찾을 수 없습니다.' }
+  if (school.created_by !== userId) {
+    return { ok: false, error: '이 스쿨을 관리할 권한이 없습니다.' }
+  }
+  return { ok: true }
+}
+
 export async function approveSchoolMember(
   schoolId: string,
   userId: string
@@ -219,6 +267,9 @@ export async function approveSchoolMember(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertSchoolOwnership(admin, user.id, schoolId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin
       .from('school_members')
       .update({ status: 'approved' })
@@ -242,6 +293,9 @@ export async function rejectSchoolMember(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertSchoolOwnership(admin, user.id, schoolId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin
       .from('school_members')
       .delete()
@@ -270,13 +324,32 @@ export async function createClass(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    if (!name.trim()) return { error: '클래스 이름을 입력해주세요.' }
+    if (name.length > 100) return { error: '클래스 이름이 너무 깁니다.' }
+    if (description.length > 500) return { error: '설명이 너무 깁니다.' }
+
     const admin = createAdminClient()
+    // 스쿨 소유자만 클래스 생성 가능
+    const auth = await assertSchoolOwnership(admin, user.id, schoolId)
+    if (!auth.ok) return { error: auth.error }
+
+    // 지정된 teacherId가 이 스쿨에 소속된 교사인지 확인
+    const { data: teacherMembership } = await admin
+      .from('school_members')
+      .select('role, status')
+      .eq('school_id', schoolId)
+      .eq('user_id', teacherId)
+      .maybeSingle()
+    if (!teacherMembership || teacherMembership.role !== 'teacher' || teacherMembership.status !== 'approved') {
+      return { error: '지정한 교사가 이 스쿨의 승인된 교사가 아닙니다.' }
+    }
+
     const { data, error } = await admin
       .from('classes')
       .insert({
         school_id: schoolId,
-        name,
-        description,
+        name: name.trim(),
+        description: description.trim(),
         teacher_id: teacherId,
       })
       .select()
@@ -531,6 +604,42 @@ export async function requestClassEnrollment(
 }
 
 /**
+ * enrollment → class → school 권한 확인: 담당 교사 또는 스쿨 소유자만 승인/거부.
+ */
+async function assertCanModifyEnrollment(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  enrollmentId: string
+): Promise<{ ok: boolean; error?: string; enrollment?: { class_id: string; student_id: string } }> {
+  const { data: enrollment } = await admin
+    .from('class_enrollments')
+    .select('class_id, student_id')
+    .eq('id', enrollmentId)
+    .maybeSingle()
+  if (!enrollment) return { ok: false, error: '수강신청을 찾을 수 없습니다.' }
+
+  const { data: cls } = await admin
+    .from('classes')
+    .select('teacher_id, school_id')
+    .eq('id', enrollment.class_id)
+    .maybeSingle()
+  if (!cls) return { ok: false, error: '클래스를 찾을 수 없습니다.' }
+
+  if (cls.teacher_id === userId) return { ok: true, enrollment }
+
+  if (cls.school_id) {
+    const { data: school } = await admin
+      .from('schools')
+      .select('created_by')
+      .eq('id', cls.school_id)
+      .maybeSingle()
+    if (school?.created_by === userId) return { ok: true, enrollment }
+  }
+
+  return { ok: false, error: '이 수강신청을 관리할 권한이 없습니다.' }
+}
+
+/**
  * Teacher/admin approves a class enrollment.
  * Also creates class_students row + initializes student_progress for skill trees.
  */
@@ -544,13 +653,9 @@ export async function approveEnrollment(
 
     const admin = createAdminClient()
 
-    const { data: enrollment } = await admin
-      .from('class_enrollments')
-      .select('class_id, student_id')
-      .eq('id', enrollmentId)
-      .single()
-
-    if (!enrollment) return { error: '수강신청을 찾을 수 없습니다.' }
+    const auth = await assertCanModifyEnrollment(admin, user.id, enrollmentId)
+    if (!auth.ok || !auth.enrollment) return { error: auth.error }
+    const enrollment = auth.enrollment
 
     // 1. enrollment status → approved
     await admin
@@ -633,6 +738,9 @@ export async function rejectEnrollment(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertCanModifyEnrollment(admin, user.id, enrollmentId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin
       .from('class_enrollments')
       .update({ status: 'rejected' })
@@ -745,6 +853,25 @@ export async function getClassEnrollments(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+
+    // 권한 확인: 담당 교사 또는 스쿨 소유자(admin)만
+    const { data: cls } = await admin
+      .from('classes')
+      .select('teacher_id, school_id')
+      .eq('id', classId)
+      .maybeSingle()
+    if (!cls) return { error: '클래스를 찾을 수 없습니다.' }
+    let allowed = cls.teacher_id === user.id
+    if (!allowed && cls.school_id) {
+      const { data: school } = await admin
+        .from('schools')
+        .select('created_by')
+        .eq('id', cls.school_id)
+        .maybeSingle()
+      if (school?.created_by === user.id) allowed = true
+    }
+    if (!allowed) return { error: '이 클래스의 수강신청 목록을 조회할 권한이 없습니다.' }
+
     const { data: enrollments } = await admin
       .from('class_enrollments')
       .select('id, student_id, status, requested_at')

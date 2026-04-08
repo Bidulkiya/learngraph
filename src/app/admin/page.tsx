@@ -18,7 +18,7 @@ export default async function AdminDashboard() {
   const [{ data }, schoolsRes, annRes] = await Promise.all([
     getAdminDashboardData(),
     getMySchools(),
-    getAnnouncements(),
+    getAnnouncements(undefined, { unreadOnly: true }),
   ])
   const schools = (schoolsRes.data ?? []).map(s => ({ id: s.id, name: s.name }))
   const announcements = annRes.data ?? []

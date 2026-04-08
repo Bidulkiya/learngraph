@@ -22,6 +22,48 @@ export interface GroupMessage {
   created_at: string
 }
 
+/**
+ * 해당 클래스에 승인된 멤버(학생/교사)인지 확인.
+ */
+async function assertClassMember(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  classId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: cls } = await admin
+    .from('classes')
+    .select('teacher_id')
+    .eq('id', classId)
+    .maybeSingle()
+  if (!cls) return { ok: false, error: '클래스를 찾을 수 없습니다.' }
+  if (cls.teacher_id === userId) return { ok: true }
+  const { data: enr } = await admin
+    .from('class_enrollments')
+    .select('status')
+    .eq('class_id', classId)
+    .eq('student_id', userId)
+    .maybeSingle()
+  if (enr?.status === 'approved') return { ok: true }
+  return { ok: false, error: '이 클래스의 승인된 멤버가 아닙니다.' }
+}
+
+/**
+ * 스터디 그룹의 class_id를 조회하고 멤버 확인.
+ */
+async function assertGroupClassMember(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  groupId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: grp } = await admin
+    .from('study_groups')
+    .select('class_id')
+    .eq('id', groupId)
+    .maybeSingle()
+  if (!grp) return { ok: false, error: '그룹을 찾을 수 없습니다.' }
+  return assertClassMember(admin, userId, grp.class_id)
+}
+
 export async function createGroup(
   classId: string,
   name: string
@@ -31,8 +73,12 @@ export async function createGroup(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!name.trim()) return { error: '그룹 이름을 입력해주세요.' }
+    if (name.length > 100) return { error: '그룹 이름이 너무 깁니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertClassMember(admin, user.id, classId)
+    if (!auth.ok) return { error: auth.error }
+
     const { data, error } = await admin
       .from('study_groups')
       .insert({ class_id: classId, name: name.trim(), created_by: user.id })
@@ -127,6 +173,9 @@ export async function joinGroup(groupId: string): Promise<{ error?: string }> {
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertGroupClassMember(admin, user.id, groupId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin.from('study_group_members').upsert({
       group_id: groupId,
       user_id: user.id,
@@ -158,6 +207,24 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
   }
 }
 
+/**
+ * 해당 그룹의 멤버인지 확인.
+ */
+async function assertGroupMember(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  groupId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: member } = await admin
+    .from('study_group_members')
+    .select('user_id')
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!member) return { ok: false, error: '이 그룹의 멤버가 아닙니다.' }
+  return { ok: true }
+}
+
 export async function sendGroupMessage(
   groupId: string,
   content: string
@@ -167,8 +234,12 @@ export async function sendGroupMessage(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!content.trim()) return { error: '메시지를 입력해주세요.' }
+    if (content.length > 2000) return { error: '메시지가 너무 깁니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertGroupMember(admin, user.id, groupId)
+    if (!auth.ok) return { error: auth.error }
+
     const { error } = await admin.from('study_group_messages').insert({
       group_id: groupId,
       user_id: user.id,
@@ -191,6 +262,9 @@ export async function getGroupMessages(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+    const auth = await assertGroupMember(admin, user.id, groupId)
+    if (!auth.ok) return { error: auth.error }
+
     const { data: messages } = await admin
       .from('study_group_messages')
       .select('id, user_id, content, created_at')

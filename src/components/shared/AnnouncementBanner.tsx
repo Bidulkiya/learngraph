@@ -15,16 +15,24 @@ export function AnnouncementBanner({ announcements }: Props) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<string | null>(null)
 
+  // 서버에서 이미 unreadOnly 옵션으로 필터링된 목록이 전달됨.
+  // 한 번이라도 X 버튼(읽음 처리)을 누른 항목은 localDismiss로 즉시 제거.
+  // 또한 혹시 서버가 필터링하지 않고 호출된 경우를 대비해 is_read도 방어적으로 체크.
   const unread = announcements.filter(a => !a.is_read && !dismissed.has(a.id))
   if (unread.length === 0) return null
 
   const handleRead = async (id: string): Promise<void> => {
+    // 낙관적 업데이트 — 서버 실패 시 롤백
+    setDismissed(prev => new Set(prev).add(id))
     const res = await markAnnouncementRead(id)
     if (res.error) {
       toast.error(res.error)
-      return
+      setDismissed(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
-    setDismissed(prev => new Set(prev).add(id))
   }
 
   return (

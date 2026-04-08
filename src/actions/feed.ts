@@ -16,7 +16,8 @@ export interface FeedItem {
 }
 
 /**
- * 활동 기록 (노드 언락, 배지 획득 등에서 자동 호출)
+ * 활동 기록 (노드 언락, 배지 획득 등에서 자동 호출).
+ * 본인이 해당 클래스에 승인된 학생/교사인지 확인.
  */
 export async function postActivity(
   classId: string | null,
@@ -31,15 +32,29 @@ export async function postActivity(
     if (!classId) return {} // 클래스 없으면 건너뜀
 
     const admin = createAdminClient()
-    // 클래스의 school_id 조회
+    // 클래스의 school_id 조회 + 권한 확인
     const { data: cls } = await admin
       .from('classes')
-      .select('school_id')
+      .select('school_id, teacher_id')
       .eq('id', classId)
       .single()
+    if (!cls) return { error: '클래스를 찾을 수 없습니다.' }
+
+    // 담당 교사가 아니라면 승인된 학생이어야 함
+    let authorized = cls.teacher_id === user.id
+    if (!authorized) {
+      const { data: enr } = await admin
+        .from('class_enrollments')
+        .select('status')
+        .eq('class_id', classId)
+        .eq('student_id', user.id)
+        .maybeSingle()
+      if (enr?.status === 'approved') authorized = true
+    }
+    if (!authorized) return { error: '이 클래스에 활동을 기록할 권한이 없습니다.' }
 
     await admin.from('activity_feed').insert({
-      school_id: cls?.school_id ?? null,
+      school_id: cls.school_id ?? null,
       class_id: classId,
       user_id: user.id,
       action_type: actionType,
@@ -54,7 +69,8 @@ export async function postActivity(
 }
 
 /**
- * 클래스 피드 조회 (+ 리액션 집계)
+ * 클래스 피드 조회 (+ 리액션 집계).
+ * 본인이 해당 클래스에 속한 담당 교사 또는 승인된 학생 또는 admin일 때만.
  */
 export async function getClassFeed(
   classId: string
@@ -65,6 +81,34 @@ export async function getClassFeed(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+
+    // 권한 확인
+    const { data: cls } = await admin
+      .from('classes')
+      .select('teacher_id')
+      .eq('id', classId)
+      .maybeSingle()
+    let allowed = cls?.teacher_id === user.id
+    if (!allowed) {
+      const { data: enr } = await admin
+        .from('class_enrollments')
+        .select('status')
+        .eq('class_id', classId)
+        .eq('student_id', user.id)
+        .maybeSingle()
+      if (enr?.status === 'approved') allowed = true
+    }
+    if (!allowed) {
+      // admin 체크
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (profile?.role === 'admin') allowed = true
+    }
+    if (!allowed) return { error: '이 클래스 피드를 조회할 권한이 없습니다.' }
+
     const { data: feed } = await admin
       .from('activity_feed')
       .select('id, user_id, action_type, detail, created_at')

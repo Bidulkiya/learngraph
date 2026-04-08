@@ -20,7 +20,7 @@ export default async function TeacherDashboard() {
   const [{ data }, classesRes, annRes, schoolsRes] = await Promise.all([
     getTeacherDashboardData(profile.id),
     getMyClasses(),
-    getAnnouncements(),
+    getAnnouncements(undefined, { unreadOnly: true }),
     getMySchoolMemberships(),
   ])
   const myClasses = (classesRes.data ?? []).map(c => ({ id: c.id, name: c.name }))

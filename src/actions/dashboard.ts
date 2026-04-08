@@ -21,13 +21,29 @@ export interface TeacherDashboardData {
 
 /**
  * Fetch teacher dashboard data (admin client — RLS bypass).
- * Only run in Server Components after getCurrentProfile() auth.
+ * 보안: 호출자가 teacherId 본인이거나 admin인지 검증.
  */
 export async function getTeacherDashboardData(
   teacherId: string
 ): Promise<{ data?: TeacherDashboardData; error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+
+    // 본인이거나 admin만 접근 가능
+    if (user.id !== teacherId) {
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (profile?.role !== 'admin') {
+        return { error: '다른 교사의 데이터에 접근할 수 없습니다.' }
+      }
+    }
 
     // 1. Teacher's skill trees
     const { data: trees } = await admin
@@ -254,7 +270,36 @@ export async function getStudentDashboardData(
   studentId: string
 ): Promise<{ data?: StudentDashboardData; error?: string }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
     const admin = createAdminClient()
+
+    // 본인이거나, 이 학생의 클래스 담당 교사이거나, admin만 허용
+    if (user.id !== studentId) {
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      let allowed = profile?.role === 'admin'
+      if (!allowed && profile?.role === 'teacher') {
+        // 이 학생이 내 클래스에 속해있는지 확인
+        const { data: enrollments } = await admin
+          .from('class_enrollments')
+          .select('class_id, classes!inner(teacher_id)')
+          .eq('student_id', studentId)
+          .eq('status', 'approved')
+        const hasAccess = enrollments?.some(e => {
+          const cls = Array.isArray(e.classes) ? e.classes[0] : e.classes
+          return cls?.teacher_id === user.id
+        })
+        if (hasAccess) allowed = true
+      }
+      if (!allowed) return { error: '다른 학생의 데이터에 접근할 수 없습니다.' }
+    }
 
     const { data: profile } = await admin
       .from('profiles')

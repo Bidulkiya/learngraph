@@ -41,12 +41,12 @@ export default function SignupPage() {
 
       const supabase = createBrowserClient()
 
-      // signUp with user metadata — DB trigger will auto-create profiles row
-      // 이메일 확인 설정:
-      // 개발 환경에서는 Supabase Dashboard → Authentication → Settings에서
-      // "Confirm email" 옵션을 끄면 바로 로그인 가능.
-      // 프로덕션에서는 이메일 확인을 켜고 callback route로 처리.
-      const { error: signUpError } = await supabase.auth.signUp({
+      // signUp with user metadata — DB trigger will auto-create profiles row.
+      // emailRedirectTo: 사용자가 이메일의 인증 링크 클릭 시 돌아올 URL.
+      // Supabase Dashboard → Authentication → URL Configuration의
+      // Redirect URLs에도 동일 주소가 등록되어 있어야 한다.
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -54,6 +54,7 @@ export default function SignupPage() {
             name: name.trim(),
             role,
           },
+          emailRedirectTo: `${appUrl}/callback?next=/login?verified=true`,
         },
       })
 
@@ -72,7 +73,16 @@ export default function SignupPage() {
         return
       }
 
-      router.push("/login?registered=true")
+      // Supabase는 이메일 확인이 꺼져 있으면 session을 바로 발급.
+      // 확인이 켜져 있으면 session은 null이고 이메일 인증이 필요.
+      if (signUpData.session) {
+        // 이메일 확인이 꺼진 환경 — 바로 대시보드로
+        window.location.href = `/${role}`
+        return
+      }
+
+      // 이메일 확인이 켜져 있음 — verify 페이지로 이동
+      router.push(`/verify?email=${encodeURIComponent(email)}`)
     } catch {
       setError("회원가입 중 오류가 발생했습니다. 다시 시도해주세요.")
       setLoading(false)

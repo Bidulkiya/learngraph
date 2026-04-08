@@ -17,6 +17,20 @@ export async function analyzeStudentGroups(
 
     const admin = createAdminClient()
 
+    // 권한 확인: 담당 교사 또는 스쿨 소유자(admin)만
+    const { data: cls } = await admin
+      .from('classes')
+      .select('teacher_id, school_id')
+      .eq('id', classId)
+      .maybeSingle()
+    if (!cls) return { error: '클래스를 찾을 수 없습니다.' }
+    let allowed = cls.teacher_id === user.id
+    if (!allowed && cls.school_id) {
+      const { data: school } = await admin.from('schools').select('created_by').eq('id', cls.school_id).maybeSingle()
+      if (school?.created_by === user.id) allowed = true
+    }
+    if (!allowed) return { error: '이 클래스를 분석할 권한이 없습니다.' }
+
     // 클래스 학생 목록
     const { data: enrollments } = await admin
       .from('class_enrollments')
@@ -75,6 +89,17 @@ export async function analyzeBottlenecks(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+
+    // 권한: 스쿨 소유자만
+    const { data: school } = await admin
+      .from('schools')
+      .select('created_by')
+      .eq('id', schoolId)
+      .maybeSingle()
+    if (!school) return { error: '스쿨을 찾을 수 없습니다.' }
+    if (school.created_by !== user.id) {
+      return { error: '이 스쿨을 분석할 권한이 없습니다.' }
+    }
 
     // 스쿨의 모든 클래스
     const { data: classes } = await admin
@@ -161,6 +186,17 @@ export async function getTeacherActivity(
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
+
+    // 권한: 스쿨 소유자만
+    const { data: school } = await admin
+      .from('schools')
+      .select('created_by')
+      .eq('id', schoolId)
+      .maybeSingle()
+    if (!school) return { error: '스쿨을 찾을 수 없습니다.' }
+    if (school.created_by !== user.id) {
+      return { error: '이 스쿨의 교사 활동을 조회할 권한이 없습니다.' }
+    }
 
     // 스쿨 소속 교사들
     const { data: members } = await admin

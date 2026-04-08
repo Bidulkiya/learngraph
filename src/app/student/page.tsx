@@ -24,7 +24,7 @@ export default async function StudentDashboard() {
     getTodayMissions(),
     getMyAchievements(),
     getTodayReviews(),
-    getAnnouncements(),
+    getAnnouncements(undefined, { unreadOnly: true }),
     getMyFeed(),
   ])
 

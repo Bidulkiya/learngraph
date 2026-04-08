@@ -25,6 +25,22 @@ export async function transcribeRecording(
     const duration = Number(formData.get('duration') ?? 0)
     if (!file) return { error: '녹음 파일이 없습니다.' }
 
+    // 파일 크기 제한: 25MB (Whisper API 제한 25MB)
+    if (file.size > 25 * 1024 * 1024) {
+      return { error: '파일 크기는 25MB 이하여야 합니다.' }
+    }
+
+    // 교사/운영자만 녹음 가능
+    const admin0 = createAdminClient()
+    const { data: profile } = await admin0
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
+      return { error: '교사만 수업 녹음을 저장할 수 있습니다.' }
+    }
+
     // OpenAI Whisper 호출
     const transcription = await openaiClient.audio.transcriptions.create({
       file,
@@ -38,7 +54,7 @@ export async function transcribeRecording(
     }
 
     // DB 저장
-    const admin = createAdminClient()
+    const admin = admin0
     const { data: recording, error: insertErr } = await admin
       .from('lesson_recordings')
       .insert({
@@ -72,11 +88,13 @@ export async function summarizeLesson(
     const admin = createAdminClient()
     const { data: recording } = await admin
       .from('lesson_recordings')
-      .select('transcript')
+      .select('transcript, teacher_id')
       .eq('id', recordingId)
       .single()
 
-    if (!recording?.transcript) return { error: '전사 내용이 없습니다.' }
+    if (!recording) return { error: '녹음을 찾을 수 없습니다.' }
+    if (recording.teacher_id !== user.id) return { error: '이 녹음에 접근할 권한이 없습니다.' }
+    if (!recording.transcript) return { error: '전사 내용이 없습니다.' }
 
     const { object: summary } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
@@ -111,11 +129,13 @@ export async function generateQuizFromRecording(
     const admin = createAdminClient()
     const { data: recording } = await admin
       .from('lesson_recordings')
-      .select('transcript')
+      .select('transcript, teacher_id')
       .eq('id', recordingId)
       .single()
 
-    if (!recording?.transcript) return { error: '전사 내용이 없습니다.' }
+    if (!recording) return { error: '녹음을 찾을 수 없습니다.' }
+    if (recording.teacher_id !== user.id) return { error: '이 녹음에 접근할 권한이 없습니다.' }
+    if (!recording.transcript) return { error: '전사 내용이 없습니다.' }
 
     // 녹음 내용 기반으로 퀴즈 생성
     const { object: quiz } = await generateObject({

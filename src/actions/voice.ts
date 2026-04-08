@@ -18,6 +18,10 @@ export async function transcribeAudio(
 
     const file = formData.get('audio') as File | null
     if (!file) return { error: '음성 파일이 없습니다.' }
+    // 파일 크기 제한: 25MB (Whisper API 제한)
+    if (file.size > 25 * 1024 * 1024) {
+      return { error: '음성 파일은 25MB 이하여야 합니다.' }
+    }
 
     const transcription = await openaiClient.audio.transcriptions.create({
       file,

@@ -3,6 +3,12 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function isUuid(v: string): boolean {
+  return UUID_RE.test(v)
+}
+
 export interface DirectMessage {
   id: string
   sender_id: string
@@ -32,6 +38,9 @@ export async function sendMessage(
     if (!user) return { error: '인증이 필요합니다.' }
 
     if (!content.trim()) return { error: '메시지 내용을 입력해주세요.' }
+    if (content.length > 2000) return { error: '메시지가 너무 깁니다 (최대 2000자).' }
+    if (!isUuid(receiverId)) return { error: '유효하지 않은 수신자 ID입니다.' }
+    if (receiverId === user.id) return { error: '자기 자신에게 메시지를 보낼 수 없습니다.' }
 
     const admin = createAdminClient()
 
@@ -87,6 +96,9 @@ export async function getConversation(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // Injection 방어: UUID 형식만 허용
+    if (!isUuid(otherUserId)) return { error: '유효하지 않은 사용자 ID입니다.' }
 
     const admin = createAdminClient()
     const { data: messages } = await admin
@@ -290,6 +302,7 @@ export async function markConversationRead(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+    if (!isUuid(otherUserId)) return { error: '유효하지 않은 사용자 ID입니다.' }
 
     const admin = createAdminClient()
     await admin
