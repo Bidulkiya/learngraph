@@ -140,25 +140,28 @@ export async function getMyGroups(): Promise<{ data?: StudyGroup[]; error?: stri
       .in('id', classIds)
     const classMap = new Map(classes?.map(c => [c.id, c.name]) ?? [])
 
-    const result: StudyGroup[] = await Promise.all(
-      groups.map(async g => {
-        const { count } = await admin
-          .from('study_group_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('group_id', g.id)
+    // ✅ N+1 최적화: 그룹별 count → 1번의 IN 쿼리 + JS Map 집계
+    const groupIds = groups.map(g => g.id)
+    const { data: allMembers } = await admin
+      .from('study_group_members')
+      .select('group_id')
+      .in('group_id', groupIds)
 
-        return {
-          id: g.id,
-          class_id: g.class_id,
-          class_name: classMap.get(g.class_id),
-          name: g.name,
-          created_by: g.created_by,
-          created_at: g.created_at,
-          member_count: count ?? 0,
-          is_member: memberSet.has(g.id),
-        }
-      })
-    )
+    const countMap = new Map<string, number>()
+    allMembers?.forEach(m => {
+      countMap.set(m.group_id, (countMap.get(m.group_id) ?? 0) + 1)
+    })
+
+    const result: StudyGroup[] = groups.map(g => ({
+      id: g.id,
+      class_id: g.class_id,
+      class_name: classMap.get(g.class_id),
+      name: g.name,
+      created_by: g.created_by,
+      created_at: g.created_at,
+      member_count: countMap.get(g.id) ?? 0,
+      is_member: memberSet.has(g.id),
+    }))
 
     return { data: result }
   } catch (err) {

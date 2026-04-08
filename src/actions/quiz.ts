@@ -256,43 +256,61 @@ export async function completeNode(
         .eq('id', user.id)
     }
 
-    // Unlock subsequent nodes
+    // ✅ Unlock subsequent nodes — N+1 → 3쿼리 + JS 집계로 최적화
+    // 1) 다음 노드 ID들 (current에서 출발하는 엣지들)
     const { data: nextEdges } = await admin
       .from('node_edges')
       .select('target_node_id')
       .eq('source_node_id', nodeId)
 
-    if (nextEdges) {
-      for (const edge of nextEdges) {
-        const { data: prereqEdges } = await admin
-          .from('node_edges')
-          .select('source_node_id')
-          .eq('target_node_id', edge.target_node_id)
+    if (nextEdges && nextEdges.length > 0) {
+      const nextNodeIds = [...new Set(nextEdges.map(e => e.target_node_id))]
 
-        if (prereqEdges) {
-          const results = await Promise.all(
-            prereqEdges.map(async (pe) => {
-              const { data } = await admin
-                .from('student_progress')
-                .select('status')
-                .eq('student_id', user.id)
-                .eq('node_id', pe.source_node_id)
-                .single()
-              return data?.status === 'completed'
-            })
-          )
+      // 2) 다음 노드들의 모든 prereq 엣지를 한 번에 IN 쿼리
+      const { data: allPrereqEdges } = await admin
+        .from('node_edges')
+        .select('source_node_id, target_node_id')
+        .in('target_node_id', nextNodeIds)
 
-          if (results.every(Boolean)) {
-            await admin
-              .from('student_progress')
-              .upsert({
-                student_id: user.id,
-                node_id: edge.target_node_id,
-                skill_tree_id: node.skill_tree_id,
-                status: 'available',
-              }, { onConflict: 'student_id,node_id' })
-          }
+      // prereq Map 구성: target → [sources...]
+      const prereqMap = new Map<string, string[]>()
+      const allPrereqSourceIds = new Set<string>()
+      allPrereqEdges?.forEach(e => {
+        if (!prereqMap.has(e.target_node_id)) prereqMap.set(e.target_node_id, [])
+        prereqMap.get(e.target_node_id)!.push(e.source_node_id)
+        allPrereqSourceIds.add(e.source_node_id)
+      })
+
+      // 3) 모든 prereq의 student_progress를 한 번에 IN 쿼리
+      const prereqIds = [...allPrereqSourceIds]
+      const { data: allProgress } = await admin
+        .from('student_progress')
+        .select('node_id, status')
+        .eq('student_id', user.id)
+        .in('node_id', prereqIds.length > 0 ? prereqIds : ['00000000-0000-0000-0000-000000000000'])
+
+      const completedSet = new Set(
+        allProgress?.filter(p => p.status === 'completed').map(p => p.node_id) ?? []
+      )
+      // 방금 완료한 노드도 추가 (DB에는 위에서 upsert했지만 캐시 일관성 보장)
+      completedSet.add(nodeId)
+
+      // 4) 각 다음 노드의 모든 prereq가 completed인지 JS에서 확인 → 한 번에 upsert
+      const toUnlock: Array<{ student_id: string; node_id: string; skill_tree_id: string; status: string }> = []
+      for (const nextId of nextNodeIds) {
+        const prereqs = prereqMap.get(nextId) ?? []
+        const allDone = prereqs.length > 0 && prereqs.every(pid => completedSet.has(pid))
+        if (allDone) {
+          toUnlock.push({
+            student_id: user.id,
+            node_id: nextId,
+            skill_tree_id: node.skill_tree_id,
+            status: 'available',
+          })
         }
+      }
+      if (toUnlock.length > 0) {
+        await admin.from('student_progress').upsert(toUnlock, { onConflict: 'student_id,node_id' })
       }
     }
 

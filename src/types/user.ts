@@ -12,9 +12,3 @@ export interface Profile {
   last_active_at: string
   created_at: string
 }
-
-export interface UserWithProfile {
-  id: string
-  email: string
-  profile: Profile
-}
