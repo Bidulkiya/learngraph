@@ -27,6 +27,16 @@ interface StudentEmotion {
 interface Props {
   classes: ClassOption[]
   defaultSkillTreeId?: string
+  /**
+   * 외부 컨텍스트 선택기에서 내려온 classId 오버라이드.
+   * null이면 내부 state/기본값 사용.
+   * 'all'(전체)도 수용: selectedOverride가 null일 때만 내부 state 사용.
+   */
+  selectedClassIdOverride?: string | null
+  /**
+   * true면 내부 드롭다운을 숨긴다 (외부 ContextSelector가 조작).
+   */
+  hideInternalSelector?: boolean
 }
 
 const moodEmoji: Record<string, string> = {
@@ -51,8 +61,16 @@ const moodColor: Record<string, string> = {
   unknown: 'bg-gray-50 text-gray-400 border-gray-200',
 }
 
-export function EmotionOverviewCard({ classes, defaultSkillTreeId }: Props) {
-  const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.id ?? '')
+export function EmotionOverviewCard({
+  classes,
+  defaultSkillTreeId,
+  selectedClassIdOverride,
+  hideInternalSelector,
+}: Props) {
+  const [internalSelectedClass, setInternalSelectedClass] = useState<string>(classes[0]?.id ?? '')
+  // 외부 오버라이드가 있으면 그걸 우선 사용 (null/빈문자열은 "첫 번째 클래스"로 fallback)
+  const selectedClass = selectedClassIdOverride ?? internalSelectedClass
+  const setSelectedClass = setInternalSelectedClass
   const [students, setStudents] = useState<StudentEmotion[]>([])
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -123,15 +141,17 @@ export function EmotionOverviewCard({ classes, defaultSkillTreeId }: Props) {
             학생 감정 현황
           </CardTitle>
           <div className="flex items-center gap-2">
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="rounded-md border bg-background px-2 py-1 text-xs"
-            >
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            {!hideInternalSelector && (
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="rounded-md border bg-background px-2 py-1 text-xs"
+              >
+                {classes.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
             {defaultSkillTreeId && (
               <Button
                 size="sm"

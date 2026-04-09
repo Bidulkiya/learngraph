@@ -11,10 +11,14 @@ import { toast } from 'sonner'
 
 interface Props {
   classes: Array<{ id: string; name: string }>
+  selectedClassIdOverride?: string | null
+  hideInternalSelector?: boolean
 }
 
-export function StudentGroupsCard({ classes }: Props) {
-  const [classId, setClassId] = useState(classes[0]?.id ?? '')
+export function StudentGroupsCard({ classes, selectedClassIdOverride, hideInternalSelector }: Props) {
+  const [internalClassId, setInternalClassId] = useState(classes[0]?.id ?? '')
+  const classId = selectedClassIdOverride ?? internalClassId
+  const setClassId = setInternalClassId
   const [loading, setLoading] = useState(false)
   const [groups, setGroups] = useState<StudentGroupsOutput | null>(null)
 
@@ -44,15 +48,17 @@ export function StudentGroupsCard({ classes }: Props) {
         ) : (
           <>
             <div className="flex gap-2">
-              <select
-                value={classId}
-                onChange={(e) => setClassId(e.target.value)}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                {classes.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              {!hideInternalSelector && (
+                <select
+                  value={classId}
+                  onChange={(e) => setClassId(e.target.value)}
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
               <Button
                 onClick={handleAnalyze}
                 disabled={loading}

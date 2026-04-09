@@ -14,6 +14,8 @@ interface ClassOption {
 
 interface Props {
   classes: ClassOption[]
+  selectedClassIdOverride?: string | null
+  hideInternalSelector?: boolean
 }
 
 const levelEmoji: Record<RiskLevel, string> = {
@@ -35,8 +37,10 @@ const levelColor: Record<RiskLevel, string> = {
   critical: 'bg-red-100 text-red-700 border-red-300',
 }
 
-export function RiskAlertCard({ classes }: Props) {
-  const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.id ?? '')
+export function RiskAlertCard({ classes, selectedClassIdOverride, hideInternalSelector }: Props) {
+  const [internalSelectedClass, setInternalSelectedClass] = useState<string>(classes[0]?.id ?? '')
+  const selectedClass = selectedClassIdOverride ?? internalSelectedClass
+  const setSelectedClass = setInternalSelectedClass
   const [alerts, setAlerts] = useState<RiskAssessment[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -85,15 +89,17 @@ export function RiskAlertCard({ classes }: Props) {
             <Badge className="bg-red-500 text-white">{alerts.length}</Badge>
           )}
         </CardTitle>
-        <select
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
-          className="rounded-md border bg-background px-2 py-1 text-xs"
-        >
-          {classes.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        {!hideInternalSelector && (
+          <select
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            className="rounded-md border bg-background px-2 py-1 text-xs"
+          >
+            {classes.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        )}
       </CardHeader>
       <CardContent>
         {loading ? (

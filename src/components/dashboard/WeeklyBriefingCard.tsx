@@ -14,10 +14,14 @@ interface ClassOption {
 
 interface Props {
   classes: ClassOption[]
+  selectedClassIdOverride?: string | null
+  hideInternalSelector?: boolean
 }
 
-export function WeeklyBriefingCard({ classes }: Props) {
-  const [selectedClass, setSelectedClass] = useState<string>(classes[0]?.id ?? '')
+export function WeeklyBriefingCard({ classes, selectedClassIdOverride, hideInternalSelector }: Props) {
+  const [internalSelectedClass, setInternalSelectedClass] = useState<string>(classes[0]?.id ?? '')
+  const selectedClass = selectedClassIdOverride ?? internalSelectedClass
+  const setSelectedClass = setInternalSelectedClass
   const [briefing, setBriefing] = useState<WeeklyBriefing | null>(null)
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -69,7 +73,7 @@ export function WeeklyBriefingCard({ classes }: Props) {
             {briefing && <span className="text-xs font-normal text-gray-500">· {weekStartFormatted} 주차</span>}
           </CardTitle>
           <div className="flex items-center gap-2">
-            {classes.length > 1 && (
+            {classes.length > 1 && !hideInternalSelector && (
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
