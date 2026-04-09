@@ -393,6 +393,15 @@ export async function completeNode(
       console.error('[completeNode] flashcard generation failed:', e)
     }
 
+    // 주간 학습 플랜 미션 자동 완료 처리 (이 노드가 이번 주 미션에 있으면)
+    try {
+      const { markWeeklyMissionsForNode, awardWeeklyBonusIfEligible } = await import('./coach')
+      await markWeeklyMissionsForNode(nodeId)
+      await awardWeeklyBonusIfEligible()
+    } catch (e) {
+      console.error('[completeNode] weekly plan mission update failed:', e)
+    }
+
     // 스킬트리 100% 완료 체크 → 인증서 자동 발급
     let certificateIssued = false
     try {

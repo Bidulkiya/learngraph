@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getStudentDashboardData } from '@/actions/dashboard'
 import { getTodayMissions } from '@/actions/missions'
 import { getMyAchievements } from '@/actions/achievements'
@@ -12,9 +13,9 @@ import { getTodayReviews } from '@/actions/reminders'
 import { getAnnouncements } from '@/actions/announcements'
 import { getMyFeed } from '@/actions/feed'
 import { getMyCertificates } from '@/actions/certificate'
-import { ProgressCard } from '@/components/dashboard/ProgressCard'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 import { WeeklyPlanCard } from '@/components/student/WeeklyPlanCard'
+import { ClickableStatCards } from '@/components/student/ClickableStatCards'
 import { ActivityFeed } from '@/components/feed/ActivityFeed'
 import { ConceptMapCard } from '@/components/dashboard/ConceptMapCard'
 import { ParentInviteCard } from '@/components/student/ParentInviteCard'
@@ -33,6 +34,30 @@ export default async function StudentDashboard() {
   // 학습 스타일 미진단 학생 → 온보딩으로
   if (!profile.learning_style) {
     redirect('/student/onboarding')
+  }
+
+  const admin = createAdminClient()
+
+  // 진도 랭킹에 사용할 primary skill tree — 학생이 approved된 클래스의
+  // 첫 published 스킬트리를 기본 선택
+  const { data: firstEnrollment } = await admin
+    .from('class_enrollments')
+    .select('class_id')
+    .eq('student_id', profile.id)
+    .eq('status', 'approved')
+    .limit(1)
+    .maybeSingle()
+  let primarySkillTreeId: string | null = null
+  if (firstEnrollment?.class_id) {
+    const { data: firstTree } = await admin
+      .from('skill_trees')
+      .select('id')
+      .eq('class_id', firstEnrollment.class_id)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    primarySkillTreeId = firstTree?.id ?? null
   }
 
   const [dashboardRes, missionsRes, achievementsRes, reviewsRes, annRes, feedRes, certsRes] = await Promise.all([
@@ -117,31 +142,16 @@ export default async function StudentDashboard() {
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <ProgressCard
-          label="내 스킬트리 진도"
-          value={`${completedNodes}/${totalNodes}`}
-          icon="TreePine"
-          iconColor="#4F6BF6"
-          progress={progressPercent}
-          subtitle={`${progressPercent}% 완료`}
-        />
-        <ProgressCard
-          label="학습 스트릭"
-          value={`${data?.streakDays ?? 0}일`}
-          icon="Flame"
-          iconColor="#F59E0B"
-          subtitle="연속 학습"
-        />
-        <ProgressCard
-          label="총 경험치"
-          value={xp}
-          icon="Trophy"
-          iconColor="#10B981"
-          subtitle={`Lv.${level}`}
-        />
-      </div>
+      {/* Stats — 클릭하여 랭킹 보기 */}
+      <ClickableStatCards
+        completedNodes={completedNodes}
+        totalNodes={totalNodes}
+        progressPercent={progressPercent}
+        streakDays={data?.streakDays ?? 0}
+        xp={xp}
+        level={level}
+        primarySkillTreeId={primarySkillTreeId}
+      />
 
       <WeeklyPlanCard />
 

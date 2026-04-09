@@ -84,16 +84,28 @@ export const conceptConnectionSchema = z.object({
 })
 export type ConceptConnectionOutput = z.infer<typeof conceptConnectionSchema>
 
-// AI 학습 코치 주간 계획
+/**
+ * AI 학습 코치 주간 계획 스키마 v2.
+ *
+ * 주요 변경:
+ * - `day`가 영문 약어 enum (mon~sun) — 프론트/백엔드 일관성
+ * - `nodes`가 `{ id, title }` 배열 — weekly_plan_missions 테이블에 바로 매핑
+ *   → 학생이 해당 노드의 퀴즈를 풀면 미션 완료 자동 추적
+ */
 export const weeklyPlanSchema = z.object({
   plan: z.array(z.object({
-    day: z.string().describe('요일 (월/화/수/목/금/토/일)'),
-    nodes: z.array(z.string()).describe('해당 요일에 학습할 노드 제목 목록'),
+    day: z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])
+      .describe('요일 약어 (mon/tue/wed/thu/fri/sat/sun)'),
+    nodes: z.array(z.object({
+      id: z.string().describe('available 노드 목록 중 하나의 노드 ID'),
+      title: z.string().describe('해당 노드의 제목'),
+    })).describe('해당 요일에 학습할 노드 1-3개 — 제공된 available 노드 목록에서만 선택'),
     reason: z.string().describe('이 요일에 이 노드를 학습하는 이유'),
-  })).describe('주간 학습 계획'),
+  })).describe('주간 학습 계획 — 월~금은 반드시 포함, 토/일은 선택'),
   motivation: z.string().describe('동기부여 메시지 (한 문단)'),
 })
 export type WeeklyPlanOutput = z.infer<typeof weeklyPlanSchema>
+export type WeeklyPlanDay = z.infer<typeof weeklyPlanSchema>['plan'][number]['day']
 
 // 학생 그룹 분석
 export const studentGroupsSchema = z.object({
