@@ -385,6 +385,39 @@ export async function updateNodePermissions(
 }
 
 /**
+ * 교사가 자신의 학습 문서 파일(PDF/TXT/DOCX 대신 TXT) 또는 직접 입력한 텍스트를 업로드.
+ * 평문을 HTML로 변환하여 learning_content에 저장한다.
+ *
+ * 현재 지원: TXT 텍스트 (pdf-parse는 별도 경로에서 PDF 추출 후 text 파라미터로 전달 권장)
+ */
+export async function uploadLearningDoc(
+  nodeId: string,
+  rawText: string,
+): Promise<{ data?: { styleAnalyzed: boolean }; error?: string }> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
+    if (!rawText.trim()) return { error: '학습 문서 내용을 입력해주세요.' }
+    if (rawText.length > 50000) return { error: '학습 문서가 너무 깁니다 (최대 50000자).' }
+
+    // 동적 import — 서버/클라이언트 양쪽에서 쓸 수 있는 순수 유틸
+    const { plainTextToHtml, isHtmlDoc } = await import('@/lib/learning-doc-utils')
+
+    // 이미 HTML이면 그대로, 아니면 변환
+    const html = isHtmlDoc(rawText) ? rawText : plainTextToHtml(rawText)
+
+    // saveLearningDocManually에 위임 — 권한 체크 + 스타일 분석까지 재사용
+    return await saveLearningDocManually(nodeId, html)
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
  * 학생/교사가 특정 노드의 학습 문서 + 권한 조회
  */
 export async function getNodeLearningDoc(nodeId: string): Promise<{

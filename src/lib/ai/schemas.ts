@@ -170,14 +170,15 @@ export type EmotionReportOutput = z.infer<typeof emotionReportSchema>
 
 // 2. 스킬트리 사전 시뮬레이션
 export const simulationSchema = z.object({
-  overall_pass_rate: z.number().describe('전체 예상 통과율 0-100 정수'),
+  overall_pass_rate: z.number().describe('전체 예상 통과율 0.0-100.0 (소수점 1자리 허용). 예: 73.5'),
   bottleneck_nodes: z.array(z.object({
     node_title: z.string().describe('병목 노드 제목'),
-    predicted_pass_rate: z.number().describe('예상 통과율 0-100'),
-    cause: z.string().describe('병목 원인 분석 (한국어 1-2문장)'),
+    predicted_pass_rate: z.number().describe('예상 통과율 0.0-100.0 (소수점 1자리). 예: 42.8'),
+    cause: z.string().describe('병목 원인 분석 (한국어 2-3문장). 매우 구체적으로 작성: 관련 선수 노드 이름, 빠진 개념, 난이도 점프 폭, 퀴즈 난이도, 학습 문서 유무 등을 명시'),
     suggestion: z.string().describe('개선 제안 (한국어 1-2문장)'),
+    gap_type: z.enum(['prerequisite_missing', 'difficulty_jump', 'content_gap', 'quiz_mismatch', 'abstract_concept']).describe('병목 유형: prerequisite_missing=선수지식 부족, difficulty_jump=난이도 급상승, content_gap=개념 공백, quiz_mismatch=퀴즈 난이도 불일치, abstract_concept=추상적 개념'),
   })).describe('병목 후보 노드 (3-5개)'),
-  difficulty_curve: z.string().describe('난이도 흐름 평가 (한국어 2-3문장)'),
+  difficulty_curve: z.string().describe('난이도 흐름 평가 (한국어 2-3문장). 난이도 점프가 있는 노드 쌍을 구체적으로 지적'),
   overall_feedback: z.string().describe('스킬트리 전체에 대한 종합 평가 (한국어 2-3문장)'),
 })
 export type SimulationOutput = z.infer<typeof simulationSchema>

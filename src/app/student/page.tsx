@@ -38,29 +38,18 @@ export default async function StudentDashboard() {
 
   const admin = createAdminClient()
 
-  // 진도 랭킹에 사용할 primary skill tree — 학생이 approved된 클래스의
-  // 첫 published 스킬트리를 기본 선택
-  const { data: firstEnrollment } = await admin
-    .from('class_enrollments')
-    .select('class_id')
-    .eq('student_id', profile.id)
-    .eq('status', 'approved')
-    .limit(1)
-    .maybeSingle()
-  let primarySkillTreeId: string | null = null
-  if (firstEnrollment?.class_id) {
-    const { data: firstTree } = await admin
-      .from('skill_trees')
-      .select('id')
-      .eq('class_id', firstEnrollment.class_id)
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    primarySkillTreeId = firstTree?.id ?? null
-  }
-
-  const [dashboardRes, missionsRes, achievementsRes, reviewsRes, annRes, feedRes, certsRes] = await Promise.all([
+  // 모든 주요 쿼리를 단일 Promise.all로 병렬화.
+  // firstEnrollment는 다른 쿼리와 독립적이므로 같이 파이프라인에 실어서 총 대기시간 단축.
+  const [
+    dashboardRes,
+    missionsRes,
+    achievementsRes,
+    reviewsRes,
+    annRes,
+    feedRes,
+    certsRes,
+    firstEnrollmentRes,
+  ] = await Promise.all([
     getStudentDashboardData(profile.id),
     getTodayMissions(),
     getMyAchievements(),
@@ -68,7 +57,29 @@ export default async function StudentDashboard() {
     getAnnouncements(undefined, { unreadOnly: true }),
     getMyFeed(),
     getMyCertificates(),
+    admin
+      .from('class_enrollments')
+      .select('class_id')
+      .eq('student_id', profile.id)
+      .eq('status', 'approved')
+      .limit(1)
+      .maybeSingle(),
   ])
+
+  // 진도 랭킹용 primary skill tree — firstEnrollment 의존이므로 순차
+  let primarySkillTreeId: string | null = null
+  if (firstEnrollmentRes.data?.class_id) {
+    const { data: firstTree } = await admin
+      .from('skill_trees')
+      .select('id')
+      .eq('class_id', firstEnrollmentRes.data.class_id)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    primarySkillTreeId = firstTree?.id ?? null
+  }
+
   const certificates = certsRes.data ?? []
 
   const data = dashboardRes.data

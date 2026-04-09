@@ -21,26 +21,25 @@ export default async function TeacherDashboard() {
   const profile = await getCurrentProfile()
   if (!profile) return null
 
-  const [{ data }, classesRes, annRes, schoolsRes] = await Promise.all([
+  // 모든 최상위 쿼리를 단일 Promise.all로 병렬화 — firstTree 조회도 함께
+  const admin = createAdminClient()
+  const [{ data }, classesRes, annRes, schoolsRes, firstTreeRes] = await Promise.all([
     getTeacherDashboardData(profile.id),
     getMyClasses(),
     getAnnouncements(undefined, { unreadOnly: true }),
     getMySchoolMemberships(),
+    admin
+      .from('skill_trees')
+      .select('id')
+      .eq('created_by', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
   const myClasses = (classesRes.data ?? []).map(c => ({ id: c.id, name: c.name }))
   const announcements = (annRes.data ?? []).filter(a => a.target_role === 'all' || a.target_role === 'teacher')
   const mySchools = (schoolsRes.data ?? []).filter(s => s.role === 'teacher' && s.status === 'approved')
-
-  // 본인 첫 스킬트리 ID — 감정 분석 대상
-  const admin = createAdminClient()
-  const { data: firstTree } = await admin
-    .from('skill_trees')
-    .select('id')
-    .eq('created_by', profile.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  const defaultSkillTreeId = firstTree?.id as string | undefined
+  const defaultSkillTreeId = firstTreeRes.data?.id as string | undefined
 
   return (
     <div className="space-y-6">

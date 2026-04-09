@@ -458,6 +458,189 @@ async function assertNodeTeacherAccess(
  * Get quizzes for a node (for teacher quiz management).
  * 교사 또는 해당 노드에 접근 권한이 있는 학생.
  */
+// ============================================
+// 교사 퀴즈 관리 페이지 — 계층 데이터
+// ============================================
+
+/**
+ * 교사의 클래스 → 스킬트리 → 노드(난이도별 정렬) 계층 데이터.
+ * 새 퀴즈 관리 UI의 Dialog 팝업에서 사용.
+ *
+ * 구조:
+ * - 교사의 모든 클래스 (classes where teacher_id = me)
+ * - 각 클래스의 published 스킬트리 (class_id 또는 created_by 조건)
+ * - 각 스킬트리의 모든 노드 (order_index + difficulty 포함)
+ *
+ * 추가로 class_id가 없는 "개인 스킬트리"(created_by=me, class_id IS NULL)는
+ * "클래스 미지정" 가상 그룹에 모읍니다.
+ */
+export interface TeacherQuizHierarchyNode {
+  id: string
+  title: string
+  difficulty: number
+  quiz_count: number
+}
+export interface TeacherQuizHierarchyTree {
+  id: string
+  title: string
+  nodes: TeacherQuizHierarchyNode[]
+}
+export interface TeacherQuizHierarchyClass {
+  id: string | null // null = 클래스 미지정 (개인)
+  name: string
+  school_name?: string | null
+  trees: TeacherQuizHierarchyTree[]
+}
+
+export async function getTeacherClassesWithTrees(): Promise<{
+  data?: TeacherQuizHierarchyClass[]
+  error?: string
+}> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const admin = createAdminClient()
+
+    // 1. 교사 역할 확인
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
+      return { error: '교사만 접근할 수 있습니다.' }
+    }
+
+    // 2. 내 클래스 목록
+    const { data: classes } = await admin
+      .from('classes')
+      .select('id, name, school_id')
+      .eq('teacher_id', user.id)
+      .order('created_at', { ascending: false })
+
+    const classIds = (classes ?? []).map(c => c.id)
+
+    // 3. 스쿨 이름 매핑
+    const schoolIds = (classes ?? [])
+      .map(c => c.school_id)
+      .filter((s): s is string => !!s)
+    const schoolNameMap = new Map<string, string>()
+    if (schoolIds.length > 0) {
+      const { data: schools } = await admin
+        .from('schools')
+        .select('id, name')
+        .in('id', schoolIds)
+      schools?.forEach(s => schoolNameMap.set(s.id, s.name))
+    }
+
+    // 4. 내가 만든 모든 스킬트리 + 클래스에 배정된 스킬트리 병렬 조회
+    const [ownTreesRes, classTreesRes] = await Promise.all([
+      admin
+        .from('skill_trees')
+        .select('id, title, class_id')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false }),
+      classIds.length > 0
+        ? admin
+            .from('skill_trees')
+            .select('id, title, class_id')
+            .in('class_id', classIds)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] as Array<{ id: string; title: string; class_id: string | null }> }),
+    ])
+
+    // 중복 제거 (created_by=me && class_id in myClasses 는 두 쿼리에 모두 잡힘)
+    const treeById = new Map<string, { id: string; title: string; class_id: string | null }>()
+    ;(ownTreesRes.data ?? []).forEach(t => treeById.set(t.id, t))
+    ;(classTreesRes.data ?? []).forEach(t => treeById.set(t.id, t))
+    const allTrees = Array.from(treeById.values())
+
+    if (allTrees.length === 0) {
+      return { data: (classes ?? []).map(c => ({
+        id: c.id,
+        name: c.name,
+        school_name: c.school_id ? schoolNameMap.get(c.school_id) ?? null : null,
+        trees: [],
+      })) }
+    }
+
+    const allTreeIds = allTrees.map(t => t.id)
+
+    // 5. 모든 노드 조회
+    const { data: nodes } = await admin
+      .from('nodes')
+      .select('id, title, difficulty, order_index, skill_tree_id')
+      .in('skill_tree_id', allTreeIds)
+      .order('order_index')
+
+    // 6. 퀴즈 수 집계 (노드별)
+    const nodeIds = (nodes ?? []).map(n => n.id)
+    const quizCountByNode = new Map<string, number>()
+    if (nodeIds.length > 0) {
+      const { data: quizzes } = await admin
+        .from('quizzes')
+        .select('node_id')
+        .in('node_id', nodeIds)
+      quizzes?.forEach(q => {
+        quizCountByNode.set(q.node_id, (quizCountByNode.get(q.node_id) ?? 0) + 1)
+      })
+    }
+
+    // 7. 트리별 노드 그룹화
+    const nodesByTree = new Map<string, TeacherQuizHierarchyNode[]>()
+    ;(nodes ?? []).forEach(n => {
+      const list = nodesByTree.get(n.skill_tree_id) ?? []
+      list.push({
+        id: n.id,
+        title: n.title,
+        difficulty: n.difficulty ?? 1,
+        quiz_count: quizCountByNode.get(n.id) ?? 0,
+      })
+      nodesByTree.set(n.skill_tree_id, list)
+    })
+
+    // 8. 클래스별 그룹화
+    const result: TeacherQuizHierarchyClass[] = []
+    for (const cls of classes ?? []) {
+      const classTrees = allTrees
+        .filter(t => t.class_id === cls.id)
+        .map(t => ({
+          id: t.id,
+          title: t.title,
+          nodes: nodesByTree.get(t.id) ?? [],
+        }))
+      result.push({
+        id: cls.id,
+        name: cls.name,
+        school_name: cls.school_id ? schoolNameMap.get(cls.school_id) ?? null : null,
+        trees: classTrees,
+      })
+    }
+
+    // 9. "클래스 미지정" 가상 그룹 — created_by=me 인데 class_id가 null인 개인 스킬트리
+    const personalTrees = allTrees
+      .filter(t => !t.class_id)
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        nodes: nodesByTree.get(t.id) ?? [],
+      }))
+    if (personalTrees.length > 0) {
+      result.push({
+        id: null,
+        name: '클래스 미지정 (개인 스킬트리)',
+        school_name: null,
+        trees: personalTrees,
+      })
+    }
+
+    return { data: result }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 export async function getQuizzesForNode(
   nodeId: string
 ): Promise<{ data?: Quiz[]; error?: string }> {

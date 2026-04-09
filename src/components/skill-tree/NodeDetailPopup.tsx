@@ -29,85 +29,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { saveMemo, getMemo } from '@/actions/memo'
 import { getConceptConnections } from '@/actions/recommendations'
 import { getNodeLearningDoc } from '@/actions/learning-doc'
+import { buildPrintableHtml, isHtmlDoc } from '@/lib/learning-doc-utils'
 import { FlashcardDeck } from './FlashcardDeck'
 import { Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import type { D3Node } from '@/lib/d3/skill-tree-layout'
 import type { ConceptConnectionOutput } from '@/lib/ai/schemas'
-
-/**
- * 콘텐츠가 HTML인지 마크다운인지 감지.
- * 신규 학습 문서는 HTML, 구버전은 마크다운일 수 있어 양쪽을 자연스럽게 처리.
- */
-function isHtmlDoc(content: string): boolean {
-  const trimmed = content.trimStart()
-  return trimmed.startsWith('<') && /<(div|html|body|table|h[1-6]|p|section|article)/i.test(trimmed)
-}
-
-/**
- * 학습 문서를 다운로드/프린트용 self-contained HTML 문서로 변환.
- */
-function buildPrintableHtml(title: string, content: string): string {
-  const safeTitle = title.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  // HTML이면 그대로, 마크다운이면 ReactMarkdown 없이 간단 변환
-  let body = content
-  if (!isHtmlDoc(content)) {
-    // 간단 마크다운 → HTML 변환 (구버전 호환)
-    const lines = content.replace(/</g, '&lt;').replace(/>/g, '&gt;').split('\n')
-    const out: string[] = []
-    let inList = false
-    for (const line of lines) {
-      if (/^### (.+)$/.test(line)) {
-        if (inList) { out.push('</ul>'); inList = false }
-        out.push(line.replace(/^### (.+)$/, '<h3>$1</h3>'))
-      } else if (/^## (.+)$/.test(line)) {
-        if (inList) { out.push('</ul>'); inList = false }
-        out.push(line.replace(/^## (.+)$/, '<h2>$1</h2>'))
-      } else if (/^# (.+)$/.test(line)) {
-        if (inList) { out.push('</ul>'); inList = false }
-        out.push(line.replace(/^# (.+)$/, '<h1>$1</h1>'))
-      } else if (/^- (.+)$/.test(line)) {
-        if (!inList) { out.push('<ul>'); inList = true }
-        out.push(line.replace(/^- (.+)$/, '<li>$1</li>'))
-      } else if (line.trim() === '') {
-        if (inList) { out.push('</ul>'); inList = false }
-        out.push('')
-      } else {
-        if (inList) { out.push('</ul>'); inList = false }
-        const formatted = line
-          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        out.push(`<p>${formatted}</p>`)
-      }
-    }
-    if (inList) out.push('</ul>')
-    body = out.join('\n')
-  }
-  return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8" />
-<title>${safeTitle} - 학습 문서</title>
-<style>
-  body { font-family: -apple-system, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 820px; margin: 40px auto; padding: 24px; line-height: 1.65; color: #1f2937; background: #fff; }
-  * { box-sizing: border-box; }
-  h1 { color: #4F6BF6; border-bottom: 2px solid #4F6BF6; padding-bottom: 8px; margin-top: 0; }
-  h2 { color: #1f2937; margin-top: 28px; }
-  h3 { color: #4F6BF6; margin-top: 20px; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { padding: 8px 10px; }
-  ul, ol { padding-left: 22px; }
-  p { margin: 12px 0; }
-  .footer { margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 12px; font-size: 11px; color: #9ca3af; text-align: center; }
-  @media print { body { margin: 0; max-width: none; } .footer { page-break-before: avoid; } }
-</style>
-</head>
-<body>
-${body}
-<div class="footer">NodeBloom — AI 기반 학습 문서</div>
-</body>
-</html>`
-}
 
 interface NodeDetailPopupProps {
   open: boolean
