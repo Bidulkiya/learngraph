@@ -1,357 +1,312 @@
 # NodeBloom 개발 Phase 가이드
 
-> Claude Code가 각 Phase에서 무엇을 만들어야 하는지, 완료 기준이 무엇인지 참고하는 문서.
-> 각 Phase는 순서대로 진행하며, 이전 Phase의 결과물이 다음 Phase의 전제 조건이다.
+> 프로젝트 개발 단계별 로드맵. 각 Phase는 순차 진행하며, 이전 Phase의 결과물이 다음 Phase의 전제 조건이 됩니다.
 
 ---
 
-## Phase 1: 프로젝트 초기화 + 기반 세팅
+## 전체 Phase 요약
 
-### 목표
-프로젝트가 로컬에서 실행되고, DB 테이블이 생성되고, Vercel 자동 배포가 작동하는 상태.
-
-### 작업 목록
-1. Next.js 프로젝트 생성 (App Router + TypeScript + Tailwind + src 디렉토리)
-2. 핵심 의존성 설치
-   - `ai @ai-sdk/anthropic @ai-sdk/openai zod`
-   - `@supabase/supabase-js @supabase/ssr`
-   - `d3 @types/d3 recharts`
-   - `lucide-react class-variance-authority clsx tailwind-merge`
-3. shadcn/ui 초기화 + 기본 컴포넌트 추가 (button, card, input, label, dialog, tabs, badge, progress, toast, sheet, select, separator, avatar, dropdown-menu)
-4. Supabase 프로젝트 생성 + pgvector 확장 활성화
-5. DB 마이그레이션 실행 (DEVELOPMENT.md의 전체 스키마 SQL)
-6. 환경변수 설정 (.env.local + .env.example)
-7. Supabase 클라이언트 설정 (src/lib/supabase/server.ts, client.ts)
-8. 기본 레이아웃 생성 (Sidebar + Header 컴포넌트)
-9. 3자 역할별 라우트 디렉토리 생성 (/teacher, /student, /admin)
-10. GitHub 레포 생성 + 초기 커밋 + Vercel 연결
-11. docs/ 디렉토리에 기획서 PDF + 개발 문서 포함
-
-### 완료 기준
-- [ ] `npm run dev` → localhost:3000에서 기본 레이아웃이 보인다
-- [ ] `npm run build` → 에러 없이 빌드 성공
-- [ ] Supabase 대시보드에서 모든 테이블이 생성되어 있다
-- [ ] Vercel에서 자동 배포가 작동한다
-- [ ] .env.example이 커밋되어 있고, .env.local은 .gitignore에 포함
-
-### 이 Phase에서 생성되는 파일
-```
-src/app/layout.tsx
-src/app/page.tsx
-src/app/teacher/layout.tsx
-src/app/teacher/page.tsx
-src/app/student/layout.tsx
-src/app/student/page.tsx
-src/app/admin/layout.tsx
-src/app/admin/page.tsx
-src/components/layout/Sidebar.tsx
-src/components/layout/Header.tsx
-src/lib/supabase/server.ts
-src/lib/supabase/client.ts
-.env.local
-.env.example
-```
+| Phase | 내용 | 완료 |
+|---|---|---|
+| **1** | 프로젝트 초기화 + 기반 세팅 | ✅ |
+| **2** | 인증 + 역할 시스템 (3자 분리) | ✅ |
+| **3** | 스킬트리 AI 생성 파이프라인 | ✅ |
+| **4** | 스킬트리 D3 시각화 + 편집 | ✅ |
+| **5** | 퀴즈 엔진 + 학생 학습 플로우 | ✅ |
+| **6** | AI 튜터 + 3자 대시보드 | ✅ |
+| **7-A** | 멀티 스쿨/클래스 시스템 + 데모 모드 | ✅ |
+| **7-B** | 학생 경험 강화 (미션 · 배지 · 오답노트 · 메모 · 타이머 · 복습 · 노드 팝업) | ✅ |
+| **7-C** | 교사/운영자/AI 강화 (녹음 · 소크라틱 · 힌트 · 코치 · 메신저 · 병목 분석 등 13개) | ✅ |
+| **7-D** | 소셜 + UI/UX 폴리싱 + 제출 준비 | ✅ |
+| **8** | 특색 기능 5개 (감정 · 시뮬레이션 · 크로스커리큘럼 · 적응형 복습 · 이탈 경보) | ✅ |
+| **9** | 고급 기능 6개 (학습 스타일 · 노력 힌트 · 학부모 대시 · 브리핑 · 플래시카드 · 인증서) | ✅ |
+| **10** | 스킬트리 UI 글래스모피즘 재디자인 | ✅ |
+| **11** | 브랜드 전환 (LearnGraph → NodeBloom) | ✅ |
 
 ---
 
-## Phase 2: 인증 + 역할 시스템
+## Phase 1 — 프로젝트 초기화 + 기반 세팅
 
-### 목표
-3종 계정(교사/학생/운영자)으로 각각 로그인하면 역할에 맞는 대시보드로 이동하는 상태.
+**목표**: Next.js 16 + Supabase + 기본 의존성으로 빈 프로젝트 시작.
 
-### 전제 조건
-- Phase 1 완료 (Supabase 연결 + 기본 레이아웃)
+**작업**:
+- `create-next-app` (App Router + TypeScript + Tailwind + ESLint + src/)
+- Supabase 프로젝트 생성, Auth 활성화
+- shadcn/ui 초기화
+- 환경 변수 (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, Supabase URL/Key)
+- 루트 레이아웃 + 기본 메타데이터
 
-### 작업 목록
-1. 회원가입 페이지 (src/app/(auth)/signup/page.tsx)
-   - 이름, 이메일, 비밀번호, 역할 선택 (teacher/student/admin)
-   - Supabase Auth signUp + profiles 테이블 insert
-2. 로그인 페이지 (src/app/(auth)/login/page.tsx)
-   - 이메일/비밀번호 로그인
-   - 로그인 후 역할에 따라 리디렉트 (/teacher, /student, /admin)
-3. 미들웨어 (middleware.ts)
-   - 비로그인 → /login 리디렉트
-   - 역할 불일치 → 올바른 역할 라우트로 리디렉트
-4. RLS 정책 적용 (Supabase SQL Editor에서 실행)
-5. 로그아웃 기능
-6. RoleGuard 컴포넌트 (src/components/layout/RoleGuard.tsx)
-7. 각 역할별 대시보드에 환영 메시지 + 역할 표시
-
-### 완료 기준
-- [ ] 교사 계정으로 가입 → 로그인 → /teacher 페이지 도착
-- [ ] 학생 계정으로 가입 → 로그인 → /student 페이지 도착
-- [ ] 운영자 계정으로 가입 → 로그인 → /admin 페이지 도착
-- [ ] 학생 계정으로 /teacher 접근 시 → /student로 리디렉트
-- [ ] 비로그인 상태로 /teacher 접근 시 → /login으로 리디렉트
-- [ ] 로그아웃 후 보호 페이지 접근 불가
-
-### 이 Phase에서 생성되는 파일
-```
-src/app/(auth)/login/page.tsx
-src/app/(auth)/signup/page.tsx
-src/app/(auth)/callback/route.ts    ← Supabase 이메일 확인 콜백
-src/components/layout/RoleGuard.tsx
-middleware.ts
-src/types/user.ts
-```
+**산출물**: 빈 Next.js 앱 + Supabase 연결
 
 ---
 
-## Phase 3: 핵심 AI 파이프라인 — 스킬트리 생성
+## Phase 2 — 인증 + 역할 시스템
 
-### 목표
-교사가 PDF를 업로드하면 AI가 스킬트리 JSON을 생성하고 DB에 저장되는 상태.
+**목표**: 교사/학생/운영자 3자 분리 + Auth 기반 라우팅.
 
-### 전제 조건
-- Phase 2 완료 (교사 계정 로그인 가능)
+**작업**:
+- Supabase Auth (이메일/비밀번호)
+- `profiles` 테이블 + `handle_new_user()` 트리거
+- `middleware.ts` — 보호된 라우트 + 역할별 리디렉트
+- Login/Signup/Verify 페이지
+- RoleGuard Server Component
 
-### 작업 목록
-1. 파일 업로드 UI (src/app/teacher/skill-tree/new/page.tsx)
-   - PDF/이미지 드래그 앤 드롭 업로드
-   - Supabase Storage에 파일 저장
-2. PDF 텍스트 추출 로직
-   - pdf-parse 또는 pdfjs-dist 사용
-3. Zod 스키마 정의 (src/lib/ai/schemas.ts)
-   - skillTreeSchema, skillTreeNodeSchema, skillTreeEdgeSchema
-4. 프롬프트 정의 (src/lib/ai/prompts.ts)
-   - SKILL_TREE_PROMPT
-5. 스킬트리 생성 Server Action (src/actions/skill-tree.ts)
-   - generateSkillTree: streamObject로 Claude API 호출
-   - saveSkillTree: 결과를 skill_trees + nodes + node_edges 테이블에 저장
-6. 생성 중 스트리밍 UI
-   - useObject 훅으로 노드가 하나씩 나타나는 프리뷰
-7. 학생 진도 초기화 로직
-   - 루트 노드(선수 조건 없는 노드)는 'available', 나머지는 'locked'
-8. 수업자료 벡터화 (스킬트리 생성과 동시에 실행)
-   - 원본 텍스트를 청크 분할 → OpenAI Embeddings → document_chunks 테이블 저장
-   - Phase 6 AI 튜터 RAG의 전제 조건이므로 여기서 미리 처리
-
-### 완료 기준
-- [ ] 교사가 PDF 업로드 → AI가 스킬트리 JSON 생성 (노드 5~20개 + 엣지)
-- [ ] 생성 중 노드가 실시간 스트리밍으로 프리뷰에 나타남
-- [ ] 생성 완료 후 DB에 skill_trees, nodes, node_edges 레코드 저장
-- [ ] 생성된 스킬트리 목록 페이지에서 확인 가능
-- [ ] 원본 텍스트가 document_chunks 테이블에 벡터화되어 저장됨
-
-### 이 Phase에서 생성되는 파일
-```
-src/app/teacher/skill-tree/new/page.tsx
-src/app/teacher/skill-tree/page.tsx (목록)
-src/actions/skill-tree.ts
-src/lib/ai/schemas.ts
-src/lib/ai/prompts.ts
-src/lib/ai/embeddings.ts             ← 벡터화 유틸 (Phase 6 RAG에서 재사용)
-src/types/skill-tree.ts
-```
+**산출물**: `/teacher`, `/student`, `/admin` 역할별 진입
 
 ---
 
-## Phase 4: 스킬트리 시각화 + 편집
+## Phase 3 — 스킬트리 AI 생성 파이프라인
 
-### 목표
-스킬트리가 인터랙티브 그래프로 화면에 렌더링되고, 교사가 편집할 수 있는 상태.
+**목표**: PDF 업로드 → Claude가 스킬트리 JSON 생성 → DB 저장.
 
-### 전제 조건
-- Phase 3 완료 (DB에 스킬트리 데이터 존재)
+**작업**:
+- PDF 텍스트 추출 (`pdf-parse`)
+- `skillTreeSchema` Zod 스키마
+- `SKILL_TREE_PROMPT` 프롬프트
+- `generateSkillTree()` + `saveSkillTree()` Server Actions
+- `skill_trees`, `nodes`, `node_edges` 테이블
 
-### 작업 목록
-1. D3.js 스킬트리 그래프 컴포넌트 (src/components/skill-tree/SkillTreeGraph.tsx)
-   - force-directed layout
-   - 노드 상태별 색상: completed(초록), available(노랑), locked(회색)
-   - 노드 상태별 글로우 효과
-   - 엣지(연결선) 렌더링 + 화살표
-2. 개별 노드 컴포넌트 (src/components/skill-tree/SkillNode.tsx)
-   - 클릭 이벤트 (학생: 퀴즈 진입, 교사: 편집 모달)
-   - 호버 시 설명 툴팁
-3. 교사 편집 모드
-   - 노드 드래그 이동 (위치 DB 저장)
-   - 노드 추가/삭제 모달 (NodeEditor.tsx)
-   - 엣지 추가/삭제 (노드 간 연결선)
-4. 언락 애니메이션 (src/components/skill-tree/UnlockAnimation.tsx)
-   - 노드가 'completed'로 전환될 때 빛나는 효과 + 파티클
-5. D3 레이아웃 유틸 (src/lib/d3/skill-tree-layout.ts)
-   - 시뮬레이션 설정, 색상 함수, 글로우 함수
-6. 스킬트리 상세 페이지 (src/app/teacher/skill-tree/[id]/page.tsx)
-7. 학생용 스킬트리 탐험 페이지 (src/app/student/skill-tree/[id]/page.tsx)
-   - 편집 불가, 클릭 → 퀴즈 진입
-
-### 완료 기준
-- [ ] DB의 스킬트리 데이터가 D3 그래프로 렌더링됨
-- [ ] 노드 색상이 상태(locked/available/completed)에 따라 다름
-- [ ] 교사가 노드를 드래그하면 위치가 저장됨
-- [ ] 교사가 노드를 추가/삭제/연결할 수 있음
-- [ ] 학생 뷰에서 스킬트리가 보이고 available 노드 클릭 가능
-
-### 이 Phase에서 생성되는 파일
-```
-src/components/skill-tree/SkillTreeGraph.tsx
-src/components/skill-tree/SkillNode.tsx
-src/components/skill-tree/NodeEditor.tsx
-src/components/skill-tree/UnlockAnimation.tsx
-src/lib/d3/skill-tree-layout.ts
-src/hooks/useSkillTree.ts
-src/app/teacher/skill-tree/[id]/page.tsx
-src/app/student/skill-tree/[id]/page.tsx
-```
+**산출물**: 교사가 PDF 올리면 스킬트리가 DB에 저장됨
 
 ---
 
-## Phase 5: 퀴즈 엔진 + 학생 학습 플로우
+## Phase 4 — 스킬트리 D3 시각화 + 편집
 
-### 목표
-학생이 노드를 클릭하면 퀴즈를 풀 수 있고, 맞추면 노드가 언락되는 상태.
+**목표**: D3.js force simulation으로 스킬트리 렌더링 + 교사 편집 모드.
 
-### 전제 조건
-- Phase 4 완료 (스킬트리 시각화 + 학생이 노드 클릭 가능)
+**작업**:
+- `SkillTreeGraph` 컴포넌트 (D3.js)
+- 노드 추가/삭제/드래그, 엣지 연결
+- `NodeEditor` 모달
+- `updateNode`, `addNode`, `deleteNode`, `addEdge`, `deleteEdge` Actions
 
-### 작업 목록
-1. 퀴즈 생성 Server Action (src/actions/quiz.ts)
-   - generateQuizForNode: Claude API로 노드별 퀴즈 자동 생성
-   - submitQuizAnswer: 채점 + 노드 언락 + 후속 노드 available 전환
-2. 퀴즈 UI (src/components/quiz/)
-   - QuizCard.tsx: 문제 표시 (객관식/주관식)
-   - QuizResult.tsx: 정답/오답 결과 + 해설
-   - AdaptiveQuiz.tsx: 틀린 패턴 기반 추가 출제
-3. 퀴즈 풀기 페이지 (src/app/student/quiz/[nodeId]/page.tsx)
-4. 노드 언락 로직
-   - 모든 선수 노드가 completed → 후속 노드 available로 전환
-   - 언락 시 XP 추가 + 레벨 체크
-5. 학생 진도 조회 (교사/학생 양쪽)
-6. 퀴즈 관리 페이지 (src/app/teacher/quizzes/page.tsx)
-   - 교사가 AI 생성 퀴즈 확인/수정/추가
-
-### 완료 기준
-- [ ] 학생이 available 노드 클릭 → 퀴즈 페이지 이동
-- [ ] 퀴즈 제출 → 정답이면 노드 언락 애니메이션 + 후속 노드 열림
-- [ ] 오답이면 해설 표시 + 재도전 가능
-- [ ] 교사가 노드별 퀴즈 목록 확인/편집 가능
-- [ ] student_progress, quiz_attempts 테이블에 데이터 저장
-
-### 이 Phase에서 생성되는 파일
-```
-src/actions/quiz.ts
-src/components/quiz/QuizCard.tsx
-src/components/quiz/QuizResult.tsx
-src/components/quiz/AdaptiveQuiz.tsx
-src/app/student/quiz/[nodeId]/page.tsx
-src/app/teacher/quizzes/page.tsx
-src/hooks/useQuiz.ts
-src/types/quiz.ts
-```
+**산출물**: 교사가 D3 그래프를 직접 편집 가능
 
 ---
 
-## Phase 6: AI 튜터 + 대시보드
+## Phase 5 — 퀴즈 엔진 + 학생 학습 플로우
 
-### 목표
-학생이 AI 튜터와 대화할 수 있고, 교사/운영자가 대시보드에서 학습 데이터를 확인하는 상태.
+**목표**: 노드별 퀴즈 생성, 학생 풀이, 정답 시 노드 언락.
 
-### 전제 조건
-- Phase 5 완료 (학생 학습 데이터가 DB에 축적)
+**작업**:
+- `quizSchema` + `QUIZ_PROMPT`
+- `generateQuizForNode`, `submitQuizAnswer`, `completeNode`
+- 객관식/서술형 채점 로직 (AI 의미 비교)
+- `student_progress` 상태 머신 (locked → available → in_progress → completed)
+- `/student/quiz/[nodeId]` 풀이 페이지
 
-### 작업 목록
-1. AI 튜터 Server Action (src/actions/tutor.ts)
-   - chatWithTutor: RAG 검색 (Phase 3에서 벡터화된 document_chunks 활용) → Claude 스트리밍 답변
-2. 튜터 UI (src/components/tutor/)
-   - ChatInterface.tsx: 채팅 인터페이스 (useChat)
-   - TutorMessage.tsx: 메시지 말풍선
-   - VoiceButton.tsx: 음성 입력 버튼 (Whisper STT) — 시간 허락 시
-3. 튜터 페이지 (src/app/student/tutor/page.tsx)
-4. 교사 대시보드 (src/app/teacher/page.tsx 확장)
-   - 반 전체 스킬트리 히트맵 (Recharts)
-   - 학생별 진도 목록
-   - 위험군 학생 알림 (3회 연속 실패 등)
-5. 운영자 대시보드 (src/app/admin/page.tsx 확장)
-   - 전체 스킬트리 수, 학생 수, 평균 언락률
-   - 과목별/반별 통계 차트
-6. 학생 대시보드 확장
-   - 레벨/XP 표시
-   - 학습 스트릭
-   - 주간 진도 요약
-
-### 완료 기준
-- [ ] 학생이 AI 튜터에게 질문 → 수업자료 기반 답변이 스트리밍
-- [ ] 교사 대시보드에 히트맵 + 학생 목록 + 위험군 알림 표시
-- [ ] 운영자 대시보드에 전체 통계 표시
-- [ ] 학생 대시보드에 레벨/XP/스트릭 표시
-
-### 이 Phase에서 생성되는 파일
-```
-src/actions/tutor.ts
-src/components/tutor/ChatInterface.tsx
-src/components/tutor/TutorMessage.tsx
-src/components/tutor/VoiceButton.tsx
-src/components/dashboard/HeatmapChart.tsx
-src/components/dashboard/ProgressCard.tsx
-src/components/dashboard/RiskAlert.tsx
-src/app/student/tutor/page.tsx
-```
+**산출물**: 학생이 퀴즈를 풀어 노드를 언락할 수 있음
 
 ---
 
-## Phase 7: 폴리싱 + 제출
+## Phase 6 — AI 튜터 + 3자 대시보드
 
-### 목표
-심사위원이 접속해서 3자 역할 전부 체험 가능한 완성된 프로덕트.
+**목표**: RAG 기반 소크라틱 튜터 + 각 역할 대시보드 기본 틀.
 
-### 전제 조건
-- Phase 6 완료 (핵심 기능 전부 작동)
+**작업**:
+- `document_chunks` + pgvector 인덱스
+- 문서 임베딩 (`text-embedding-3-small`)
+- `chatWithTutor()` — RAG 검색 + Claude 스트리밍
+- `/student/tutor` 채팅 페이지
+- 교사/학생/운영자 대시보드 (`getStudentDashboardData`, `getTeacherDashboardData`, `getAdminDashboardData`)
 
-### 작업 목록
-1. UI/UX 폴리싱
-   - 색상/타이포그래피 일관성 점검
-   - 빈 상태(empty state) 처리
-   - 로딩 스켈레톤 추가
-   - 토스트 알림 통일
-2. 반응형 대응 (모바일 최소 대응)
-3. 에러 핸들링 통합
-   - 모든 Server Action에 try-catch
-   - 사용자 친화적 에러 메시지
-   - error.tsx 바운더리 페이지
-4. 데모 데이터 세팅 (supabase/seed.sql)
-   - 교사 1명 + 학생 3명 + 운영자 1명
-   - 스킬트리 2개 (과학/수학) + 노드/엣지/퀴즈 데이터
-   - 학생 진도 일부 진행 상태
-5. 랜딩 페이지 (src/app/page.tsx)
-   - 프로젝트 소개 + 데모 로그인 버튼
-6. README.md 작성
-   - 프로젝트 설명, 기술 스택, 실행 방법, 스크린샷
-7. AI 리포트 PDF 작성 (공모전 양식)
-8. 최종 배포 + 테스트
-9. 제출물 정리
-   - GitHub 저장소 주소 (public, API Key 미노출 확인)
-   - 배포된 라이브 URL
-   - AI 리포트 PDF
-   - 개인정보 동의서 + 참가 각서
-
-### 완료 기준
-- [ ] `npm run build` 에러 없음
-- [ ] 라이브 URL에서 3자 역할 전부 작동
-- [ ] 데모 계정으로 로그인 → 스킬트리 확인 → 퀴즈 풀기 → 언락 → AI 튜터 대화 가능
-- [ ] GitHub에 API Key 노출 없음
-- [ ] README에 실행 방법 + 데모 계정 정보 기재
-- [ ] 제출물 4종 준비 완료
-
-### 이 Phase에서 생성/수정되는 파일
-```
-src/app/page.tsx (랜딩 페이지)
-src/app/error.tsx
-supabase/seed.sql
-README.md
-```
+**산출물**: 학생이 AI 튜터와 대화 가능, 각 역할별 대시보드 첫 화면 완성
 
 ---
 
-## Phase 간 의존 관계
+## Phase 7-A — 멀티 스쿨/클래스 시스템 + 데모 모드
 
-```
-Phase 1 (기반)
-    └→ Phase 2 (인증)
-         └→ Phase 3 (AI 파이프라인)
-              └→ Phase 4 (시각화)
-                   └→ Phase 5 (퀴즈)
-                        └→ Phase 6 (튜터 + 대시보드)
-                             └→ Phase 7 (폴리싱)
-```
+**목표**: 여러 스쿨이 각자 교사/학생 관리, 데모 모드 구축.
 
-**절대 규칙**: 이전 Phase의 완료 기준을 충족하지 않은 상태에서 다음 Phase로 넘어가지 않는다.
+**작업**:
+- `schools`, `classes`, `school_members`, `class_enrollments` 테이블 (migration 007)
+- 운영자 스쿨 생성 + 초대 코드 발급
+- `joinSchoolAsTeacher`, `joinWithCode`, `requestClassEnrollment`, `approveEnrollment`
+- `/admin/schools/*` 관리 페이지
+- `src/lib/demo.ts` — `isDemoAccount` + `assertNotDemo`
+- `setupDemoData()` — idempotent 시드
+
+**산출물**: 멀티 스쿨 지원 + 데모 계정 체험 가능
+
+---
+
+## Phase 7-B — 학생 경험 강화
+
+**목표**: 학생 학습을 즐겁게 만드는 기능 7종.
+
+**작업**:
+- **일일 미션** — `daily_missions` + 5유형 템플릿 (`getTodayMissions`, `updateMissionProgress`)
+- **업적/배지 10종** — `achievements` + `user_achievements` + `checkAndAwardAchievements`
+- **오답 노트** — `/student/wrong-answers` + `getWrongAnswers`, `analyzeWeakness`
+- **노드 메모** — `node_memos` + `saveMemo`, `getMemo`
+- **학습 시간 타이머** — `StudyTimer` + `study-time.ts` Actions
+- **복습 알림** — `review_reminders` + `getTodayReviews`, `markReviewCompleted`
+- **노드 상세 팝업** — `NodeDetailPopup` + HTML 학습 문서 다운로드
+
+**산출물**: 학생 대시보드가 게이미피케이션 + 학습 보조 도구로 풍성해짐
+
+---
+
+## Phase 7-C — 교사/운영자/AI 강화 (13개)
+
+**목표**: 교사 도구 + AI 기능 확장 + 메신저/공지.
+
+**작업**:
+- **수업 녹음 → 전사 → 요약** — Whisper + Claude (`transcribeRecording`, `summarizeLesson`, `generateQuizFromRecording`)
+- **소크라틱 튜터 개선** — 학습 스타일 + 감정 적응 프롬프트
+- **AI 퀴즈 힌트** — 노력 기반 잠금 (3회 시도 후 해제)
+- **학습 코치** — 주간 학습 플랜 (`getWeeklyPlan`)
+- **메신저** — `direct_messages` + 1:1 채팅
+- **공지사항** — `announcements` + `announcement_reads` + 읽음 배지
+- **학생 그룹 분류** — `analyzeStudentGroups`
+- **교육과정 병목 분석** — `analyzeBottlenecks`
+- **교사 활동 분석** — `getTeacherActivity`
+- **학부모 리포트 생성** — `generateParentReport`
+- **개념 추천** — `getConceptConnections`
+- **적응형 퀴즈 출제** — 난이도 자동 조절
+- **수업 녹음 페이지** — `/teacher/recording`
+
+**산출물**: 교사가 실제 교실 운영에 쓸 수 있는 수준의 AI 도구 세트
+
+---
+
+## Phase 7-D — 소셜 + UI/UX 폴리싱
+
+**목표**: 소셜 기능 + 최종 UI 마감 + 제출 준비.
+
+**작업**:
+- **활동 피드** — `activity_feed` + 클래스 타임라인 + 이모지 리액션
+- **스터디 그룹** — `study_groups` + 그룹 채팅
+- **UI/UX 폴리싱** — 로딩 상태, 에러 토스트, 반응형, 다크모드
+- **랜딩 페이지 완성** — 카피 + 카드 + CTA + 푸터
+- **버그 수정** — 전수 테스트
+
+**산출물**: 제출 가능한 완성도의 제품
+
+---
+
+## Phase 8 — 특색 기능 5개
+
+**목표**: 경쟁 프로젝트와 차별화되는 특색 기능 도입.
+
+**작업**:
+- **① 학습 감정 분석** (`analyzeStudentEmotion`)
+  - 퀴즈 응답 패턴 → 자신감/고전/좌절 감지
+  - `emotion_reports` 일 단위 캐시
+  - 튜터 톤이 학생 감정에 따라 자동 조절
+- **② 사전 시뮬레이션** (`simulateSkillTree`)
+  - 교사가 스킬트리 배포 전 100명 가상 학생으로 테스트
+  - 병목 노드/난이도 문제 사전 탐지
+- **③ 크로스커리큘럼 지식 맵** (`findConceptConnections`)
+  - 과목을 넘나드는 개념 연결 발견
+  - 학생 대시보드 `ConceptMapCard`
+- **④ 적응형 복습 엔진** (강화)
+  - 정답률 기반 간격 2배/유지/절반 자동 조절
+  - 긴급도 표시 (overdue/today/soon)
+- **⑤ 이탈 조기 경보** (`calculateRiskScore`, `getClassRiskAlerts`)
+  - 접속/퀴즈/학습시간 데이터로 위험 학생 탐지
+  - 교사 대시보드 `RiskAlertCard`
+
+**DB 마이그레이션**: `013_special_features.sql`
+
+**산출물**: 감정 인식 + 예측 분석이 포함된 차세대 AI 교육 플랫폼
+
+---
+
+## Phase 9 — 고급 기능 6개
+
+**목표**: 학부모 역할 추가 + 개인화 학습 강화.
+
+**작업**:
+- **① 학습 스타일 진단** (`learning-style.ts`)
+  - 시각형/텍스트형/실습형 3가지 진단
+  - `/student/onboarding` 초기 진단 페이지
+  - 튜터/학습 문서 스타일이 자동 적응
+- **② 노력 기반 도움 시스템** (`getQuizHint`)
+  - AI 힌트가 3회 시도 후에만 잠금 해제
+  - 정답 직접 공개 금지
+- **③ 학부모 대시보드** (`/parent/*`)
+  - 4번째 역할 추가
+  - `parent_student_links` + `parent_invite_codes` 6자리 코드
+  - 자녀 학습 현황 실시간 확인
+- **④ 주간 AI 브리핑** (`generateWeeklyBriefing`)
+  - 교사용 이번 주 클래스 요약
+  - 학부모용 자녀 주간 리포트
+  - 주 단위 캐시 (`weekly_briefings`)
+- **⑤ AI 플래시카드** (`generateFlashcards`)
+  - 노드 완료 시 5장 자동 생성
+  - `flashcards` + `flashcard_reviews` 복습 결과 추적
+- **⑥ 수료 인증서 자동 발급** (`issueCertificate`)
+  - 스킬트리 100% 완료 시 자동 생성
+  - HTML 템플릿 인쇄 가능 (A4, NodeBloom 로고 + SEAL)
+
+**DB 마이그레이션**: `014_advanced_features.sql`, `015_weekly_plans_cache.sql`
+
+**산출물**: 4자 플랫폼 + 개인화 학습 완성
+
+---
+
+## Phase 10 — 스킬트리 UI 글래스모피즘 재디자인
+
+**목표**: SkillTreeGraph 시각적 업그레이드 + UX 개선.
+
+**작업**:
+- 글래스 + 그라데이션 + 애니메이션 (pulse-ring, progress-ring, orbit-ring)
+- 과목별 테마 (과학/수학/국어/영어/사회) — subject_hint 기반
+- 배경 패턴 (별/격자/한지)
+- 노드 hover 애니메이션 (중첩 `<g.node-inner>` 구조로 tick과 분리)
+- 진입 staggered 페이드인
+- 엣지 cubic bezier 곡선 + 그라데이션 + 화살표 마커
+
+**산출물**: 상용 수준의 D3 시각화
+
+---
+
+## Phase 11 — 브랜드 전환 (LearnGraph → NodeBloom)
+
+**목표**: 브랜드 아이덴티티 재정의.
+
+**작업**:
+- **브랜드 정의**
+  - 영문: NodeBloom / 한국어: 노드블룸
+  - 슬로건: "노드가 피다, 지식이 자라다"
+  - 컨셉: 노드 언락 시 꽃이 피듯 지식 확장
+  - 컬러: `#6366F1` 인디고 · `#A855F7` 연보라 · `#10B981` 초록
+- **신규 에셋**
+  - `Logo.tsx` SVG 컴포넌트 (원형 노드 + 꽃잎 4장 + 성장의 잎)
+  - `icon.svg` 파비콘 (동일 디자인)
+- **전면 교체**
+  - 22개 파일: package.json, layout.tsx, 랜딩, Sidebar, Auth 페이지, demo-setup, 인증서, 학습 문서, 학부모 리포트, 학부모 링크, MessageNotifier, launch.json, README, docs
+  - DB 자동 migration: "LearnGraph 체험 학교" → "NodeBloom 체험 학교" (demo-setup 0-pre 단계)
+- **의도적 유지**
+  - `@learngraph.app` 이메일 도메인 (Supabase Auth 호환)
+  - `LEGACY_DEMO_SCHOOL_NAME` 상수 (migration 참조용)
+  - Vercel 도메인 + Supabase Site URL (수동 변경 예정)
+
+**산출물**: NodeBloom 브랜드로 전면 전환된 프로덕션 빌드
+
+---
+
+## 통계 (현재 상태)
+
+| 항목 | 수치 |
+|---|---|
+| 라우트 | 32개 |
+| Server Action 파일 | 32개 |
+| Server Action 함수 | 112개 |
+| DB 테이블 | 38개 |
+| DB 마이그레이션 | 15개 |
+| AI 통합 기능 | 13종 |
+| 역할 | 4자 (teacher/student/parent/admin) |
+| 컴포넌트 (ui/ 제외) | 60+ |
+
+---
+
+## 완료 기준 (각 Phase 공통)
+
+각 Phase는 다음 조건을 모두 만족해야 "완료"로 간주:
+
+1. **`npm run build` 성공** — TypeScript strict 통과, 모든 페이지 컴파일
+2. **주요 플로우 동작 확인** — Preview 서버에서 사용자 시나리오 검증
+3. **프로젝트 고유 규칙 6개 준수** — `.claude/CLAUDE.md` 참조
+4. **Git commit** — `feat:`/`fix:`/`perf:`/`brand:` 접두사로 커밋

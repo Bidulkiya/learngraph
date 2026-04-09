@@ -1,1018 +1,540 @@
-# NodeBloom 개발 뼈대 문서
+# NodeBloom 개발 가이드
 
-> 이 문서는 개발 중 참고할 코드 패턴, 구현 가이드, 핵심 로직 설계를 담고 있습니다.
-
----
-
-## 1. 프로젝트 초기 세팅
-
-### 1.1 프로젝트 생성
-```bash
-npx create-next-app@latest nodebloom --typescript --tailwind --eslint --app --src-dir
-cd nodebloom
-
-# 핵심 의존성
-npm install ai @ai-sdk/anthropic @ai-sdk/openai zod
-npm install openai                              # 임베딩용 네이티브 SDK
-npm install @supabase/supabase-js @supabase/ssr
-npm install d3 @types/d3 recharts
-npm install lucide-react class-variance-authority clsx tailwind-merge
-
-# shadcn/ui 초기화
-npx shadcn@latest init
-npx shadcn@latest add button card input label dialog tabs badge progress toast sheet select separator avatar dropdown-menu
-```
-
-### 1.2 환경 변수 (.env.local)
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxxxx
-SUPABASE_SERVICE_ROLE_KEY=eyJxxxxx
-ANTHROPIC_API_KEY=sk-ant-xxxxx
-OPENAI_API_KEY=sk-xxxxx
-ELEVENLABS_API_KEY=xi-xxxxx
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### 1.3 .env.example (커밋용)
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
-OPENAI_API_KEY=
-ELEVENLABS_API_KEY=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+> NodeBloom(노드블룸)은 "노드가 피다, 지식이 자라다"를 슬로건으로 하는 AI 기반 스킬트리 교육 플랫폼입니다.
+> 이 문서는 프로젝트에서 사용하는 기술 스택, DB 스키마, AI 파이프라인, Server Action 패턴, 고유 규칙을 정리한 **단일 소스의 개발 가이드**입니다.
 
 ---
 
-## 2. Supabase 클라이언트 설정
+## 목차
+1. [기술 스택](#1-기술-스택)
+2. [프로젝트 구조](#2-프로젝트-구조)
+3. [DB 스키마 (38개 테이블)](#3-db-스키마-38개-테이블)
+4. [AI 핵심 로직 (13종)](#4-ai-핵심-로직-13종)
+5. [Server Action 패턴](#5-server-action-패턴)
+6. [4자 역할 시스템](#6-4자-역할-시스템)
+7. [스쿨/클래스 초대 플로우](#7-스쿨클래스-초대-플로우)
+8. [게이미피케이션 시스템](#8-게이미피케이션-시스템)
+9. [데모 모드 (읽기 전용)](#9-데모-모드-읽기-전용)
+10. [프로젝트 고유 규칙](#10-프로젝트-고유-규칙)
 
-### 2.1 서버 클라이언트 (src/lib/supabase/server.ts)
-```typescript
-import { createServerClient as createClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+---
 
-export async function createServerClient() {
-  const cookieStore = await cookies()
+## 1. 기술 스택
 
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch { /* Server Component에서는 무시 */ }
-        },
-      },
-    }
-  )
-}
+| 영역 | 기술 | 버전/모델 |
+|---|---|---|
+| **프레임워크** | Next.js | 16 (App Router + Turbopack) |
+| **언어** | TypeScript | strict mode |
+| **스타일** | Tailwind CSS | 4 |
+| **UI** | shadcn/ui + Radix UI | — |
+| **아이콘** | lucide-react | — |
+| **AI SDK** | Vercel AI SDK | v6 (`generateObject`, `streamText`) |
+| **AI 모델** | Anthropic Claude | `claude-sonnet-4-6` |
+| **임베딩** | OpenAI | `text-embedding-3-small` |
+| **STT** | OpenAI Whisper | `whisper-1` |
+| **DB** | Supabase PostgreSQL | 17 |
+| **Auth** | Supabase Auth | — |
+| **RAG** | Supabase pgvector | 1536 dim |
+| **시각화** | D3.js | 7 (force simulation) |
+| **차트** | Recharts | 3 |
+| **알림** | sonner | — |
+| **배포** | Vercel | + GitHub |
+
+### 핵심 디자인 원칙
+- **React 19 Server Components 우선** — 가능한 한 Server Component, 인터랙션 필요 시 Client
+- **Server Actions 전용** — API Routes 없음, 모든 백엔드 로직은 `'use server'` 파일
+- **getCachedUser** — `React.cache()`로 동일 SSR request 내 `auth.getUser()` 1회만 실행
+- **Admin client 패턴** — RLS 우회하여 service_role로 조회 (인증은 getCachedUser에서 이미 확인)
+
+---
+
+## 2. 프로젝트 구조
+
 ```
-
-### 2.2 브라우저 클라이언트 (src/lib/supabase/client.ts)
-```typescript
-import { createBrowserClient as createClient } from '@supabase/ssr'
-
-export function createBrowserClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-}
-```
-
-### 2.3 미들웨어 (middleware.ts)
-```typescript
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
-
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-            supabaseResponse.cookies.set(name, value, options)
-          })
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // 비로그인 사용자 → 로그인 페이지로
-  if (!user && !request.nextUrl.pathname.startsWith('/login') 
-      && !request.nextUrl.pathname.startsWith('/signup')
-      && request.nextUrl.pathname !== '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // 역할 기반 라우팅
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    const role = profile?.role
-    const path = request.nextUrl.pathname
-
-    if (path.startsWith('/teacher') && role !== 'teacher') {
-      return NextResponse.redirect(new URL(`/${role}`, request.url))
-    }
-    if (path.startsWith('/student') && role !== 'student') {
-      return NextResponse.redirect(new URL(`/${role}`, request.url))
-    }
-    if (path.startsWith('/admin') && role !== 'admin') {
-      return NextResponse.redirect(new URL(`/${role}`, request.url))
-    }
-  }
-
-  return supabaseResponse
-}
-
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|sounds|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
-}
+nodebloom/
+├── src/
+│   ├── app/                        # 32 routes
+│   │   ├── (auth)/                 # login, signup, verify, callback
+│   │   ├── teacher/                # 교사 라우트 (11)
+│   │   ├── student/                # 학생 라우트 (10)
+│   │   ├── admin/                  # 운영자 라우트 (6)
+│   │   ├── parent/                 # 학부모 라우트 (2)
+│   │   ├── layout.tsx              # 루트 metadata
+│   │   ├── page.tsx                # 랜딩 페이지
+│   │   └── icon.svg                # 파비콘 (NodeBloom 로고)
+│   ├── actions/                    # 32 파일 / 112 함수
+│   ├── components/
+│   │   ├── ui/                     # shadcn/ui
+│   │   ├── Logo.tsx                # NodeBloom SVG 로고
+│   │   ├── skill-tree/             # D3 그래프, 에디터, 팝업
+│   │   ├── quiz/                   # 적응형 퀴즈 + 힌트
+│   │   ├── tutor/                  # 채팅, 음성 버튼
+│   │   ├── dashboard/              # 차트, 히트맵, 위험 경보
+│   │   ├── student/                # 타이머, 코치 카드, 인증서
+│   │   ├── feed/                   # 활동 피드
+│   │   ├── shared/                 # 공지 배너
+│   │   └── layout/                 # Sidebar, Header, DemoBanner
+│   ├── lib/
+│   │   ├── supabase/               # client/server/admin
+│   │   ├── ai/                     # prompts, schemas, embeddings
+│   │   ├── d3/                     # skill-tree-layout
+│   │   └── demo.ts                 # 데모 판별/가드
+│   ├── hooks/                      # useSkillTree, useQuiz, useVoice
+│   └── types/                      # 도메인 타입
+├── supabase/migrations/            # 15 마이그레이션 (001~015)
+├── middleware.ts                   # Auth + role 라우팅
+└── docs/                           # 개발 문서
 ```
 
 ---
 
-## 3. DB 스키마
+## 3. DB 스키마 (38개 테이블)
 
-### 3.1 전체 스키마 (supabase/migrations/001_initial.sql)
-```sql
--- Enable pgvector
-CREATE EXTENSION IF NOT EXISTS vector;
+### 3.1 사용자 + 권한
+| 테이블 | 주요 컬럼 | 용도 |
+|---|---|---|
+| `profiles` | `id`, `email`, `name`, `role`, `xp`, `streak_days`, `learning_style`, `avatar_url` | 기본 프로필 (auth.users 트리거로 자동 생성) |
+| `schools` | `id`, `name`, `description`, `teacher_code`, `student_code`, `created_by` | 스쿨 + 초대 코드 |
+| `school_members` | `school_id`, `user_id`, `role`, `status` | 스쿨 ↔ 유저 매핑 (pending/approved) |
+| `classes` | `id`, `school_id`, `name`, `description`, `teacher_id`, `max_students` | 클래스 |
+| `class_enrollments` | `id`, `class_id`, `student_id`, `status`, `approved_at`, `approved_by` | 수강신청 (pending/approved/rejected) |
+| `class_students` | `class_id`, `student_id` | 승인된 수강 학생 (legacy 호환) |
+| `subjects` | `id`, `name` | 과목 마스터 (미사용) |
 
--- ========================================
--- 사용자 프로필
--- ========================================
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  name TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('teacher', 'student', 'admin')),
-  avatar_url TEXT,
-  level INT DEFAULT 1,
-  xp INT DEFAULT 0,
-  streak_days INT DEFAULT 0,
-  last_active_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 3.2 스킬트리 + 노드
+| 테이블 | 주요 컬럼 | 용도 |
+|---|---|---|
+| `skill_trees` | `id`, `title`, `description`, `class_id`, `created_by`, `subject_hint`, `status`, `style_guide` | 스킬트리 메타 |
+| `nodes` | `id`, `skill_tree_id`, `title`, `description`, `difficulty`, `order_index`, `learning_content`, `allow_download`, `allow_print`, `position_x`, `position_y` | 노드 + HTML 학습 문서 |
+| `node_edges` | `id`, `skill_tree_id`, `source_node_id`, `target_node_id`, `label` | 선수지식 엣지 |
+| `document_chunks` | `id`, `skill_tree_id`, `content`, `embedding` (vector 1536) | RAG 벡터 스토리지 |
 
--- ========================================
--- 과목 / 반
--- ========================================
-CREATE TABLE subjects (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  description TEXT,
-  created_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 3.3 학습 진도
+| 테이블 | 주요 컬럼 | 용도 |
+|---|---|---|
+| `student_progress` | `student_id`, `node_id`, `skill_tree_id`, `status` (locked/available/in_progress/completed), `quiz_score`, `completed_at` | 노드별 학생 진도 |
+| `quizzes` | `id`, `node_id`, `question`, `question_type`, `options`, `correct_answer`, `explanation`, `difficulty` | 퀴즈 문항 |
+| `quiz_attempts` | `id`, `student_id`, `quiz_id`, `node_id`, `user_answer`, `is_correct`, `score`, `feedback`, `hint_used`, `attempted_at` | 풀이 시도 기록 |
 
-CREATE TABLE classes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
-  teacher_id UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 3.4 게이미피케이션
+| 테이블 | 주요 컬럼 | 용도 |
+|---|---|---|
+| `daily_missions` | `student_id`, `mission_type`, `title`, `target`, `progress`, `completed`, `xp_reward`, `mission_date` | 일일 미션 (5유형) |
+| `achievements` | `id`, `code`, `title`, `description`, `icon`, `xp_reward`, `condition_type`, `condition_value` | 업적 마스터 (10종) |
+| `user_achievements` | `user_id`, `achievement_id`, `earned_at` | 유저 업적 획득 |
+| `review_reminders` | `student_id`, `node_id`, `remind_at`, `completed`, `interval_days` | 적응형 복습 알림 (에빙하우스 1/3/7일) |
+| `flashcards` | `id`, `node_id`, `card_index`, `front`, `back` | AI 자동 생성 플래시카드 (노드당 5장) |
+| `flashcard_reviews` | `student_id`, `flashcard_id`, `result` (known/unknown) | 복습 결과 |
+| `certificates` | `id`, `student_id`, `skill_tree_id`, `tree_title`, `node_count`, `avg_score`, `teacher_name`, `issued_at` | 스킬트리 100% 완료 시 자동 발급 |
 
-CREATE TABLE class_students (
-  class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
-  student_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  joined_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (class_id, student_id)
-);
+### 3.5 AI 캐시 (비용 절감)
+| 테이블 | 주요 컬럼 | 용도 |
+|---|---|---|
+| `emotion_reports` | `student_id`, `skill_tree_id`, `mood`, `mood_score`, `insights`, `recommendation`, `report_date` | 학습 감정 분석 캐시 (일 단위) |
+| `weekly_plans` | `student_id`, `week_start`, `plan` (jsonb), `motivation` | 주간 학습 플랜 캐시 (주 단위) |
+| `weekly_briefings` | `class_id`, `week_start`, `summary`, `highlights`, `concerns`, `action_items` | 교사용 주간 브리핑 캐시 |
+| `tutor_conversations` | `student_id`, `messages` (jsonb), `updated_at` | 튜터 대화 기록 (세션 유지) |
+| `lesson_recordings` | `id`, `teacher_id`, `transcript`, `summary` (jsonb), `duration_seconds` | Whisper 전사 + Claude 요약 캐시 |
 
--- ========================================
--- 스킬트리
--- ========================================
-CREATE TABLE skill_trees (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  description TEXT,
-  subject_id UUID REFERENCES subjects(id),
-  class_id UUID REFERENCES classes(id),
-  created_by UUID REFERENCES profiles(id),
-  is_template BOOLEAN DEFAULT FALSE,  -- 운영자 마스터 템플릿 여부
-  source_file_url TEXT,               -- 원본 업로드 파일 URL
-  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 3.6 학부모 연결
+| 테이블 | 주요 컬럼 | 용도 |
+|---|---|---|
+| `parent_invite_codes` | `code`, `student_id`, `expires_at` | 6자리 학부모 초대 코드 |
+| `parent_student_links` | `parent_id`, `student_id`, `created_at` | 학부모 ↔ 자녀 매핑 |
 
--- ========================================
--- 노드 (개별 학습 개념)
--- ========================================
-CREATE TABLE nodes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  skill_tree_id UUID REFERENCES skill_trees(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  difficulty INT DEFAULT 1 CHECK (difficulty BETWEEN 1 AND 5),
-  order_index INT DEFAULT 0,
-  -- D3 시각화용 좌표 (교사 편집 시 저장)
-  position_x FLOAT,
-  position_y FLOAT,
-  -- 메타
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 3.7 커뮤니케이션
+| 테이블 | 주요 컬럼 | 용도 |
+|---|---|---|
+| `announcements` | `id`, `school_id`, `author_id`, `title`, `content`, `target_role` | 공지사항 |
+| `announcement_reads` | `user_id`, `announcement_id`, `read_at` | 읽음 처리 |
+| `direct_messages` | `id`, `school_id`, `sender_id`, `receiver_id`, `content`, `read_at` | 1:1 메신저 |
+| `activity_feed` | `id`, `class_id`, `user_id`, `action_type`, `detail`, `created_at` | 활동 피드 타임라인 |
+| `feed_reactions` | `feed_id`, `user_id`, `emoji` | 피드 이모지 리액션 |
+| `study_groups` | `id`, `class_id`, `name`, `created_by` | 스터디 그룹 |
+| `study_group_members` | `group_id`, `user_id`, `joined_at` | 그룹 멤버 |
+| `study_group_messages` | `group_id`, `user_id`, `content`, `created_at` | 그룹 채팅 |
 
--- ========================================
--- 노드 간 연결 (선수 지식 관계)
--- ========================================
-CREATE TABLE node_edges (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  skill_tree_id UUID REFERENCES skill_trees(id) ON DELETE CASCADE,
-  source_node_id UUID REFERENCES nodes(id) ON DELETE CASCADE,
-  target_node_id UUID REFERENCES nodes(id) ON DELETE CASCADE,
-  label TEXT,  -- 관계 설명 (선택)
-  UNIQUE(source_node_id, target_node_id)
-);
+### 3.8 기타
+| 테이블 | 주요 컬럼 | 용도 |
+|---|---|---|
+| `node_memos` | `student_id`, `node_id`, `content` | 학생 노드 메모 (upsert) |
 
--- ========================================
--- 퀴즈
--- ========================================
-CREATE TABLE quizzes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  node_id UUID REFERENCES nodes(id) ON DELETE CASCADE,
-  question TEXT NOT NULL,
-  question_type TEXT NOT NULL CHECK (question_type IN ('multiple_choice', 'short_answer', 'essay')),
-  options JSONB,           -- 객관식: ["A", "B", "C", "D"]
-  correct_answer TEXT,     -- 정답
-  explanation TEXT,         -- 해설
-  difficulty INT DEFAULT 1,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ========================================
--- 학생 진도
--- ========================================
-CREATE TABLE student_progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  node_id UUID REFERENCES nodes(id) ON DELETE CASCADE,
-  skill_tree_id UUID REFERENCES skill_trees(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'locked' CHECK (status IN ('locked', 'available', 'in_progress', 'completed')),
-  quiz_score FLOAT,        -- 최고 점수 (0~100)
-  attempts INT DEFAULT 0,
-  completed_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(student_id, node_id)
-);
-
--- ========================================
--- 퀴즈 시도 기록
--- ========================================
-CREATE TABLE quiz_attempts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
-  node_id UUID REFERENCES nodes(id) ON DELETE CASCADE,
-  answer TEXT,
-  is_correct BOOLEAN,
-  score FLOAT,
-  feedback TEXT,           -- AI 피드백
-  attempted_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ========================================
--- AI 튜터 대화 기록
--- ========================================
-CREATE TABLE tutor_conversations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  skill_tree_id UUID REFERENCES skill_trees(id),
-  node_id UUID REFERENCES nodes(id),
-  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ========================================
--- 수업 자료 벡터 임베딩 (RAG)
--- ========================================
-CREATE TABLE document_chunks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  skill_tree_id UUID REFERENCES skill_trees(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  embedding VECTOR(1536),  -- text-embedding-3-small
-  metadata JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 벡터 검색 함수
-CREATE OR REPLACE FUNCTION match_documents(
-  query_embedding VECTOR(1536),
-  match_threshold FLOAT DEFAULT 0.7,
-  match_count INT DEFAULT 5,
-  p_skill_tree_id UUID DEFAULT NULL
-)
-RETURNS TABLE (
-  id UUID,
-  content TEXT,
-  similarity FLOAT
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    dc.id,
-    dc.content,
-    1 - (dc.embedding <=> query_embedding) AS similarity
-  FROM document_chunks dc
-  WHERE 1 - (dc.embedding <=> query_embedding) > match_threshold
-    AND (p_skill_tree_id IS NULL OR dc.skill_tree_id = p_skill_tree_id)
-  ORDER BY dc.embedding <=> query_embedding
-  LIMIT match_count;
-END;
-$$;
-
--- ========================================
--- RLS 정책
--- ========================================
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE skill_trees ENABLE ROW LEVEL SECURITY;
-ALTER TABLE nodes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE node_edges ENABLE ROW LEVEL SECURITY;
-ALTER TABLE quizzes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE student_progress ENABLE ROW LEVEL SECURITY;
-ALTER TABLE quiz_attempts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tutor_conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE document_chunks ENABLE ROW LEVEL SECURITY;
-
--- 프로필: 본인 읽기/수정
-CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
-
--- 스킬트리: 교사는 자기 것 CRUD, 학생은 자기 반 것 읽기
-CREATE POLICY "Teachers manage own skill trees" ON skill_trees 
-  FOR ALL USING (auth.uid() = created_by);
-CREATE POLICY "Students view class skill trees" ON skill_trees 
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM class_students cs
-      WHERE cs.class_id = skill_trees.class_id
-      AND cs.student_id = auth.uid()
-    )
-  );
--- 운영자는 전체 접근
-CREATE POLICY "Admins access all skill trees" ON skill_trees 
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-  );
-
--- 학생 진도: 본인 것만
-CREATE POLICY "Students manage own progress" ON student_progress 
-  FOR ALL USING (auth.uid() = student_id);
-CREATE POLICY "Teachers view class progress" ON student_progress 
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM skill_trees st
-      WHERE st.id = student_progress.skill_tree_id
-      AND st.created_by = auth.uid()
-    )
-  );
-
--- 인덱스
-CREATE INDEX idx_nodes_skill_tree ON nodes(skill_tree_id);
-CREATE INDEX idx_edges_skill_tree ON node_edges(skill_tree_id);
-CREATE INDEX idx_quizzes_node ON quizzes(node_id);
-CREATE INDEX idx_progress_student ON student_progress(student_id);
-CREATE INDEX idx_progress_tree ON student_progress(skill_tree_id);
-CREATE INDEX idx_chunks_embedding ON document_chunks USING hnsw (embedding vector_cosine_ops);
-```
+### 3.9 마이그레이션 순서
+| 파일 | 내용 |
+|---|---|
+| `001_initial.sql` | 기본 스키마 (profiles, skill_trees, nodes, quizzes, progress) |
+| `002_auth_trigger.sql` | auth.users → profiles 자동 생성 트리거 |
+| `003_fix_profiles_rls_recursion.sql` | profiles RLS 재귀 제거 |
+| `004_add_rls_for_phase3.sql` | 노드/엣지 RLS |
+| `005_quiz_rls.sql` | 퀴즈 + 시도 RLS |
+| `006_fix_missing_rls_policies.sql` | 클래스 RLS 보강 |
+| `007_school_class_system.sql` | 스쿨/클래스/enrollment + 초대 코드 |
+| `008_student_features.sql` | 미션/업적/메모/복습 |
+| `009_teacher_ai_features.sql` | 수업 녹음/메신저/공지 |
+| `010_social_polish.sql` | 활동 피드/스터디 그룹/리액션 |
+| `011_node_learning_content.sql` | 노드 learning_content 컬럼 (HTML 학습지) |
+| `012_skill_tree_style_guide.sql` | 스킬트리 스타일 가이드 (교사 작성 톤 학습) |
+| `013_special_features.sql` | 감정 리포트/이탈 경보/시뮬레이션 지원 |
+| `014_advanced_features.sql` | 크로스커리큘럼/학부모 연결/인증서 |
+| `015_weekly_plans_cache.sql` | 주간 학습 플랜 캐시 |
 
 ---
 
-## 4. AI 핵심 로직
+## 4. AI 핵심 로직 (13종)
 
-### 4.1 Zod 스키마 (src/lib/ai/schemas.ts)
-```typescript
-import { z } from 'zod'
+각 AI 기능의 상세 입력/출력/모델/비용 특성은 [AI-PIPELINE.md](./AI-PIPELINE.md) 참조.
 
-// 스킬트리 노드 스키마 (AI 출력 구조)
-export const skillTreeNodeSchema = z.object({
-  id: z.string().describe('고유 ID (예: node_1, node_2)'),
-  title: z.string().describe('개념 이름 (짧고 명확하게)'),
-  description: z.string().describe('개념 설명 (2-3문장)'),
-  difficulty: z.number().min(1).max(5).describe('난이도 1-5'),
-})
+| # | 기능 | Server Action | 모델 | 캐시 |
+|---|---|---|---|---|
+| 1 | 스킬트리 자동 생성 | `generateSkillTree`, `saveSkillTree` | Claude | DB (skill_trees) |
+| 2 | 퀴즈 생성/채점 | `generateQuizForNode`, `submitQuizAnswer`, `getQuizHint` | Claude | DB (quizzes) |
+| 3 | 소크라틱 튜터 (RAG) | `chatWithTutor` | Claude + Embedding | 대화 기록 |
+| 4 | 수업 녹음 → 요약 | `transcribeRecording`, `summarizeLesson`, `generateQuizFromRecording` | Whisper + Claude | DB (lesson_recordings) |
+| 5 | 주간 학습 플랜 | `getWeeklyPlan` | Claude | 주 단위 (weekly_plans) |
+| 6 | 학습 감정 분석 | `analyzeStudentEmotion` | Claude | 일 단위 (emotion_reports) |
+| 7 | 이탈 조기 경보 | `calculateRiskScore`, `getClassRiskAlerts` | 통계 (AI X) | — |
+| 8 | 적응형 복습 엔진 | `getTodayReviews`, `markReviewCompleted` | 로직 (AI X) | — |
+| 9 | 크로스커리큘럼 지식 맵 | `findConceptConnections` | Claude | — |
+| 10 | HTML 학습지 생성 | `generateLearningDocForNode`, `getOrCreatePersonalizedDoc` | Claude | DB (nodes.learning_content) |
+| 11 | 약점 진단 + 오답 분석 | `analyzeWeakness`, `getWrongAnswers` | Claude | — |
+| 12 | 학부모 리포트 + 인증서 | `generateParentReport`, `issueCertificate`, `generateWeeklyBriefing` | Claude | 주 단위 (weekly_briefings) |
+| 13 | 사전 시뮬레이션 | `simulateSkillTree` | Claude | — |
 
-export const skillTreeEdgeSchema = z.object({
-  source: z.string().describe('선수 지식 노드 ID'),
-  target: z.string().describe('후속 개념 노드 ID'),
-  label: z.string().optional().describe('관계 설명'),
-})
+**추가 AI 지원 기능**
+- `generateFlashcards` — 노드 완료 시 5장 플래시카드 자동 생성
+- `analyzeStudentGroups`, `analyzeBottlenecks` — 교사/운영자용 통계 분석
+- `getConceptConnections` — 개념 연결 추천
 
-export const skillTreeSchema = z.object({
-  title: z.string().describe('스킬트리 제목'),
-  description: z.string().describe('스킬트리 설명'),
-  nodes: z.array(skillTreeNodeSchema).describe('개념 노드 목록'),
-  edges: z.array(skillTreeEdgeSchema).describe('노드 간 연결 (선수지식 관계)'),
-})
+---
 
-export type SkillTreeOutput = z.infer<typeof skillTreeSchema>
-export type SkillTreeNode = z.infer<typeof skillTreeNodeSchema>
-export type SkillTreeEdge = z.infer<typeof skillTreeEdgeSchema>
+## 5. Server Action 패턴
 
-// 퀴즈 스키마
-export const quizSchema = z.object({
-  questions: z.array(z.object({
-    question: z.string(),
-    type: z.enum(['multiple_choice', 'short_answer']),
-    options: z.array(z.string()).optional(),
-    correct_answer: z.string(),
-    explanation: z.string(),
-    difficulty: z.number().min(1).max(5),
-  }))
-})
-
-export type QuizOutput = z.infer<typeof quizSchema>
-```
-
-### 4.2 프롬프트 (src/lib/ai/prompts.ts)
-```typescript
-export const SKILL_TREE_PROMPT = (content: string) => `
-당신은 교육 전문가이자 커리큘럼 설계자입니다.
-아래 수업 자료를 분석하여, 학생이 학습해야 할 개념들을 스킬트리 구조로 추출하세요.
-
-## 규칙
-1. 각 노드는 하나의 명확한 학습 개념을 나타냅니다.
-2. 선수 지식 관계(edges)를 정확히 파악하세요 — "A를 모르면 B를 이해할 수 없다"
-3. 난이도는 1(기초)~5(심화)로 설정하세요.
-4. 노드는 최소 5개, 최대 20개로 제한하세요.
-5. 기초 개념부터 심화 개념 순으로 자연스럽게 연결되어야 합니다.
-6. 노드 ID는 node_1, node_2, ... 형식으로 지정하세요.
-
-## 수업 자료 내용
-${content}
-`
-
-export const QUIZ_PROMPT = (nodeTitle: string, nodeDescription: string, difficulty: number) => `
-당신은 교육 평가 전문가입니다.
-아래 학습 개념에 대한 퀴즈 문제를 생성하세요.
-
-## 개념
-- 제목: ${nodeTitle}
-- 설명: ${nodeDescription}
-- 난이도: ${difficulty}/5
-
-## 규칙
-1. 객관식 3문제 + 주관식 1문제를 생성하세요.
-2. 객관식은 보기 4개, 정답 1개.
-3. 각 문제에 왜 그 답이 맞는지 해설을 포함하세요.
-4. 난이도에 맞는 문제를 출제하세요.
-5. 단순 암기가 아닌 이해도를 측정하는 문제를 지향하세요.
-`
-
-export const TUTOR_SYSTEM_PROMPT = `
-당신은 친절한 AI 튜터입니다. 학생의 질문에 수업 자료를 기반으로 정확하게 답변하세요.
-
-## 규칙
-1. 학생이 이해하기 쉬운 언어로 설명하세요.
-2. 비유와 예시를 적극 활용하세요.
-3. 학생이 스스로 생각할 수 있도록 힌트를 주세요 (바로 정답을 주지 마세요).
-4. 수업 자료에 없는 내용은 "이 내용은 수업 자료에 포함되어 있지 않아요"라고 알려주세요.
-5. 답변은 한국어로 해주세요.
-`
-```
-
-### 4.3 스킬트리 생성 Server Action (src/actions/skill-tree.ts)
+### 5.1 표준 쓰기 액션
 ```typescript
 'use server'
 
-import { streamObject } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
-import { createServerClient } from '@/lib/supabase/server'
-import { skillTreeSchema } from '@/lib/ai/schemas'
-import { SKILL_TREE_PROMPT } from '@/lib/ai/prompts'
+import { getCachedUser } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 
-export async function generateSkillTree(fileContent: string, classId: string) {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('인증이 필요합니다')
+export async function saveMemo(
+  nodeId: string,
+  content: string
+): Promise<{ error?: string }> {
+  try {
+    // 1. 인증 확인 (React cache로 동일 request 내 1회만 실행)
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
 
-  const result = streamObject({
-    model: anthropic('claude-sonnet-4-6-20250514'),
-    schema: skillTreeSchema,
-    prompt: SKILL_TREE_PROMPT(fileContent),
-  })
+    // 2. 데모 가드
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
-  return result
-}
+    // 3. 입력 검증
+    if (content.length > 2000) return { error: '메모가 너무 깁니다.' }
 
-export async function saveSkillTree(
-  treeData: { title: string; description: string },
-  nodes: Array<{ id: string; title: string; description: string; difficulty: number; position_x?: number; position_y?: number }>,
-  edges: Array<{ source: string; target: string; label?: string }>,
-  classId: string
-) {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('인증이 필요합니다')
+    // 4. DB 작업 (admin client — RLS bypass)
+    const admin = createAdminClient()
+    const { error } = await admin.from('node_memos').upsert({
+      student_id: user.id,
+      node_id: nodeId,
+      content,
+    }, { onConflict: 'student_id,node_id' })
 
-  // 1. 스킬트리 레코드 생성
-  const { data: tree, error: treeError } = await supabase
-    .from('skill_trees')
-    .insert({
-      title: treeData.title,
-      description: treeData.description,
-      class_id: classId,
-      created_by: user.id,
-      status: 'published',
-    })
-    .select()
-    .single()
-
-  if (treeError) throw treeError
-
-  // 2. 노드 일괄 삽입 (N+1 방지)
-  const nodeInserts = nodes.map((node, index) => ({
-    skill_tree_id: tree.id,
-    title: node.title,
-    description: node.description,
-    difficulty: node.difficulty,
-    position_x: node.position_x,
-    position_y: node.position_y,
-    order_index: index,
-  }))
-
-  const { data: dbNodes, error: nodesError } = await supabase
-    .from('nodes')
-    .insert(nodeInserts)
-    .select()
-
-  if (nodesError) throw nodesError
-
-  // 임시ID → DB UUID 매핑
-  const nodeMap = new Map<string, string>()
-  nodes.forEach((node, index) => {
-    nodeMap.set(node.id, dbNodes[index].id)
-  })
-
-  // 3. 엣지 일괄 삽입
-  const edgeInserts = edges.map(edge => ({
-    skill_tree_id: tree.id,
-    source_node_id: nodeMap.get(edge.source),
-    target_node_id: nodeMap.get(edge.target),
-    label: edge.label,
-  }))
-
-  if (edgeInserts.length > 0) {
-    const { error: edgesError } = await supabase
-      .from('node_edges')
-      .insert(edgeInserts)
-    if (edgesError) throw edgesError
+    if (error) return { error: error.message }
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
   }
-
-  // 4. 학생 진도 초기화 (루트 노드는 available, 나머지는 locked)
-  const rootNodeIds = nodes
-    .filter(n => !edges.some(e => e.target === n.id))
-    .map(n => nodeMap.get(n.id)!)
-
-  const { data: students } = await supabase
-    .from('class_students')
-    .select('student_id')
-    .eq('class_id', classId)
-
-  if (students) {
-    for (const student of students) {
-      for (const [tempId, dbId] of nodeMap) {
-        await supabase.from('student_progress').insert({
-          student_id: student.student_id,
-          node_id: dbId,
-          skill_tree_id: tree.id,
-          status: rootNodeIds.includes(dbId) ? 'available' : 'locked',
-        })
-      }
-    }
-  }
-
-  return tree
 }
 ```
 
-### 4.4 AI 튜터 Server Action (src/actions/tutor.ts)
-```typescript
-'use server'
-
-import { streamText } from 'ai'
-import { anthropic } from '@ai-sdk/anthropic'
-import OpenAI from 'openai'
-import { createServerClient } from '@/lib/supabase/server'
-import { TUTOR_SYSTEM_PROMPT } from '@/lib/ai/prompts'
-
-const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-export async function chatWithTutor(
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
-  skillTreeId: string,
-  nodeId?: string
-) {
-  const supabase = await createServerClient()
-
-  // RAG: 관련 문서 검색
-  const lastMessage = messages[messages.length - 1].content
-
-  // 임베딩 생성 (OpenAI 네이티브 SDK 사용 — Vercel AI SDK는 임베딩 미지원)
-  const embeddingResponse = await openaiClient.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: lastMessage,
-  })
-  const queryEmbedding = embeddingResponse.data[0].embedding
-
-  // 유사 문서 검색
-  const { data: docs } = await supabase.rpc('match_documents', {
-    query_embedding: queryEmbedding,
-    match_threshold: 0.7,
-    match_count: 3,
-    p_skill_tree_id: skillTreeId,
-  })
-
-  const context = docs?.map((d: any) => d.content).join('\n\n') || ''
-
-  const result = streamText({
-    model: anthropic('claude-sonnet-4-6-20250514'),
-    system: `${TUTOR_SYSTEM_PROMPT}\n\n## 참고 수업 자료\n${context}`,
-    messages,
-  })
-
-  return result
-}
-```
-
-### 4.5 퀴즈 생성 + 채점 (src/actions/quiz.ts)
+### 5.2 표준 AI 생성 액션
 ```typescript
 'use server'
 
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 import { quizSchema } from '@/lib/ai/schemas'
 import { QUIZ_PROMPT } from '@/lib/ai/prompts'
 
-export async function generateQuizForNode(nodeId: string) {
-  const supabase = await createServerClient()
+export async function generateQuizForNode(
+  nodeId: string
+): Promise<{ data?: Quiz[]; error?: string }> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
 
-  const { data: node } = await supabase
-    .from('nodes')
-    .select('title, description, difficulty')
-    .eq('id', nodeId)
-    .single()
+    const admin = createAdminClient()
 
-  if (!node) throw new Error('노드를 찾을 수 없습니다')
-
-  const { object: quiz } = await generateObject({
-    model: anthropic('claude-sonnet-4-6-20250514'),
-    schema: quizSchema,
-    prompt: QUIZ_PROMPT(node.title, node.description, node.difficulty),
-  })
-
-  // DB에 저장
-  for (const q of quiz.questions) {
-    await supabase.from('quizzes').insert({
-      node_id: nodeId,
-      question: q.question,
-      question_type: q.type,
-      options: q.options || null,
-      correct_answer: q.correct_answer,
-      explanation: q.explanation,
-      difficulty: q.difficulty,
-    })
-  }
-
-  return quiz
-}
-
-export async function submitQuizAnswer(
-  quizId: string,
-  nodeId: string,
-  answer: string
-) {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('인증이 필요합니다')
-
-  // 정답 확인
-  const { data: quiz } = await supabase
-    .from('quizzes')
-    .select('correct_answer, explanation')
-    .eq('id', quizId)
-    .single()
-
-  if (!quiz) throw new Error('퀴즈를 찾을 수 없습니다')
-
-  const isCorrect = answer.trim().toLowerCase() === quiz.correct_answer.trim().toLowerCase()
-
-  // 시도 기록
-  await supabase.from('quiz_attempts').insert({
-    student_id: user.id,
-    quiz_id: quizId,
-    node_id: nodeId,
-    answer,
-    is_correct: isCorrect,
-    score: isCorrect ? 100 : 0,
-    feedback: quiz.explanation,
-  })
-
-  // 노드 진도 업데이트
-  if (isCorrect) {
-    await supabase
-      .from('student_progress')
-      .update({ status: 'completed', quiz_score: 100, completed_at: new Date().toISOString() })
-      .eq('student_id', user.id)
+    // 1. 캐시 확인 (이미 있으면 그대로 반환)
+    const { data: existing } = await admin
+      .from('quizzes')
+      .select('*')
       .eq('node_id', nodeId)
+    if (existing && existing.length > 0) return { data: existing as Quiz[] }
 
-    // 후속 노드 언락
-    const { data: nextEdges } = await supabase
-      .from('node_edges')
-      .select('target_node_id')
-      .eq('source_node_id', nodeId)
+    // 2. 데모 가드 (캐시 miss 시에만, 미리 만든 퀴즈만 사용하도록)
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
-    if (nextEdges) {
-      for (const edge of nextEdges) {
-        // 모든 선수 노드가 completed인지 확인
-        const { data: prereqEdges } = await supabase
-          .from('node_edges')
-          .select('source_node_id')
-          .eq('target_node_id', edge.target_node_id)
+    // 3. AI 호출
+    const { data: node } = await admin.from('nodes').select('title, description, difficulty').eq('id', nodeId).single()
+    if (!node) return { error: '노드를 찾을 수 없습니다.' }
 
-        if (prereqEdges) {
-          const allCompleted = await Promise.all(
-            prereqEdges.map(async (pe) => {
-              const { data } = await supabase
-                .from('student_progress')
-                .select('status')
-                .eq('student_id', user.id)
-                .eq('node_id', pe.source_node_id)
-                .single()
-              return data?.status === 'completed'
-            })
-          )
-
-          if (allCompleted.every(Boolean)) {
-            await supabase
-              .from('student_progress')
-              .update({ status: 'available' })
-              .eq('student_id', user.id)
-              .eq('node_id', edge.target_node_id)
-          }
-        }
-      }
-    }
-  }
-
-  return {
-    isCorrect,
-    explanation: quiz.explanation,
-    score: isCorrect ? 100 : 0,
-  }
-}
-```
-
-### 4.6 RAG 임베딩 (src/lib/ai/embeddings.ts)
-```typescript
-import OpenAI from 'openai'
-import { createServerClient } from '@/lib/supabase/server'
-
-const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-export async function embedAndStoreDocument(
-  content: string,
-  skillTreeId: string,
-  chunkSize: number = 500
-) {
-  const supabase = await createServerClient()
-
-  // 텍스트를 청크로 분할
-  const chunks = splitIntoChunks(content, chunkSize)
-
-  for (const chunk of chunks) {
-    // 임베딩 생성
-    const response = await openaiClient.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: chunk,
+    const { object: quiz } = await generateObject({
+      model: anthropic('claude-sonnet-4-6'),
+      schema: quizSchema,
+      prompt: QUIZ_PROMPT(node.title, node.description ?? '', node.difficulty ?? 1),
     })
 
-    const embedding = response.data[0].embedding
+    // 4. DB 저장 후 반환
+    const { data: saved } = await admin
+      .from('quizzes')
+      .insert(quiz.questions.map(q => ({ node_id: nodeId, ...q })))
+      .select()
 
-    // Supabase에 저장
-    await supabase.from('document_chunks').insert({
-      skill_tree_id: skillTreeId,
-      content: chunk,
-      embedding,
+    return { data: saved as Quiz[] }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : '퀴즈 생성 실패' }
+  }
+}
+```
+
+### 5.3 읽기 액션
+```typescript
+export async function getStudentDashboardData(
+  studentId: string
+): Promise<{ data?: StudentDashboardData; error?: string }> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    // 권한: 본인 / 담당 교사 / admin만
+    if (user.id !== studentId) {
+      // ... 권한 체크 로직
+    }
+
+    const admin = createAdminClient()
+    // ... 조회 로직
+    return { data }
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+```
+
+### 5.4 내부 호출 silent skip 패턴
+```typescript
+// completeNode 같은 핵심 액션 내부에서 호출되는 sub-action
+// 데모 계정이면 에러 없이 조용히 skip (상위 로직이 계속 진행하도록)
+export async function updateMissionProgress(
+  type: string,
+  delta: number
+): Promise<{ error?: string }> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모는 silent skip (에러 토스트 방지)
+    if (isDemoAccount(user.email)) return {}
+
+    // ... 실제 로직
+    return {}
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+```
+
+---
+
+## 6. 4자 역할 시스템
+
+### 6.1 역할 판별
+- **middleware.ts**: `user.user_metadata.role`을 우선 사용 (signup 시 `options.data.role`로 저장됨)
+- **Fallback**: metadata에 role이 없으면 `profiles.role` DB 조회 (레거시 계정 대비)
+- **RoleGuard** 컴포넌트: 페이지 레벨에서 역할 확인
+
+### 6.2 라우트 매핑
+| 역할 | 베이스 경로 | 주요 페이지 |
+|---|---|---|
+| `teacher` | `/teacher/*` | dashboard, skill-tree, classes, quizzes, recording, report, messages, join |
+| `student` | `/student/*` | dashboard, skill-tree (내 학습), quiz, tutor, wrong-answers, groups, messages, onboarding, join |
+| `parent` | `/parent/*` | dashboard, link |
+| `admin` | `/admin/*` | dashboard, schools, announcements, messages |
+
+### 6.3 권한 체크 패턴
+```typescript
+// Dashboard Server Action 예시
+if (user.id !== studentId) {
+  const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).single()
+  let allowed = profile?.role === 'admin'
+  if (!allowed && profile?.role === 'teacher') {
+    // 이 학생이 내 클래스인지 확인
+    const { data: enrollments } = await admin
+      .from('class_enrollments')
+      .select('class_id, classes!inner(teacher_id)')
+      .eq('student_id', studentId)
+      .eq('status', 'approved')
+    allowed = !!enrollments?.some(e => {
+      const cls = Array.isArray(e.classes) ? e.classes[0] : e.classes
+      return cls?.teacher_id === user.id
     })
   }
-}
-
-function splitIntoChunks(text: string, maxChars: number): string[] {
-  const sentences = text.split(/[.!?\n]+/).filter(s => s.trim())
-  const chunks: string[] = []
-  let current = ''
-
-  for (const sentence of sentences) {
-    if ((current + sentence).length > maxChars && current) {
-      chunks.push(current.trim())
-      current = sentence
-    } else {
-      current += (current ? '. ' : '') + sentence
-    }
-  }
-
-  if (current.trim()) chunks.push(current.trim())
-  return chunks
+  if (!allowed) return { error: '권한이 없습니다.' }
 }
 ```
 
 ---
 
-## 5. D3.js 스킬트리 시각화 핵심
+## 7. 스쿨/클래스 초대 플로우
 
-### 5.1 레이아웃 로직 (src/lib/d3/skill-tree-layout.ts)
+```
+운영자(admin)
+   ├─ createSchool() → schools.teacher_code + student_code 자동 발급
+   └─ 코드를 교사/학생에게 배포
+
+교사(teacher)
+   ├─ joinSchoolAsTeacher(code) → school_members (status: approved)
+   ├─ createClass(schoolId, name, description, teacherId)
+   ├─ 학생의 수강신청 승인: approveEnrollment(enrollmentId)
+   └─ 클래스에 스킬트리 배포 (saveSkillTree)
+
+학생(student)
+   ├─ joinWithCode(code) → school_members (status: pending or approved)
+   ├─ requestClassEnrollment(classId) → class_enrollments (status: pending)
+   ├─ 교사 승인 대기 → approved 후 학습 시작
+   └─ /student/skill-tree에서 "내 학습" (클래스 → 스킬트리 2단계 아코디언)
+
+학부모(parent)
+   ├─ 자녀가 createParentInviteCode() → 6자리 코드 생성
+   ├─ linkParentToStudent(code) → parent_student_links 생성
+   └─ /parent에서 자녀 학습 현황 확인
+```
+
+---
+
+## 8. 게이미피케이션 시스템
+
+### 8.1 XP / 레벨
+- XP는 `profiles.xp`에 저장
+- 레벨 = `Math.floor(xp / 100) + 1`
+- XP 획득원: 노드 완료(+30), 퀴즈 만점(+25), 일일 미션 완료(+20~35)
+
+### 8.2 학습 스트릭
+- `profiles.streak_days` + `profiles.last_study_date`
+- `addStudyMinutes()` 호출 시 날짜 비교로 자동 증감
+- 하루 학습 안 하면 다음날 0으로 리셋
+
+### 8.3 일일 미션 (5유형)
 ```typescript
-import * as d3 from 'd3'
-
-export interface D3Node {
-  id: string
-  title: string
-  difficulty: number
-  status: 'locked' | 'available' | 'in_progress' | 'completed'
-  x?: number
-  y?: number
-  fx?: number | null  // 고정 위치 (교사 편집용)
-  fy?: number | null
-}
-
-export interface D3Edge {
-  source: string
-  target: string
-}
-
-export function createSkillTreeSimulation(
-  nodes: D3Node[],
-  edges: D3Edge[],
-  width: number,
-  height: number
-) {
-  const simulation = d3.forceSimulation(nodes as any)
-    .force('link', d3.forceLink(edges).id((d: any) => d.id).distance(120))
-    .force('charge', d3.forceManyBody().strength(-300))
-    .force('center', d3.forceCenter(width / 2, height / 2))
-    .force('collision', d3.forceCollide().radius(50))
-    .force('y', d3.forceY().strength(0.1))  // 위에서 아래로 흐르도록
-
-  return simulation
-}
-
-export function getNodeColor(status: string): string {
-  switch (status) {
-    case 'completed': return '#10B981'   // 초록 (언락됨)
-    case 'available': return '#F59E0B'   // 노랑 (도전 가능)
-    case 'in_progress': return '#4F6BF6' // 파랑 (진행 중)
-    case 'locked': return '#94A3B8'      // 회색 (잠김)
-    default: return '#94A3B8'
-  }
-}
-
-export function getNodeGlow(status: string): string {
-  switch (status) {
-    case 'completed': return '0 0 15px rgba(16, 185, 129, 0.5)'
-    case 'available': return '0 0 15px rgba(245, 158, 11, 0.5)'
-    default: return 'none'
-  }
-}
+const MISSION_TEMPLATES = [
+  { type: 'unlock_node', title: '노드 1개 언락하기', target: 1, xp_reward: 30 },
+  { type: 'complete_quiz', title: '퀴즈 3개 풀기', target: 3, xp_reward: 25 },
+  { type: 'ask_tutor', title: 'AI 튜터에게 1번 질문하기', target: 1, xp_reward: 20 },
+  { type: 'review_node', title: '복습 노드 1개 다시 풀기', target: 1, xp_reward: 25 },
+  { type: 'study_time', title: '30분 학습하기', target: 30, xp_reward: 35 },
+]
 ```
+- 매일 랜덤 3개 자동 생성 (`getTodayMissions`)
+- 진도 자동 추적: 다른 Server Action이 `updateMissionProgress`로 delta 전달
+
+### 8.4 업적 10종
+- `first_unlock`, `five_unlocks`, `ten_unlocks`, `perfect_quiz`, `perfect_streak`, ...
+- `checkAndAwardAchievements()` — 학생 활동 집계 후 미획득 업적 자동 부여
+
+### 8.5 플래시카드
+- 노드 완료 시 `generateFlashcards()` 자동 호출 (AI 5장)
+- `flashcards` 테이블에 저장, 학생이 "알겠어요/다시볼게요" 선택
+
+### 8.6 수료 인증서
+- `issueCertificate()` — 스킬트리 100% 완료 시 자동 발급
+- HTML 템플릿으로 인쇄 가능 (A4, NodeBloom 로고 + SEAL)
+
+### 8.7 적응형 복습 (에빙하우스)
+- `review_reminders.interval_days` — 정답률에 따라 2배/1배/0.5배 자동 조절
+- 기본 간격: 1일 → 3일 → 7일 → 14일 → 30일
 
 ---
 
-## 6. 타입 정의
+## 9. 데모 모드 (읽기 전용)
 
-### 6.1 핵심 타입 (src/types/skill-tree.ts)
+### 9.1 판별 (`src/lib/demo.ts`)
 ```typescript
-export interface SkillTree {
-  id: string
-  title: string
-  description: string
-  subject_id: string | null
-  class_id: string | null
-  created_by: string
-  is_template: boolean
-  status: 'draft' | 'published' | 'archived'
-  created_at: string
-  updated_at: string
-  nodes?: Node[]
-  edges?: NodeEdge[]
-}
+export const DEMO_TEACHER_EMAIL = 'demo_teacher@learngraph.app'
+export const DEMO_STUDENT_EMAIL = 'demo_student@learngraph.app'
 
-export interface Node {
-  id: string
-  skill_tree_id: string
-  title: string
-  description: string
-  difficulty: number
-  order_index: number
-  position_x: number | null
-  position_y: number | null
-}
+export function isDemoAccount(email: string | null | undefined): boolean { /* ... */ }
 
-export interface NodeEdge {
-  id: string
-  skill_tree_id: string
-  source_node_id: string
-  target_node_id: string
-  label: string | null
-}
-
-export interface StudentProgress {
-  id: string
-  student_id: string
-  node_id: string
-  skill_tree_id: string
-  status: 'locked' | 'available' | 'in_progress' | 'completed'
-  quiz_score: number | null
-  attempts: number
-  completed_at: string | null
+export function assertNotDemo(email: string | null | undefined): { error: string } | null {
+  if (isDemoAccount(email)) {
+    return { error: '체험 모드에서는 이 기능을 사용할 수 없습니다. 회원가입 후 이용해주세요!' }
+  }
+  return null
 }
 ```
 
+### 9.2 쓰기 가드
+모든 쓰기 Server Action 상단에서 호출:
+```typescript
+const demoBlock = assertNotDemo(user.email)
+if (demoBlock) return demoBlock
+```
+내부 호출(미션 진행 등)은 `isDemoAccount` 체크 + silent return.
+
+### 9.3 시드 (`src/actions/demo-setup.ts`)
+- `setupDemoData()` — idempotent (fast-path로 구축 완료 감지 시 즉시 return)
+- 생성 데이터:
+  - "NodeBloom 체험 학교" + "AI 학습 체험반"
+  - "인공지능의 이해" 스킬트리 14 노드 + 엣지
+  - HTML 학습 문서 (node당 300자+)
+  - 4개 완료 노드: 퀴즈 16개 + 플래시카드 20개 + quiz_attempts
+  - 미션 3개, 업적 3개, 감정 리포트, 주간 브리핑
+  - 환영 공지 + DM 2개
+- 학생 `김지수`, 교사 `박지훈`
+
+### 9.4 UI
+- `DemoBanner` 컴포넌트 (Server Component) — 4개 레이아웃 상단에서 `isDemoAccount(profile.email)` 체크 후 조건부 렌더
+- 로그인 페이지 "교사 체험하기" / "학생 체험하기" 버튼 → `loginAsDemo(role)` → 클라이언트에서 `signInWithPassword`
+
 ---
 
-## 7. 체크리스트
+## 10. 프로젝트 고유 규칙
 
-### Day 1 체크리스트
-- [ ] Next.js 프로젝트 생성 + 의존성 설치
-- [ ] Supabase 프로젝트 생성 + DB 마이그레이션 실행
-- [ ] 환경 변수 설정
-- [ ] GitHub 레포 생성 + Vercel 연결
-- [ ] Supabase 클라이언트 설정 (server/client/middleware)
-- [ ] shadcn/ui 초기화 + 기본 컴포넌트 추가
-- [ ] 기본 레이아웃 (Sidebar + Header) 생성
-- [ ] CLAUDE.md + 개발 문서 프로젝트에 포함
-- [ ] 기획서 PDF docs/planning/ 에 포함
+> 이 규칙들은 코드베이스 전반에 적용되며, 예외 없이 준수되어야 합니다.
 
-### Day 2 체크리스트
-- [ ] Supabase Auth 회원가입/로그인 구현
-- [ ] profiles 테이블 + 역할(teacher/student/admin) 설정
-- [ ] 미들웨어 역할 기반 라우팅
-- [ ] 파일 업로드 (Supabase Storage)
-- [ ] PDF 텍스트 추출 로직
-- [ ] Claude 스킬트리 생성 Server Action
-- [ ] Zod 스키마 + streamObject 연동 테스트
+1. **DB 조회/쓰기는 반드시 `createAdminClient()` 사용.**
+   인증은 `getCachedUser()`로만 확인. `createServerClient()`는 `getCachedUser` 내부에서만 사용.
 
-### Day 3 체크리스트
-- [ ] D3.js 스킬트리 컴포넌트 (SkillTreeGraph.tsx)
-- [ ] 노드 상태별 색상/글로우 효과
-- [ ] 교사 편집 모드 (드래그 이동, 노드 추가/삭제)
-- [ ] 언락 애니메이션
-- [ ] 스킬트리 저장 (saveSkillTree)
+2. **Server Action은 throw 금지.**
+   반드시 `{ data, error }` 객체 반환. try-catch로 모든 에러를 `error` 필드로 변환.
 
-### Day 4 체크리스트
-- [ ] 퀴즈 자동 생성 (generateQuizForNode)
-- [ ] 퀴즈 UI (객관식/주관식)
-- [ ] 정답 채점 + 노드 언락 로직 (submitQuizAnswer)
-- [ ] 학생 진도 DB 저장
-- [ ] 후속 노드 자동 언락
+3. **RLS 정책 SQL 작성 시 `CREATE POLICY` 앞에 항상 `DROP POLICY IF EXISTS` 선행.**
+   마이그레이션 재실행 안전 보장.
 
-### Day 5 체크리스트
-- [ ] 수업자료 벡터화 (embedAndStoreDocument)
-- [ ] RAG 기반 AI 튜터 (chatWithTutor)
-- [ ] 채팅 UI (ChatInterface.tsx)
-- [ ] ElevenLabs 음성 연동 (가능하면)
+4. **Zod 스키마에서 `z.number()`에 `.min()`/`.max()` 금지.**
+   범위 제약은 `.describe()`와 프롬프트로 지시 (Claude 구조화 출력 호환성).
 
-### Day 6 체크리스트
-- [ ] 교사 대시보드 (히트맵, 학생 목록)
-- [ ] 운영자 대시보드 (전체 통계)
-- [ ] 학생 레벨/XP 시스템
-- [ ] Recharts 차트 컴포넌트
+5. **Claude API 모델 ID는 `claude-sonnet-4-6` 사용.**
+   코드베이스 전체 통일.
 
-### Day 7 체크리스트
-- [ ] UI/UX 전체 폴리싱
-- [ ] 에러 핸들링 + 로딩 상태
-- [ ] 데모 데이터 seed
-- [ ] README.md 작성
-- [ ] 최종 배포 + 테스트
-- [ ] 제출물 준비 (GitHub URL, 라이브 URL, AI 리포트)
+6. **`generateObject`/`streamText` 반환 시 직렬화 가능한 패턴 사용.**
+   Server Action에서 stream 객체 자체를 반환하지 않음 — 완료된 객체만.
+
+### 추가 금지 패턴
+- ❌ API Routes 생성 (`app/api/*/route.ts`) — Server Actions로 대체
+- ❌ `useEffect`에서 직접 `setState` 호출 (React 19 set-state-in-effect 경고) — event handler로 옮김
+- ❌ `any` 타입 사용 — `unknown` 또는 구체 타입
+- ❌ 사용자 대면 영문 메시지 — 한국어로 번역
+- ❌ 150줄 초과 컴포넌트 — 분리
+
+---
+
+## 참고 문서
+- [PHASES.md](./PHASES.md) — 개발 Phase 로드맵
+- [AI-PIPELINE.md](./AI-PIPELINE.md) — 13종 AI 파이프라인 상세
+- [PLANNING.md](./PLANNING.md) — 프로젝트 기획서
