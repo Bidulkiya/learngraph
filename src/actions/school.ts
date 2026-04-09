@@ -45,6 +45,28 @@ export interface SchoolDetailData {
   }>
 }
 
+/**
+ * 학생의 "내 학습" 페이지에서 사용하는 클래스 → 스킬트리 중첩 구조.
+ * 각 클래스마다 소속된 published 스킬트리 + 내 진도를 함께 반환한다.
+ */
+export interface ClassWithSkillTrees {
+  id: string
+  name: string
+  description: string | null
+  teacher_id: string | null
+  teacher_name: string | null
+  school_name: string | null
+  skill_trees: Array<{
+    id: string
+    title: string
+    description: string | null
+    subject_hint: string | null
+    total_nodes: number
+    completed_nodes: number
+    progress_percent: number
+  }>
+}
+
 // ============================================
 // Admin: Create / Manage Schools
 // ============================================
@@ -923,6 +945,144 @@ export async function getClassEnrollments(
         requested_at: e.requested_at,
       })),
     }
+  } catch (err) {
+    return { error: String(err) }
+  }
+}
+
+// ============================================
+// Student: My Learning (Class → Skill Trees 2-level)
+// ============================================
+
+/**
+ * 학생의 "내 학습" 페이지 데이터:
+ * 내가 approved된 모든 클래스 + 각 클래스의 published 스킬트리 + 스킬트리별 진도.
+ *
+ * 병합된 단일 API라 대시보드 쿼리 N+1을 피하고, 클라이언트는 이 결과만으로
+ * 클래스 → 스킬트리 2단계 아코디언 UI를 렌더할 수 있다.
+ */
+export async function getMyClassesWithSkillTrees(): Promise<{
+  data?: ClassWithSkillTrees[]
+  error?: string
+}> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const admin = createAdminClient()
+
+    // 1. 학생의 approved enrollments
+    const { data: enrollments } = await admin
+      .from('class_enrollments')
+      .select('class_id')
+      .eq('student_id', user.id)
+      .eq('status', 'approved')
+
+    const classIds = enrollments?.map(e => e.class_id) ?? []
+    if (classIds.length === 0) return { data: [] }
+
+    // 2. 클래스 정보 (병렬로 teacher/school도 가져오기 위해 teacher_id, school_id 수집)
+    const { data: classes } = await admin
+      .from('classes')
+      .select('id, name, description, teacher_id, school_id, created_at')
+      .in('id', classIds)
+      .order('created_at', { ascending: false })
+
+    if (!classes || classes.length === 0) return { data: [] }
+
+    const teacherIds = [...new Set(
+      classes.map(c => c.teacher_id).filter((v): v is string => !!v)
+    )]
+    const schoolIds = [...new Set(
+      classes.map(c => c.school_id).filter((v): v is string => !!v)
+    )]
+
+    // 3. 교사 이름 + 학교 이름 + 클래스들의 published 스킬트리 병렬 조회
+    const [teachersRes, schoolsRes, treesRes] = await Promise.all([
+      teacherIds.length > 0
+        ? admin.from('profiles').select('id, name').in('id', teacherIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+      schoolIds.length > 0
+        ? admin.from('schools').select('id, name').in('id', schoolIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+      admin
+        .from('skill_trees')
+        .select('id, title, description, subject_hint, class_id, created_at')
+        .in('class_id', classIds)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false }),
+    ])
+
+    const teacherMap = new Map(
+      (teachersRes.data ?? []).map(t => [t.id, t.name])
+    )
+    const schoolMap = new Map(
+      (schoolsRes.data ?? []).map(s => [s.id, s.name])
+    )
+    const trees = treesRes.data ?? []
+    const treeIds = trees.map(t => t.id)
+
+    // 4. 각 스킬트리의 노드 목록 + 학생 진도 병렬 조회
+    const [nodesRes, progressRes] = await Promise.all([
+      treeIds.length > 0
+        ? admin
+            .from('nodes')
+            .select('id, skill_tree_id')
+            .in('skill_tree_id', treeIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; skill_tree_id: string }> }),
+      admin
+        .from('student_progress')
+        .select('node_id, status')
+        .eq('student_id', user.id)
+        .eq('status', 'completed'),
+    ])
+
+    // 5. 노드 → 트리 매핑 + 완료 진도 Set
+    const nodesByTree = new Map<string, string[]>()
+    for (const n of nodesRes.data ?? []) {
+      const list = nodesByTree.get(n.skill_tree_id) ?? []
+      list.push(n.id)
+      nodesByTree.set(n.skill_tree_id, list)
+    }
+    const completedNodeIds = new Set(
+      (progressRes.data ?? []).map(p => p.node_id)
+    )
+
+    // 6. 클래스별 스킬트리 집계
+    const treesByClass = new Map<string, ClassWithSkillTrees['skill_trees']>()
+    for (const tree of trees) {
+      const nodeIds = nodesByTree.get(tree.id) ?? []
+      const totalNodes = nodeIds.length
+      const completedCount = nodeIds.filter(id => completedNodeIds.has(id)).length
+      const progressPercent = totalNodes > 0
+        ? Math.round((completedCount / totalNodes) * 100)
+        : 0
+
+      const list = treesByClass.get(tree.class_id) ?? []
+      list.push({
+        id: tree.id,
+        title: tree.title,
+        description: tree.description,
+        subject_hint: tree.subject_hint ?? null,
+        total_nodes: totalNodes,
+        completed_nodes: completedCount,
+        progress_percent: progressPercent,
+      })
+      treesByClass.set(tree.class_id, list)
+    }
+
+    // 7. 최종 조립 (클래스 순서 유지)
+    const result: ClassWithSkillTrees[] = classes.map(cls => ({
+      id: cls.id,
+      name: cls.name,
+      description: cls.description,
+      teacher_id: cls.teacher_id,
+      teacher_name: cls.teacher_id ? teacherMap.get(cls.teacher_id) ?? null : null,
+      school_name: cls.school_id ? schoolMap.get(cls.school_id) ?? null : null,
+      skill_trees: treesByClass.get(cls.id) ?? [],
+    }))
+
+    return { data: result }
   } catch (err) {
     return { error: String(err) }
   }
