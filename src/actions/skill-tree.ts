@@ -604,3 +604,70 @@ export async function fetchSkillTreeDetail(treeId: string) {
     return { error: String(err) }
   }
 }
+
+/**
+ * 교사가 만든 스킬트리 목록(노드까지 중첩) 조회.
+ * /teacher/recording 페이지의 "노드 복습 퀴즈 생성" 모드에서 사용.
+ * 교사가 스킬트리 → 노드를 2단계로 선택할 수 있도록 한 번에 반환.
+ */
+export async function listMyTeacherSkillTrees(): Promise<{
+  data?: Array<{
+    id: string
+    title: string
+    description: string | null
+    subject_hint: string | null
+    nodes: Array<{ id: string; title: string; description: string | null; difficulty: number | null; order_index: number | null }>
+  }>
+  error?: string
+}> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const admin = createAdminClient()
+
+    // 본인이 만든 스킬트리
+    const { data: trees } = await admin
+      .from('skill_trees')
+      .select('id, title, description, subject_hint')
+      .eq('created_by', user.id)
+      .order('created_at', { ascending: false })
+
+    if (!trees || trees.length === 0) return { data: [] }
+
+    const treeIds = trees.map(t => t.id)
+
+    // 해당 스킬트리들의 노드 일괄 조회
+    const { data: nodes } = await admin
+      .from('nodes')
+      .select('id, skill_tree_id, title, description, difficulty, order_index')
+      .in('skill_tree_id', treeIds)
+      .order('order_index', { ascending: true })
+
+    // 스킬트리별로 묶기
+    const byTree = new Map<string, typeof nodes>()
+    for (const n of nodes ?? []) {
+      const list = byTree.get(n.skill_tree_id) ?? []
+      list.push(n)
+      byTree.set(n.skill_tree_id, list)
+    }
+
+    return {
+      data: trees.map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        subject_hint: t.subject_hint ?? null,
+        nodes: (byTree.get(t.id) ?? []).map(n => ({
+          id: n.id,
+          title: n.title,
+          description: n.description,
+          difficulty: n.difficulty,
+          order_index: n.order_index,
+        })),
+      })),
+    }
+  } catch (err) {
+    return { error: String(err) }
+  }
+}

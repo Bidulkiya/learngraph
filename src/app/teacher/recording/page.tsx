@@ -1,265 +1,128 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Mic, Square, Loader2, FileText, ListChecks, Lightbulb, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { transcribeRecording, summarizeLesson, generateQuizFromRecording } from '@/actions/recording'
-import type { LessonSummaryOutput } from '@/lib/ai/schemas'
-import { toast } from 'sonner'
+import { useState } from 'react'
+import { TreePine, ClipboardCheck, Mic } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { RecordingTreeMode } from './RecordingTreeMode'
+import { RecordingQuizMode } from './RecordingQuizMode'
 
-type Phase = 'idle' | 'recording' | 'transcribing' | 'transcribed' | 'summarizing' | 'done'
+type Mode = 'select' | 'tree' | 'quiz'
 
+/**
+ * 교사 수업 녹음 페이지 — 두 모드로 분리.
+ *
+ * 1) "스킬트리 작성" — 녹음 내용으로 새 스킬트리를 AI가 자동 생성
+ * 2) "노드 복습 퀴즈 생성" — 기존 스킬트리의 특정 노드에 복습 퀴즈를 추가
+ *
+ * 두 모드 모두 전사 후 Claude가 교육 외 잡음(농담/진행 멘트/말 더듬기)을
+ * 자동 필터링한 뒤 파이프라인에 투입한다.
+ */
 export default function RecordingPage() {
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [duration, setDuration] = useState(0)
-  const [transcript, setTranscript] = useState('')
-  const [recordingId, setRecordingId] = useState<string | null>(null)
-  const [summary, setSummary] = useState<LessonSummaryOutput | null>(null)
-  const [quizGenerating, setQuizGenerating] = useState(false)
+  const [mode, setMode] = useState<Mode>('select')
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [])
-
-  const startRecording = async (): Promise<void> => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
-      mediaRecorderRef.current = mediaRecorder
-      chunksRef.current = []
-      setDuration(0)
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
-      }
-
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        if (timerRef.current) clearInterval(timerRef.current)
-
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        setPhase('transcribing')
-
-        const formData = new FormData()
-        formData.append('audio', blob, 'lesson.webm')
-        formData.append('duration', String(duration))
-
-        const res = await transcribeRecording(formData)
-        if (res.error || !res.data) {
-          toast.error(res.error ?? '전사 실패')
-          setPhase('idle')
-          return
-        }
-        setTranscript(res.data.transcript)
-        setRecordingId(res.data.recordingId)
-        setPhase('transcribed')
-      }
-
-      mediaRecorder.start()
-      setPhase('recording')
-      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000)
-    } catch {
-      toast.error('마이크 권한을 허용해주세요')
-    }
+  if (mode === 'tree') {
+    return <RecordingTreeMode onBack={() => setMode('select')} />
   }
-
-  const stopRecording = (): void => {
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop()
-    }
+  if (mode === 'quiz') {
+    return <RecordingQuizMode onBack={() => setMode('select')} />
   }
-
-  const handleSummarize = async (): Promise<void> => {
-    if (!recordingId) return
-    setPhase('summarizing')
-    const res = await summarizeLesson(recordingId)
-    if (res.error || !res.data) {
-      toast.error(res.error ?? '요약 실패')
-      setPhase('transcribed')
-      return
-    }
-    setSummary(res.data)
-    setPhase('done')
-    toast.success('요약 완료!')
-  }
-
-  const handleGenerateQuiz = async (): Promise<void> => {
-    if (!recordingId) return
-    setQuizGenerating(true)
-    const res = await generateQuizFromRecording(recordingId)
-    setQuizGenerating(false)
-    if (res.error) {
-      toast.error(res.error)
-      return
-    }
-    toast.success(`퀴즈 ${res.data?.questions}개가 생성되었습니다`)
-  }
-
-  const handleReset = (): void => {
-    setPhase('idle')
-    setDuration(0)
-    setTranscript('')
-    setRecordingId(null)
-    setSummary(null)
-  }
-
-  const min = Math.floor(duration / 60)
-  const sec = duration % 60
-  const timeDisplay = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">수업 녹음 & AI 요약</h1>
-        <p className="mt-1 text-gray-500">
-          수업을 녹음하면 AI가 자동으로 전사하고 요약 + 복습 퀴즈를 만들어드립니다
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white">
+          <Mic className="h-6 w-6 text-[#6366F1]" />
+          수업 녹음
+        </h1>
+        <p className="mt-1 text-gray-500 dark:text-gray-400">
+          수업을 녹음하면 AI가 잡음을 제거하고 교육 내용만 뽑아내어 스킬트리를 만들거나 퀴즈를 추가합니다
         </p>
       </div>
 
-      {/* 녹음 카드 */}
-      <Card>
-        <CardContent className="flex flex-col items-center gap-4 py-10">
-          {phase === 'idle' && (
-            <>
-              <button
-                onClick={startRecording}
-                className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#4F6BF6] to-[#7C5CFC] shadow-lg transition-all hover:scale-105"
-              >
-                <Mic className="h-10 w-10 text-white" />
-              </button>
-              <p className="text-sm text-gray-500">녹음 시작하기</p>
-            </>
-          )}
-          {phase === 'recording' && (
-            <>
-              <button
-                onClick={stopRecording}
-                className="flex h-24 w-24 items-center justify-center rounded-full bg-red-500 shadow-lg animate-pulse transition-all"
-              >
-                <Square className="h-10 w-10 fill-white text-white" />
-              </button>
-              <p className="font-mono text-2xl font-bold text-red-500">{timeDisplay}</p>
-              <p className="text-sm text-gray-500">녹음 중... (클릭하여 정지)</p>
-            </>
-          )}
-          {phase === 'transcribing' && (
-            <>
-              <Loader2 className="h-16 w-16 animate-spin text-[#4F6BF6]" />
-              <p className="text-sm text-gray-500">AI가 음성을 텍스트로 전사 중입니다...</p>
-            </>
-          )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* 카드 1: 스킬트리 작성 */}
+        <ModeCard
+          icon={<TreePine className="h-8 w-8" />}
+          emoji="🌳"
+          color="#10B981"
+          title="스킬트리 작성"
+          description="수업 내용으로 새 스킬트리를 만듭니다"
+          detail="녹음 → AI 전사 → 잡음 제거 → 커리큘럼 자동 설계 → 학습 문서 + 퀴즈 자동 생성"
+          onClick={() => setMode('tree')}
+        />
+
+        {/* 카드 2: 복습 퀴즈 생성 */}
+        <ModeCard
+          icon={<ClipboardCheck className="h-8 w-8" />}
+          emoji="📝"
+          color="#6366F1"
+          title="복습 퀴즈 생성"
+          description="수업 내용으로 특정 노드에 퀴즈를 추가합니다"
+          detail="스킬트리 → 노드 선택 → 녹음 → AI가 수업에서 강조한 내용 위주로 복습 퀴즈 출제"
+          onClick={() => setMode('quiz')}
+        />
+      </div>
+
+      <Card className="border-dashed bg-gray-50/50 dark:bg-gray-900/30">
+        <CardContent className="py-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            💡 <strong>팁</strong> — 녹음 시 마이크 권한을 허용해주세요. 한 수업당 최대 25MB (약 30-60분)까지 전사 가능합니다.
+            AI가 농담·진행 멘트·말 더듬기를 자동으로 제거해 교육 내용만 추출합니다.
+          </p>
         </CardContent>
       </Card>
-
-      {/* 전사 결과 */}
-      {(phase === 'transcribed' || phase === 'summarizing' || phase === 'done') && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-4 w-4 text-[#4F6BF6]" />
-              전사 결과
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              rows={8}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="전사 결과가 여기 표시됩니다..."
-              readOnly={phase !== 'transcribed'}
-            />
-            {phase === 'transcribed' && (
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSummarize}
-                  className="flex-1 bg-[#4F6BF6] hover:bg-[#4F6BF6]/90"
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  AI 요약 + 복습 퀴즈 만들기
-                </Button>
-                <Button onClick={handleReset} variant="outline">
-                  다시 녹음
-                </Button>
-              </div>
-            )}
-            {phase === 'summarizing' && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                AI가 요약을 생성 중입니다...
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 요약 결과 */}
-      {phase === 'done' && summary && (
-        <>
-          <Card className="border-2 border-[#7C5CFC]/30 bg-gradient-to-br from-[#7C5CFC]/5 to-[#4F6BF6]/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-[#7C5CFC]" />
-                AI 수업 요약
-              </CardTitle>
-              <CardDescription>{summary.summary}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="mb-2 flex items-center gap-1 text-xs font-semibold text-gray-500">
-                  <ListChecks className="h-3.5 w-3.5" />
-                  핵심 포인트
-                </div>
-                <ul className="space-y-1">
-                  {summary.keyPoints.map((p, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <Badge variant="secondary" className="mt-0.5 shrink-0">{i + 1}</Badge>
-                      <span>{p}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <div className="mb-2 flex items-center gap-1 text-xs font-semibold text-gray-500">
-                  <Lightbulb className="h-3.5 w-3.5" />
-                  다음 수업 제안
-                </div>
-                <ul className="ml-4 list-disc space-y-1 text-sm">
-                  {summary.nextLessonSuggestions.map((s, i) => (
-                    <li key={i}>{s}</li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-2">
-            <Button
-              onClick={handleGenerateQuiz}
-              disabled={quizGenerating}
-              className="flex-1 bg-[#10B981] hover:bg-[#10B981]/90"
-            >
-              {quizGenerating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              복습 퀴즈 생성
-            </Button>
-            <Button onClick={handleReset} variant="outline">
-              새 녹음
-            </Button>
-          </div>
-        </>
-      )}
     </div>
   )
 }
+
+function ModeCard({
+  icon,
+  emoji,
+  color,
+  title,
+  description,
+  detail,
+  onClick,
+}: {
+  icon: React.ReactNode
+  emoji: string
+  color: string
+  title: string
+  description: string
+  detail: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group text-left"
+    >
+      <Card className="h-full transition-all hover:-translate-y-1 hover:shadow-xl">
+        <CardContent className="flex flex-col items-start gap-4 p-6">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg transition-transform group-hover:scale-110"
+              style={{ backgroundColor: color, boxShadow: `0 10px 30px ${color}40` }}
+            >
+              {icon}
+            </div>
+            <span className="text-3xl">{emoji}</span>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{description}</p>
+          </div>
+          <p className="text-xs leading-relaxed text-gray-500">{detail}</p>
+          <span
+            className="mt-auto inline-flex items-center gap-1 text-sm font-semibold transition-colors"
+            style={{ color }}
+          >
+            시작하기 →
+          </span>
+        </CardContent>
+      </Card>
+    </button>
+  )
+}
+
