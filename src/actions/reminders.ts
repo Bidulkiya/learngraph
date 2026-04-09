@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 
 export type ReviewUrgency = 'overdue' | 'today' | 'soon'
 
@@ -104,6 +105,10 @@ export async function markReviewCompleted(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     if (!isUuid(reminderId)) return { error: '유효하지 않은 ID입니다.' }
 
     const admin = createAdminClient()

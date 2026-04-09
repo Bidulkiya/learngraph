@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isDemoAccount } from '@/lib/demo'
 import { weeklyPlanSchema, type WeeklyPlanOutput } from '@/lib/ai/schemas'
 import { WEEKLY_PLAN_PROMPT } from '@/lib/ai/prompts'
 
@@ -56,6 +57,22 @@ export async function getWeeklyPlan(
             motivation: cached.motivation,
           },
         }
+      }
+    }
+
+    // 데모 계정은 캐시 miss 시 하드코딩된 plan 반환 (AI 호출 차단)
+    if (isDemoAccount(user.email)) {
+      return {
+        data: {
+          plan: [
+            { day: '월요일', nodes: ['머신러닝 기초'], reason: 'Lv2까지 완료했으니 다음 단계인 머신러닝 기초로 넘어갈 좋은 시점입니다.' },
+            { day: '화요일', nodes: ['지도학습'], reason: '지도학습은 머신러닝의 가장 기초적이고 직관적인 부분이라 먼저 익히면 이해가 빠릅니다.' },
+            { day: '수요일', nodes: ['비지도학습'], reason: '지도학습과 대조되는 개념으로 함께 배우면 둘의 차이를 명확히 이해할 수 있습니다.' },
+            { day: '목요일', nodes: ['알고리즘 기초', 'AI란 무엇인가'], reason: '플래시카드로 이미 완료한 노드를 가볍게 복습하는 날입니다.' },
+            { day: '금요일', nodes: ['AI 활용 사례'], reason: '한 주의 학습을 흥미로운 활용 사례로 마무리하며 동기부여를 얻습니다.' },
+          ],
+          motivation: '이번 주에 머신러닝의 핵심 개념을 익혀봅시다! 지금까지 잘 따라오고 있어요. 꾸준함이 가장 큰 힘이에요. 👍',
+        },
       }
     }
 

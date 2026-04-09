@@ -56,6 +56,14 @@ export function SkillTreeGraph({
   // 테마는 prop이 바뀔 때만 재계산
   const themeConfig: ThemeConfig = useMemo(() => getTheme(theme ?? undefined), [theme])
 
+  // Callback refs — 부모 re-render로 인한 D3 전체 재실행을 방지.
+  // useEffect deps에 직접 callback을 넣으면 매 렌더마다 참조가 바뀌어
+  // simulation이 리셋되고 노드가 (0,0) 근처로 튕겼다가 다시 수렴하는 버그 발생.
+  const callbacksRef = useRef({ onNodeClick, onNodeDragEnd, onEdgeClick, onAddEdge })
+  useEffect(() => {
+    callbacksRef.current = { onNodeClick, onNodeDragEnd, onEdgeClick, onAddEdge }
+  }, [onNodeClick, onNodeDragEnd, onEdgeClick, onAddEdge])
+
   // Responsive resize
   useEffect(() => {
     const container = containerRef.current
@@ -297,10 +305,16 @@ export function SkillTreeGraph({
       })
       .style('cursor', editable ? 'pointer' : 'default')
       .on('click', (_event, d) => {
-        if (editable && onEdgeClick) onEdgeClick(d)
+        if (editable) callbacksRef.current.onEdgeClick?.(d)
       })
 
     // ─── 11. Node groups ───
+    // 구조: <g.node> (tick이 translate 관리)
+    //        └─ <g.node-inner> (hover scale 관리, D3 transition)
+    //             └─ shape, icon, check-overlay
+    //        └─ 링, 제목, 난이도 도트, SVG title (hover와 독립, 고정 위치)
+    // 이 중첩 구조로 tick의 translate와 hover의 scale이 서로 다른
+    // 요소에 적용되어 race condition이 완전히 차단된다.
     const nodeGroup = g.append('g').attr('class', 'nodes')
     const node = nodeGroup
       .selectAll<SVGGElement, D3Node>('g.node')
@@ -369,15 +383,19 @@ export function SkillTreeGraph({
       .style('transform-box', 'fill-box')
       .style('pointer-events', 'none')
 
+    // Inner group — hover 시 D3 transition으로 scale.
+    // 모든 자식이 (0,0) 중심이므로 scale(k)만으로 중심 기준 확대가 된다
+    // (transform-box: fill-box 같은 CSS hack 필요 없음).
+    const nodeInner = node.append('g').attr('class', 'node-inner')
+
     // 메인 노드 형상 (원 또는 육각형)
-    const shape = node.append(themeConfig.nodeShape === 'hexagon' ? 'path' : 'circle')
+    const shape = nodeInner.append(themeConfig.nodeShape === 'hexagon' ? 'path' : 'circle')
       .attr('class', 'node-shape')
       .attr('fill', d => `url(#node-grad-${d.status})`)
       .attr('stroke', d => themeConfig.nodeColors[d.status as Status].ring)
       .attr('stroke-width', 2)
       .attr('stroke-opacity', 0.9)
       .style('filter', d => d.status === 'locked' ? 'none' : `url(#glow-${d.status})`)
-      .style('transition', 'filter 0.25s ease, stroke-width 0.25s ease, opacity 0.25s ease')
 
     if (themeConfig.nodeShape === 'hexagon') {
       shape.attr('d', d => hexagonPath(getNodeSize(d.difficulty)))
@@ -386,12 +404,12 @@ export function SkillTreeGraph({
     }
 
     // locked 노드는 반투명도 높게
-    node.filter(d => d.status === 'locked')
+    nodeInner.filter(d => d.status === 'locked')
       .select('.node-shape')
       .attr('opacity', 0.55)
 
     // 노드 안 이모지/아이콘
-    node.append('text')
+    nodeInner.append('text')
       .attr('class', 'node-icon')
       .text(d => themeConfig.emoji[d.status as Status])
       .attr('text-anchor', 'middle')
@@ -435,7 +453,8 @@ export function SkillTreeGraph({
       })
 
     // completed 노드 — 체크마크 오버레이 (우상단)
-    node.filter(d => d.status === 'completed')
+    // nodeInner에 append하여 hover 시 shape와 함께 scale.
+    nodeInner.filter(d => d.status === 'completed')
       .append('g')
       .attr('class', 'check-overlay')
       .style('pointer-events', 'none')
@@ -467,12 +486,19 @@ export function SkillTreeGraph({
       .text(d => `${d.title}\n${d.description}\n상태: ${getStatusLabel(d.status)}`)
 
     // ─── 12. 인터랙션 ───
-    // 주의: hover scale은 CSS `.node-shape:hover` 규칙이 담당 (globals.css 참고).
-    // <g class="node">의 transform은 오직 simulation.on('tick')만 관리해야
-    // scale 트랜지션과 tick이 같은 attribute를 다투는 race condition이 없다.
-    // 여기서는 filter 변경과 엣지 하이라이트만 JS로 처리.
+    // 핵심: hover scale은 <g.node-inner>의 SVG transform attribute에 D3 transition으로 적용.
+    // <g.node>의 transform은 simulation.on('tick')이 매 프레임 관리(translate),
+    // <g.node-inner>의 transform은 오직 여기서만 관리(scale) → 서로 다른 요소이므로
+    // race condition 없음. 과거에 CSS hover + transform-box: fill-box 방식은
+    // filter가 걸린 SVG 요소에서 브라우저별 bbox 계산 차이로 노드가 왼쪽 상단으로
+    // 튀는 문제가 있었음. 이 구조로 근본적으로 해결됨.
     node.on('mouseenter', function (_event, d) {
       const sel = d3.select(this)
+      sel.select<SVGGElement>('.node-inner')
+        .transition('hover-scale')
+        .duration(180)
+        .ease(d3.easeCubicOut)
+        .attr('transform', 'scale(1.15)')
       sel.select<SVGElement>('.node-shape')
         .style('filter', `url(#glow-strong-${d.status})`)
         .attr('stroke-width', 3.5)
@@ -492,6 +518,11 @@ export function SkillTreeGraph({
     })
     node.on('mouseleave', function (_event, d) {
       const sel = d3.select(this)
+      sel.select<SVGGElement>('.node-inner')
+        .transition('hover-scale')
+        .duration(180)
+        .ease(d3.easeCubicOut)
+        .attr('transform', 'scale(1)')
       sel.select<SVGElement>('.node-shape')
         .style('filter', d.status === 'locked' ? 'none' : `url(#glow-${d.status})`)
         .attr('stroke-width', 2)
@@ -527,13 +558,13 @@ export function SkillTreeGraph({
           setEdgeSource(d.id)
           toast.info(`소스 노드: ${d.title} — 타겟 노드를 클릭하세요`)
         } else if (edgeSource !== d.id) {
-          onAddEdge?.(edgeSource, d.id)
+          callbacksRef.current.onAddEdge?.(edgeSource, d.id)
           setEdgeSource(null)
           setEdgeMode(false)
         }
         return
       }
-      onNodeClick?.(d)
+      callbacksRef.current.onNodeClick?.(d)
     })
 
     // ─── 13. Drag (편집 모드) ───
@@ -552,7 +583,7 @@ export function SkillTreeGraph({
           if (!event.active) simulation.alphaTarget(0)
           d.fx = event.x
           d.fy = event.y
-          onNodeDragEnd?.(d.id, event.x, event.y)
+          callbacksRef.current.onNodeDragEnd?.(d.id, event.x, event.y)
         })
       node.call(drag)
     }
@@ -591,7 +622,11 @@ export function SkillTreeGraph({
     return () => {
       simulation.stop()
     }
-  }, [nodes, edges, dimensions, editable, edgeMode, edgeSource, onNodeClick, onNodeDragEnd, onEdgeClick, onAddEdge, themeConfig])
+    // 주의: callback props (onNodeClick 등)는 일부러 deps에서 제외.
+    // callbacksRef를 통해 항상 최신 참조를 사용하므로 부모 re-render마다
+    // 전체 D3 재실행이 발생하지 않는다. 이 패턴이 없으면 부모 state가
+    // 바뀔 때마다 노드 위치가 (0,0)으로 리셋되어 왼쪽 상단으로 튄다.
+  }, [nodes, edges, dimensions, editable, edgeMode, edgeSource, themeConfig])
 
   return (
     <div

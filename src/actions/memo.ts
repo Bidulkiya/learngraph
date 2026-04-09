@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 
 /**
  * 노드 메모 저장 (upsert)
@@ -14,6 +15,10 @@ export async function saveMemo(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     // 입력 검증
     if (content.length > 10000) return { error: '메모가 너무 깁니다 (최대 10000자).' }

@@ -7,6 +7,7 @@ import { skillTreeSchema, type SkillTreeOutput } from '@/lib/ai/schemas'
 import { SKILL_TREE_PROMPT } from '@/lib/ai/prompts'
 import { embedAndStoreDocument } from '@/lib/ai/embeddings'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 // pdf-parse v1 — lib/pdf-parse.js 직접 import로 디버그 코드 우회
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buffer: Buffer) => Promise<{ text: string }>
@@ -62,6 +63,10 @@ export async function generateSkillTree(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다. 다시 로그인해주세요.' }
 
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     // 교사/운영자만 생성 가능 + 입력 크기 제한 (비용 폭주 방지)
     const admin = createAdminClient()
     const { data: profile } = await admin
@@ -109,6 +114,10 @@ export async function saveSkillTree(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     // 입력 검증
     if (!treeData.title.trim()) return { error: '스킬트리 제목을 입력해주세요.' }
@@ -366,6 +375,10 @@ export async function updateNodePosition(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const admin = createAdminClient()
     const auth = await assertNodeOwnership(admin, user.id, nodeId)
     if (!auth.ok) return { error: auth.error }
@@ -388,6 +401,10 @@ export async function updateNode(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     // 입력 검증
     if (!title.trim()) return { error: '제목을 입력해주세요.' }
@@ -421,6 +438,10 @@ export async function addNode(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     if (!title.trim()) return { error: '제목을 입력해주세요.' }
     if (title.length > 200) return { error: '제목이 너무 깁니다.' }
     if (description.length > 2000) return { error: '설명이 너무 깁니다.' }
@@ -451,6 +472,10 @@ export async function deleteNode(nodeId: string): Promise<{ error?: string }> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const admin = createAdminClient()
     const auth = await assertNodeOwnership(admin, user.id, nodeId)
     if (!auth.ok) return { error: auth.error }
@@ -470,6 +495,10 @@ export async function addEdge(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const auth = await assertTreeOwnership(admin, user.id, skillTreeId)
@@ -502,6 +531,10 @@ export async function deleteEdge(edgeId: string): Promise<{ error?: string }> {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const auth = await assertEdgeOwnership(admin, user.id, edgeId)

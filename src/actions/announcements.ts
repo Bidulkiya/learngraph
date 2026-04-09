@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo, isDemoAccount } from '@/lib/demo'
 
 export interface Announcement {
   id: string
@@ -25,6 +26,10 @@ export async function createAnnouncement(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     // 입력 검증
     if (!title.trim()) return { error: '제목을 입력해주세요.' }
@@ -148,6 +153,9 @@ export async function markAnnouncementRead(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모는 읽음 상태 저장 차단 — 다음 데모 사용자도 동일한 미읽음 상태로 보기 위함
+    if (isDemoAccount(user.email)) return {}
 
     const admin = createAdminClient()
     await admin.from('announcement_reads').upsert({

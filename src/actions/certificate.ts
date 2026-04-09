@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isDemoAccount } from '@/lib/demo'
 
 export interface Certificate {
   id: string
@@ -29,6 +30,9 @@ export async function issueCertificate(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(skillTreeId)) return { error: '유효하지 않은 스킬트리 ID입니다.' }
+
+    // 데모는 인증서 자동 발급 차단 (completeNode 내부 호출이므로 silent skip)
+    if (isDemoAccount(user.email)) return {}
 
     const admin = createAdminClient()
 

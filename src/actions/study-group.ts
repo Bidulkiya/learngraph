@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 
 export interface StudyGroup {
   id: string
@@ -72,6 +73,10 @@ export async function createGroup(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     if (!name.trim()) return { error: '그룹 이름을 입력해주세요.' }
     if (name.length > 100) return { error: '그룹 이름이 너무 깁니다.' }
 
@@ -175,6 +180,9 @@ export async function joinGroup(groupId: string): Promise<{ error?: string }> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const admin = createAdminClient()
     const auth = await assertGroupClassMember(admin, user.id, groupId)
     if (!auth.ok) return { error: auth.error }
@@ -196,6 +204,9 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     await admin
@@ -236,6 +247,10 @@ export async function sendGroupMessage(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     if (!content.trim()) return { error: '메시지를 입력해주세요.' }
     if (content.length > 2000) return { error: '메시지가 너무 깁니다.' }
 

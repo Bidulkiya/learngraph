@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 import { conceptConnectionSchema, type ConceptConnectionOutput } from '@/lib/ai/schemas'
 import { CONCEPT_CONNECTION_PROMPT } from '@/lib/ai/prompts'
 
@@ -14,6 +15,9 @@ export async function getConceptConnections(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const { data: node } = await admin

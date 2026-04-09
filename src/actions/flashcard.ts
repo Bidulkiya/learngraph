@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isDemoAccount, assertNotDemo } from '@/lib/demo'
 import { flashcardsSchema } from '@/lib/ai/schemas'
 import { FLASHCARD_PROMPT } from '@/lib/ai/prompts'
 
@@ -84,6 +85,11 @@ export async function generateFlashcards(
       .eq('node_id', nodeId)
       .order('card_index')
     if (existing && existing.length > 0) return { data: existing as Flashcard[] }
+
+    // 데모는 미리 만든 카드만 사용 — AI 호출 차단 (no-op으로 빈 배열 반환)
+    const supabase = await createServerClient()
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (isDemoAccount(authUser?.email)) return { data: [] }
 
     const { data: node } = await admin
       .from('nodes')
@@ -170,6 +176,9 @@ export async function recordFlashcardReview(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(flashcardId)) return { error: '유효하지 않은 카드 ID입니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const { error } = await admin.from('flashcard_reviews').insert({

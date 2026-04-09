@@ -5,6 +5,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import OpenAI from 'openai'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 import { lessonSummarySchema, quizSchema, type LessonSummaryOutput } from '@/lib/ai/schemas'
 import { LESSON_SUMMARY_PROMPT, QUIZ_PROMPT } from '@/lib/ai/prompts'
 
@@ -20,6 +21,9 @@ export async function transcribeRecording(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const file = formData.get('audio') as File | null
     const duration = Number(formData.get('duration') ?? 0)
@@ -85,6 +89,9 @@ export async function summarizeLesson(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const admin = createAdminClient()
     const { data: recording } = await admin
       .from('lesson_recordings')
@@ -125,6 +132,9 @@ export async function generateQuizFromRecording(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const { data: recording } = await admin

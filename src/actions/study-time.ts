@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 
 /**
  * 학습 시간 추가 (5분마다 호출)
@@ -14,6 +15,10 @@ export async function addStudyMinutes(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단 (내부 호출 — 조용히 스킵)
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return {}
 
     const admin = createAdminClient()
     const today = new Date().toISOString().slice(0, 10)

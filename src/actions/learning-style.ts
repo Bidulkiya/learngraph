@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 import type { LearningStyle } from '@/types/user'
 
 /**
@@ -46,6 +47,9 @@ export async function saveLearningStyle(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     if (!Array.isArray(answers) || answers.length === 0) {
       return { error: '진단 답변이 비어있습니다.' }

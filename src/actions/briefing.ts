@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isDemoAccount } from '@/lib/demo'
 import { weeklyBriefingSchema } from '@/lib/ai/schemas'
 import { WEEKLY_BRIEFING_PROMPT } from '@/lib/ai/prompts'
 
@@ -105,6 +106,11 @@ export async function generateWeeklyBriefing(
         .eq('week_start', weekStart)
         .maybeSingle()
       if (cached) return { data: cached as WeeklyBriefing }
+    }
+
+    // 데모는 미리 생성된 캐시만 사용 — 새 브리핑 생성 차단 (AI 비용)
+    if (isDemoAccount(user.email)) {
+      return { error: '체험 모드에서는 이 기능을 사용할 수 없습니다. 회원가입 후 이용해주세요!' }
     }
 
     // 2. 지난 7일 데이터 집계

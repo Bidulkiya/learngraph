@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isDemoAccount } from '@/lib/demo'
 import { emotionReportSchema, type EmotionReportOutput } from '@/lib/ai/schemas'
 import { EMOTION_ANALYSIS_PROMPT } from '@/lib/ai/prompts'
 
@@ -87,6 +88,11 @@ export async function analyzeStudentEmotion(
 
     if (cached) {
       return { data: cached as EmotionReport }
+    }
+
+    // 데모는 미리 만든 캐시만 사용 — AI 호출 차단
+    if (isDemoAccount(user.email)) {
+      return { error: '체험 모드에서는 이 기능을 사용할 수 없습니다. 회원가입 후 이용해주세요!' }
     }
 
     // 2. 최근 20회 quiz_attempts 조회

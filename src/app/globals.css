@@ -220,18 +220,17 @@
 }
 
 /*
- * Hover scale은 반드시 .node-shape (circle/path) 자체의 CSS transform에 적용.
- * node group <g>의 transform은 d3 simulation.on('tick')이 매 프레임 관리하므로
- * 거기에 scale을 얹으면 race condition으로 노드가 튄다.
- * transform-box: fill-box + transform-origin: center 조합으로 원의 중심 기준 scale.
+ * Hover scale은 SkillTreeGraph.tsx에서 <g.node-inner> 요소의 SVG transform attribute에
+ * D3 transition으로 적용한다. CSS 기반 hover + transform-box: fill-box 방식은
+ * filter가 걸린 SVG 요소에서 브라우저별 bbox 계산 차이로 노드가 왼쪽 상단으로
+ * 튀는 버그가 있었음 (호버 시 <g.node>의 transform이 순간적으로 초기화되는 현상).
+ * <g.node>에는 tick이 translate만, <g.node-inner>에는 JS hover가 scale만 적용하여
+ * 서로 다른 요소에 서로 다른 transform이 걸리도록 완전히 분리했다.
+ *
+ * .node-shape에는 filter/stroke만 CSS transition으로 전환 (transform 제외).
  */
 .lg-skill-tree g.node .node-shape {
-  transition: transform 0.2s ease-out, filter 0.25s ease, stroke-width 0.25s ease;
-  transform-origin: center;
-  transform-box: fill-box;
-}
-.lg-skill-tree g.node:hover .node-shape {
-  transform: scale(1.15);
+  transition: filter 0.25s ease, stroke-width 0.25s ease, opacity 0.25s ease;
 }
 
 /* 프린트 스타일 */

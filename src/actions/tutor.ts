@@ -6,6 +6,7 @@ import OpenAI from 'openai'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { TUTOR_SYSTEM_PROMPT, TUTOR_SOCRATIC_PROMPT, TUTOR_EMOTION_ADAPTATION, TUTOR_LEARNING_STYLE } from '@/lib/ai/prompts'
+import { assertNotDemo } from '@/lib/demo'
 
 const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -29,6 +30,9 @@ export async function chatWithTutor(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     if (messages.length === 0) return { error: '메시지가 없습니다.' }
     const lastMessage = messages[messages.length - 1]
@@ -187,6 +191,9 @@ export async function clearTutorHistory(): Promise<{ error?: string }> {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     await admin.from('tutor_conversations').delete().eq('student_id', user.id)

@@ -3,12 +3,13 @@
 import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { BookOpen, Eye, EyeOff, Loader2 } from "lucide-react"
+import { BookOpen, Eye, EyeOff, Loader2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { loginAsDemo } from "@/actions/school"
 import type { Role } from "@/types/user"
 
 function LoginForm() {
@@ -22,6 +23,40 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState<'teacher' | 'student' | null>(null)
+
+  async function handleDemoLogin(role: 'teacher' | 'student'): Promise<void> {
+    setError("")
+    setDemoLoading(role)
+    try {
+      // 1. 서버에서 데모 환경 idempotent 구축 + 이메일/비번 회신
+      const setupRes = await loginAsDemo(role)
+      if (setupRes.error || !setupRes.data) {
+        setError(setupRes.error ?? '데모 환경 구축에 실패했습니다.')
+        setDemoLoading(null)
+        return
+      }
+
+      // 2. 클라이언트에서 직접 로그인 (브라우저 쿠키 보장)
+      const supabase = createBrowserClient()
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: setupRes.data.email,
+        password: setupRes.data.password,
+      })
+      if (signInError) {
+        setError('데모 로그인 실패: ' + signInError.message)
+        setDemoLoading(null)
+        return
+      }
+
+      // 3. 페이지 이동 — full navigation으로 미들웨어 쿠키 반영
+      window.location.href = setupRes.data.redirect
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError('데모 로그인 중 오류가 발생했습니다: ' + msg)
+      setDemoLoading(null)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
@@ -135,7 +170,7 @@ function LoginForm() {
           <p className="text-sm text-red-500">{error}</p>
         )}
 
-        <Button type="submit" className="w-full bg-[#4F6BF6] hover:bg-[#4F6BF6]/90" disabled={loading}>
+        <Button type="submit" className="w-full bg-[#4F6BF6] hover:bg-[#4F6BF6]/90" disabled={loading || demoLoading !== null}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           로그인
         </Button>
@@ -147,6 +182,52 @@ function LoginForm() {
           </Link>
         </p>
       </form>
+
+      {/* 데모 체험 영역 */}
+      <div className="mt-6">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-gray-200 dark:border-gray-800" />
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-card px-2 text-gray-500 dark:text-gray-400">또는 회원가입 없이 둘러보기</span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleDemoLogin('teacher')}
+            disabled={loading || demoLoading !== null}
+            className="border-[#10B981]/30 text-[#10B981] hover:bg-[#10B981]/5"
+          >
+            {demoLoading === 'teacher' ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            교사 체험
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleDemoLogin('student')}
+            disabled={loading || demoLoading !== null}
+            className="border-[#4F6BF6]/30 text-[#4F6BF6] hover:bg-[#4F6BF6]/5"
+          >
+            {demoLoading === 'student' ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            학생 체험
+          </Button>
+        </div>
+        <p className="mt-2 text-center text-[11px] text-gray-400">
+          체험 모드는 읽기 전용으로 둘러볼 수 있습니다
+        </p>
+      </div>
     </>
   )
 }

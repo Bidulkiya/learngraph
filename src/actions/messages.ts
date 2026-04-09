@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo, isDemoAccount } from '@/lib/demo'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -36,6 +37,10 @@ export async function sendMessage(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     if (!content.trim()) return { error: '메시지 내용을 입력해주세요.' }
     if (content.length > 2000) return { error: '메시지가 너무 깁니다 (최대 2000자).' }
@@ -284,6 +289,9 @@ export async function markConversationRead(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(otherUserId)) return { error: '유효하지 않은 사용자 ID입니다.' }
+
+    // 데모는 읽음 상태 저장 차단 — 다음 데모 사용자도 미읽음 메시지 그대로 보기 위함
+    if (isDemoAccount(user.email)) return {}
 
     const admin = createAdminClient()
     await admin

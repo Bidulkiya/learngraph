@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 import { learningDocSchema, teacherStyleSchema } from '@/lib/ai/schemas'
 import { LEARNING_DOC_PROMPT, LEARNING_DOC_REVISE_PROMPT, TEACHER_STYLE_ANALYSIS_PROMPT } from '@/lib/ai/prompts'
 
@@ -169,6 +170,10 @@ export async function getOrCreatePersonalizedDoc(
     // 이미 있으면 그대로 반환
     if (node.learning_content) return { data: node.learning_content }
 
+    // 데모는 미리 만든 문서만 사용 — AI 호출 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     // 없으면 학생 learning_style + tree 정보로 생성
     const [{ data: profile }, { data: tree }] = await Promise.all([
       admin.from('profiles').select('learning_style').eq('id', user.id).maybeSingle(),
@@ -204,6 +209,9 @@ export async function regenerateLearningDoc(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const auth = await assertTeacherCanEditNode(admin, user.id, nodeId)
@@ -250,6 +258,9 @@ export async function reviseLearningDoc(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     if (!userRequest.trim()) return { error: '수정 요청 내용을 입력해주세요.' }
     if (userRequest.length > 1000) return { error: '수정 요청이 너무 깁니다.' }
 
@@ -292,6 +303,9 @@ export async function saveLearningDocManually(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     if (content.length > 50000) return { error: '학습 문서가 너무 깁니다 (최대 50000자).' }
     if (!content.trim()) return { error: '학습 문서 내용을 입력해주세요.' }
@@ -352,6 +366,9 @@ export async function updateNodePermissions(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const auth = await assertTeacherCanEditNode(admin, user.id, nodeId)

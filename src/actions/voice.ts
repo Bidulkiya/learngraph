@@ -2,6 +2,7 @@
 
 import OpenAI from 'openai'
 import { createServerClient } from '@/lib/supabase/server'
+import { assertNotDemo } from '@/lib/demo'
 
 const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -15,6 +16,9 @@ export async function transcribeAudio(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const file = formData.get('audio') as File | null
     if (!file) return { error: '음성 파일이 없습니다.' }

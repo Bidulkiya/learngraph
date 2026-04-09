@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 
 export type FeedActionType = 'node_unlock' | 'quiz_complete' | 'badge_earned' | 'tree_complete' | 'streak'
 
@@ -28,6 +29,10 @@ export async function postActivity(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단 (내부 호출 — 조용히 스킵)
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return {}
 
     if (!classId) return {} // 클래스 없으면 건너뜀
 
@@ -247,6 +252,10 @@ export async function toggleReaction(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
 

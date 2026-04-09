@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 import { quizSchema, essayGradingSchema, quizHintSchema } from '@/lib/ai/schemas'
 import { QUIZ_PROMPT, QUIZ_HINT_PROMPT } from '@/lib/ai/prompts'
 import type { Quiz } from '@/types/quiz'
@@ -30,6 +31,10 @@ export async function generateQuizForNode(
     if (existing && existing.length > 0) {
       return { data: existing as Quiz[] }
     }
+
+    // 데모는 미리 생성된 퀴즈만 사용 — AI 비용 발생 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     // Get node info
     const { data: node } = await admin
@@ -107,6 +112,10 @@ export async function submitQuizAnswer(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const { data: quiz } = await admin
@@ -215,6 +224,10 @@ export async function completeNode(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
 
@@ -468,6 +481,9 @@ export async function updateQuiz(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const admin = createAdminClient()
     // 퀴즈 → 노드 → 스킬트리 소유자 확인
     const { data: quiz } = await admin
@@ -511,6 +527,9 @@ export async function regenerateQuizzes(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const auth = await assertNodeTeacherAccess(admin, user.id, nodeId)
@@ -570,6 +589,9 @@ export async function getQuizHint(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
 

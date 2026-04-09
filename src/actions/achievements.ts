@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isDemoAccount } from '@/lib/demo'
 
 export interface Achievement {
   id: string
@@ -30,6 +31,9 @@ export async function checkAndAwardAchievements(): Promise<{
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정은 미리 부여된 업적만 사용 — 새 업적 부여 차단 (silent skip)
+    if (isDemoAccount(user.email)) return { data: { newAchievements: [] } }
 
     const admin = createAdminClient()
 

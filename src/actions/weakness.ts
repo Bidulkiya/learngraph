@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 import { weaknessAnalysisSchema, type WeaknessAnalysisOutput } from '@/lib/ai/schemas'
 
 export interface WrongAnswer {
@@ -96,6 +97,13 @@ export async function analyzeWeakness(): Promise<{
   error?: string
 }> {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const { data: wrongAnswers, error } = await getWrongAnswers()
     if (error) return { error }
     if (!wrongAnswers || wrongAnswers.length === 0) {

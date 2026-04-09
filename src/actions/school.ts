@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 
 // ============================================
 // Types
@@ -56,6 +57,10 @@ export async function createSchool(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     if (!name.trim()) return { error: '스쿨 이름을 입력해주세요.' }
     if (name.length > 100) return { error: '스쿨 이름이 너무 깁니다.' }
@@ -276,6 +281,9 @@ export async function approveSchoolMember(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const admin = createAdminClient()
     const auth = await assertSchoolOwnership(admin, user.id, schoolId)
     if (!auth.ok) return { error: auth.error }
@@ -301,6 +309,9 @@ export async function rejectSchoolMember(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const auth = await assertSchoolOwnership(admin, user.id, schoolId)
@@ -333,6 +344,10 @@ export async function createClass(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     if (!name.trim()) return { error: '클래스 이름을 입력해주세요.' }
     if (name.length > 100) return { error: '클래스 이름이 너무 깁니다.' }
@@ -435,6 +450,10 @@ export async function joinSchoolAsTeacher(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const admin = createAdminClient()
 
     // .maybeSingle()로 안전하게 (레코드 없으면 null, throw 방지)
@@ -484,6 +503,10 @@ export async function joinWithCode(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const normalized = code.trim().toUpperCase()
     const admin = createAdminClient()
@@ -587,6 +610,9 @@ export async function requestClassEnrollment(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
     const admin = createAdminClient()
     const { data: existing } = await admin
       .from('class_enrollments')
@@ -660,6 +686,9 @@ export async function approveEnrollment(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
 
@@ -746,6 +775,9 @@ export async function rejectEnrollment(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
     const auth = await assertCanModifyEnrollment(admin, user.id, enrollmentId)
@@ -914,25 +946,32 @@ export async function getClassEnrollments(
 // Demo login
 // ============================================
 
+/**
+ * 데모 환경 구축 후, 데모 계정 이메일과 비밀번호를 클라이언트에 반환.
+ * 클라이언트가 직접 supabase.auth.signInWithPassword()를 호출해
+ * 브라우저 쿠키가 정확히 설정되도록 한다 (서버 쪽 로그인은 클라이언트
+ * 세션에 반영되지 않아 redirect 후에도 미인증 상태가 됨).
+ */
 export async function loginAsDemo(
   role: 'teacher' | 'student'
-): Promise<{ data?: { redirect: string }; error?: string }> {
+): Promise<{ data?: { email: string; password: string; redirect: string }; error?: string }> {
   try {
     const { setupDemoData } = await import('./demo-setup')
-    // Idempotent: 첫 호출 시에만 데이터 생성
+    const { DEMO_TEACHER_EMAIL, DEMO_STUDENT_EMAIL, DEMO_PASSWORD } = await import('@/lib/demo')
+
+    // Idempotent: 이미 있으면 내부적으로 스킵
     const setupResult = await setupDemoData()
     if (setupResult.error) {
-      return { error: '데모 설정 실패: ' + setupResult.error }
+      return { error: '데모 환경 구축 실패: ' + setupResult.error }
     }
 
-    const email = role === 'teacher' ? 'demo_teacher@learngraph.app' : 'demo_student1@learngraph.app'
-    const password = 'demo1234'
-
-    const supabase = await createServerClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) return { error: '데모 로그인 실패: ' + error.message }
-    return { data: { redirect: `/${role}` } }
+    return {
+      data: {
+        email: role === 'teacher' ? DEMO_TEACHER_EMAIL : DEMO_STUDENT_EMAIL,
+        password: DEMO_PASSWORD,
+        redirect: `/${role}`,
+      },
+    }
   } catch (err) {
     return { error: String(err) }
   }

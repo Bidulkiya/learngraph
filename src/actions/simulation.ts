@@ -4,6 +4,7 @@ import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 import { simulationSchema, type SimulationOutput } from '@/lib/ai/schemas'
 import { SIMULATION_PROMPT } from '@/lib/ai/prompts'
 
@@ -22,6 +23,9 @@ export async function simulateSkillTree(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(skillTreeId)) return { error: '유효하지 않은 스킬트리 ID입니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
 
     const admin = createAdminClient()
 

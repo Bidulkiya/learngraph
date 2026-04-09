@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertNotDemo } from '@/lib/demo'
 
 export interface DailyMission {
   id: string
@@ -90,6 +91,10 @@ export async function updateMissionProgress(
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: '인증이 필요합니다.' }
+
+    // 데모 계정 차단 (쓰기)
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return {}  // 에러 없이 조용히 스킵 (내부 호출이므로)
 
     const admin = createAdminClient()
     const today = new Date().toISOString().slice(0, 10)
