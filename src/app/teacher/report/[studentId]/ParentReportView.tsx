@@ -25,7 +25,7 @@ export function ParentReportView({ report }: { report: ParentReportData }) {
       {/* 리포트 본문 */}
       <Card className="print:shadow-none print:border-0">
         <CardHeader className="border-b text-center">
-          <CardTitle className="text-2xl">LearnGraph 학습 리포트</CardTitle>
+          <CardTitle className="text-2xl">NodeBloom 학습 리포트</CardTitle>
           <p className="text-sm text-gray-500">{report.period}</p>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
@@ -98,7 +98,7 @@ export function ParentReportView({ report }: { report: ParentReportData }) {
           </div>
 
           <p className="border-t pt-3 text-center text-xs text-gray-400">
-            LearnGraph AI 교육 플랫폼 · 자동 생성 리포트
+            NodeBloom AI 교육 플랫폼 · 자동 생성 리포트
           </p>
         </CardContent>
       </Card>

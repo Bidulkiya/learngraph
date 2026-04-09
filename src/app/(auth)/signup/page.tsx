@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { LogoSymbol } from "@/components/Logo"
 import type { Role } from "@/types/user"
 
 const roles: Array<{ value: Role; label: string; icon: React.ElementType; color: string; desc: string }> = [
@@ -91,14 +92,14 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#4F6BF6]/5 via-white to-[#7C5CFC]/5 px-4 dark:from-[#4F6BF6]/10 dark:via-gray-950 dark:to-[#7C5CFC]/10">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#6366F1]/5 via-white to-[#A855F7]/5 px-4 dark:from-[#6366F1]/10 dark:via-gray-950 dark:to-[#A855F7]/10">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F6BF6] to-[#7C5CFC]">
-            <BookOpen className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-2 flex items-center justify-center">
+            <LogoSymbol size={56} />
           </div>
           <CardTitle className="text-2xl">회원가입</CardTitle>
-          <CardDescription>LearnGraph에 가입하여 학습을 시작하세요</CardDescription>
+          <CardDescription>NodeBloom에 가입하여 학습을 시작하세요</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

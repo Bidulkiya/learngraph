@@ -1,4 +1,4 @@
-# LearnGraph 개발 뼈대 문서
+# NodeBloom 개발 뼈대 문서
 
 > 이 문서는 개발 중 참고할 코드 패턴, 구현 가이드, 핵심 로직 설계를 담고 있습니다.
 
@@ -8,8 +8,8 @@
 
 ### 1.1 프로젝트 생성
 ```bash
-npx create-next-app@latest learngraph --typescript --tailwind --eslint --app --src-dir
-cd learngraph
+npx create-next-app@latest nodebloom --typescript --tailwind --eslint --app --src-dir
+cd nodebloom
 
 # 핵심 의존성
 npm install ai @ai-sdk/anthropic @ai-sdk/openai zod

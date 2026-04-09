@@ -62,7 +62,7 @@ export function ParentLinkForm() {
           자녀 연결
         </CardTitle>
         <CardDescription>
-          자녀의 LearnGraph 앱 대시보드에서 <strong>&ldquo;학부모 초대 코드&rdquo;</strong>를 생성한 뒤 여기에 입력해주세요.
+          자녀의 NodeBloom 앱 대시보드에서 <strong>&ldquo;학부모 초대 코드&rdquo;</strong>를 생성한 뒤 여기에 입력해주세요.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -1,8 +1,9 @@
-# LearnGraph — AI 기반 스킬트리 교육 플랫폼
+# NodeBloom — AI 기반 스킬트리 교육 플랫폼
 
 ## 프로젝트 개요
 교사가 수업 자료를 업로드하면 AI가 자동으로 스킬트리(Skill Tree)를 생성하고,
 학생이 퀴즈를 풀어 노드를 언락하며 학습하는 차세대 교육 플랫폼.
+슬로건: "노드가 피다, 지식이 자라다" — 노드를 하나씩 언락하면 꽃이 피듯 지식이 확장된다.
 
 - **공모전**: KEG 바이브 코딩 대회 (2025.04.06 ~ 04.13)
 - **주제**: AI활용 차세대 교육 솔루션
@@ -21,7 +22,7 @@
 
 ## 프로젝트 구조
 ```
-learngraph/
+nodebloom/
 ├── .claude/
 │   ├── CLAUDE.md              # 이 파일
 │   └── commands/              # 커스텀 슬래시 커맨드
@@ -33,7 +34,7 @@ learngraph/
 │   ├── DATABASE.md            # DB 스키마 상세
 │   ├── AI-PIPELINE.md         # AI 파이프라인 상세
 │   └── planning/              # 기획 문서 (심사위원용)
-│       └── LearnGraph_기획서.pdf
+│       └── NodeBloom_기획서.pdf
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx         # 루트 레이아웃

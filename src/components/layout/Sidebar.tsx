@@ -20,6 +20,7 @@ import {
   Heart,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { LogoSymbol } from "@/components/Logo"
 
 type Role = "teacher" | "student" | "admin" | "parent"
 
@@ -85,12 +86,10 @@ export function Sidebar({ role, unreadMessageCount = 0 }: SidebarProps) {
   return (
     <aside className="flex h-full w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#4F6BF6] to-[#7C5CFC]">
-          <BookOpen className="h-5 w-5 text-white" />
-        </div>
+      <Link href="/" className="flex items-center gap-2 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+        <LogoSymbol size={32} />
         <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
-          Learn<span className="text-[#4F6BF6]">Graph</span>
+          Node<span className="text-[#6366F1]">Bloom</span>
         </span>
       </Link>
 

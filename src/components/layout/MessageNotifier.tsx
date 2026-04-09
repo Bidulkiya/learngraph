@@ -38,7 +38,7 @@ export function MessageNotifier({ role, latestUnread, totalUnread, isDemo }: Pro
     if (!latestUnread || totalUnread === 0) return
 
     // 세션 스토리지로 중복 표시 방지
-    const key = `learngraph_unread_notified_${latestUnread.senderId}_${latestUnread.count}`
+    const key = `nodebloom_unread_notified_${latestUnread.senderId}_${latestUnread.count}`
     try {
       if (sessionStorage.getItem(key)) return
       sessionStorage.setItem(key, '1')

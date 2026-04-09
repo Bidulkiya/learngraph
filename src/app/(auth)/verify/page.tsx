@@ -3,9 +3,10 @@
 import { Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { BookOpen, Mail, CheckCircle } from "lucide-react"
+import { Mail, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { LogoSymbol } from "@/components/Logo"
 
 function VerifyContent() {
   const searchParams = useSearchParams()
@@ -31,11 +32,11 @@ function VerifyContent() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border border-[#4F6BF6]/20 bg-[#4F6BF6]/5 p-4">
+        <div className="rounded-lg border border-[#6366F1]/20 bg-[#6366F1]/5 p-4">
           <ol className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
             <li className="flex items-start gap-2">
-              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#4F6BF6]" />
-              <span>이메일 앱에서 LearnGraph의 인증 메일을 열어주세요</span>
+              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#6366F1]" />
+              <span>이메일 앱에서 NodeBloom의 인증 메일을 열어주세요</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#4F6BF6]" />
@@ -74,11 +75,11 @@ function VerifyContent() {
 
 export default function VerifyPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#4F6BF6]/5 via-white to-[#7C5CFC]/5 px-4 dark:from-[#4F6BF6]/10 dark:via-gray-950 dark:to-[#7C5CFC]/10">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#6366F1]/5 via-white to-[#A855F7]/5 px-4 dark:from-[#6366F1]/10 dark:via-gray-950 dark:to-[#A855F7]/10">
       <div className="w-full max-w-md">
         <div className="mb-4 flex items-center justify-center gap-2">
-          <BookOpen className="h-5 w-5 text-[#4F6BF6]" />
-          <span className="text-sm font-bold">Learn<span className="text-[#4F6BF6]">Graph</span></span>
+          <LogoSymbol size={24} />
+          <span className="text-sm font-bold">Node<span className="text-[#6366F1]">Bloom</span></span>
         </div>
         <Suspense fallback={<div className="text-center text-sm text-gray-500">로딩 중...</div>}>
           <VerifyContent />

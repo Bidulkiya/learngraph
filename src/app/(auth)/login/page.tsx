@@ -3,13 +3,14 @@
 import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { BookOpen, Eye, EyeOff, Loader2, Sparkles } from "lucide-react"
+import { Eye, EyeOff, Loader2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { loginAsDemo } from "@/actions/school"
+import { LogoSymbol } from "@/components/Logo"
 import type { Role } from "@/types/user"
 
 function LoginForm() {
@@ -243,14 +244,14 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#4F6BF6]/5 via-white to-[#7C5CFC]/5 px-4 dark:from-[#4F6BF6]/10 dark:via-gray-950 dark:to-[#7C5CFC]/10">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#6366F1]/5 via-white to-[#A855F7]/5 px-4 dark:from-[#6366F1]/10 dark:via-gray-950 dark:to-[#A855F7]/10">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F6BF6] to-[#7C5CFC]">
-            <BookOpen className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-2 flex items-center justify-center">
+            <LogoSymbol size={56} />
           </div>
           <CardTitle className="text-2xl">로그인</CardTitle>
-          <CardDescription>LearnGraph에 로그인하세요</CardDescription>
+          <CardDescription>NodeBloom에 로그인하세요</CardDescription>
         </CardHeader>
         <CardContent>
           <Suspense fallback={<div className="py-8 text-center text-sm text-gray-500">로딩 중...</div>}>

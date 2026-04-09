@@ -1,7 +1,7 @@
-# 🌳 LearnGraph
+# 🌸 NodeBloom
 
-**AI가 만드는 스킬트리, 게임처럼 배우는 학습.**
-수업 자료 한 장을 올리면 AI가 커리큘럼을 설계하고, 학생은 노드를 언락하며 성장합니다. 교사 · 학생 · 학부모 · 운영자 네 주체가 하나의 학습 여정에서 연결되는 차세대 AI 교육 플랫폼입니다.
+**노드가 피다, 지식이 자라다.**
+수업 자료 한 장을 올리면 AI가 커리큘럼을 설계하고, 학생이 퀴즈를 풀어 노드를 하나씩 언락하면 꽃이 피듯 지식이 확장됩니다. 교사 · 학생 · 학부모 · 운영자 네 주체가 하나의 학습 여정에서 연결되는 차세대 AI 교육 플랫폼입니다.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org)
@@ -89,7 +89,7 @@
 - 회원가입 없이 즉시 체험 가능
 - 데모 계정 판별(`isDemoAccount`)로 모든 쓰기 Server Action 자동 차단
 - 페이지 진입 시 상단에 "체험 모드" 배너 표시
-- "LearnGraph 체험 학교" + "AI 학습 체험반" + "인공지능의 이해" 스킬트리 14노드
+- "NodeBloom 체험 학교" + "AI 학습 체험반" + "인공지능의 이해" 스킬트리 14노드
 - 하드코딩된 퀴즈/플래시카드/미션/업적/감정/브리핑 (AI 호출 없이 풍부한 예시)
 
 ---
@@ -120,7 +120,7 @@
 ## 📁 프로젝트 구조
 
 ```
-learngraph/
+nodebloom/
 ├── src/
 │   ├── app/                        # Next.js 16 App Router
 │   │   ├── (auth)/                 # login · signup · verify · callback
@@ -193,8 +193,8 @@ learngraph/
 ### 1. 프로젝트 클론 및 의존성 설치
 
 ```bash
-git clone https://github.com/Bidulkiya/learngraph.git
-cd learngraph
+git clone https://github.com/Bidulkiya/nodebloom.git
+cd nodebloom
 npm install
 ```
 

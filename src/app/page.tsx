@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { loginAsDemo } from '@/actions/school'
 import { createBrowserClient } from '@/lib/supabase/client'
+import { LogoSymbol } from '@/components/Logo'
 import { toast } from 'sonner'
 
 export default function LandingPage() {
@@ -87,23 +88,24 @@ export default function LandingPage() {
 
           {/* 로고 + 이름 */}
           <div className="mb-8 flex items-center justify-center gap-3">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4F6BF6] to-[#7C5CFC] shadow-2xl shadow-[#4F6BF6]/30">
-              <BookOpen className="h-9 w-9 text-white" />
-            </div>
+            <LogoSymbol size={72} />
             <h1 className="text-5xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-6xl">
-              Learn<span className="bg-gradient-to-r from-[#4F6BF6] to-[#7C5CFC] bg-clip-text text-transparent">Graph</span>
+              Node
+              <span className="bg-gradient-to-r from-[#6366F1] to-[#A855F7] bg-clip-text text-transparent">
+                Bloom
+              </span>
             </h1>
           </div>
 
           {/* 메인 카피 */}
           <h2 className="mx-auto mb-5 max-w-4xl text-3xl font-bold leading-tight text-gray-900 dark:text-white sm:text-5xl">
-            AI가 만드는 <span className="bg-gradient-to-r from-[#4F6BF6] to-[#7C5CFC] bg-clip-text text-transparent">스킬트리</span>,
+            노드가 <span className="bg-gradient-to-r from-[#6366F1] to-[#A855F7] bg-clip-text text-transparent">피다</span>,
             <br />
-            게임처럼 배우는 학습.
+            지식이 <span className="bg-gradient-to-r from-[#10B981] to-[#34D399] bg-clip-text text-transparent">자라다</span>.
           </h2>
           <p className="mx-auto mb-10 max-w-2xl text-base text-gray-600 dark:text-gray-400 sm:text-lg">
             수업 자료 한 장을 올리면 AI가 커리큘럼을 설계하고,
-            학생은 노드를 언락하며 성장합니다.
+            학생이 퀴즈를 풀어 노드를 하나씩 언락하면 꽃이 피듯 지식이 확장됩니다.
             <br className="hidden sm:block" />
             교사 · 학생 · 학부모 · 운영자 네 주체가 하나의 여정에서 연결됩니다.
           </p>
@@ -468,25 +470,23 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#4F6BF6] to-[#7C5CFC]">
-                <BookOpen className="h-4 w-4 text-white" />
-              </div>
+              <LogoSymbol size={28} />
               <span className="font-bold text-gray-800 dark:text-gray-200">
-                Learn<span className="text-[#4F6BF6]">Graph</span>
+                Node<span className="text-[#6366F1]">Bloom</span>
               </span>
               <span className="text-sm text-gray-500">© 2026</span>
             </div>
 
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span className="flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-[#7C5CFC]" />
+                <Sparkles className="h-3 w-3 text-[#A855F7]" />
                 Powered by Claude AI
               </span>
               <a
-                href="https://github.com/Bidulkiya/learngraph"
+                href="https://github.com/Bidulkiya/nodebloom"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 transition-colors hover:text-[#4F6BF6]"
+                className="flex items-center gap-1 transition-colors hover:text-[#6366F1]"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 GitHub
@@ -494,7 +494,7 @@ export default function LandingPage() {
             </div>
           </div>
           <p className="mt-4 text-center text-xs text-gray-400">
-            AI 기반 스킬트리 교육 플랫폼 · Built with Next.js 16 + Claude Sonnet 4.6 + Supabase
+            노드가 피다, 지식이 자라다 · Built with Next.js 16 + Claude Sonnet 4.6 + Supabase
           </p>
         </div>
       </footer>

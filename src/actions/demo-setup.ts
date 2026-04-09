@@ -3,9 +3,15 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DEMO_TEACHER_EMAIL, DEMO_STUDENT_EMAIL, DEMO_PASSWORD } from '@/lib/demo'
 
-const DEMO_SCHOOL_NAME = 'LearnGraph 체험 학교'
+const DEMO_SCHOOL_NAME = 'NodeBloom 체험 학교'
 const DEMO_CLASS_NAME = 'AI 학습 체험반'
 const DEMO_TREE_TITLE = '인공지능의 이해'
+
+/**
+ * 이전 브랜드 이름 — DB에 이미 있는 기존 데모 스쿨을 찾아 자동 rename 하기 위함.
+ * NodeBloom 브랜드 전환 후에도 기존 데이터를 손상 없이 migration.
+ */
+const LEGACY_DEMO_SCHOOL_NAME = 'LearnGraph 체험 학교'
 
 /**
  * Idempotent 데모 환경 구축.
@@ -23,6 +29,19 @@ const DEMO_TREE_TITLE = '인공지능의 이해'
 export async function setupDemoData(): Promise<{ error?: string }> {
   try {
     const admin = createAdminClient()
+
+    // ============================================
+    // 0-pre. 레거시 "LearnGraph 체험 학교" → "NodeBloom 체험 학교" migration
+    // ============================================
+    // 브랜드 전환 이전에 만들어진 데모 환경은 스쿨 이름이 "LearnGraph 체험 학교"로
+    // 남아 있음. fast-path가 새 이름으로 검색하므로, 먼저 이름만 자동 업데이트.
+    await admin
+      .from('schools')
+      .update({
+        name: DEMO_SCHOOL_NAME,
+        description: '심사위원 체험용 데모 스쿨 — 읽기 전용',
+      })
+      .eq('name', LEGACY_DEMO_SCHOOL_NAME)
 
     // ============================================
     // 0. Fast-path: 이미 완전 구축됐는지 6개 병렬 쿼리로 확인
@@ -632,7 +651,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       school_id: schoolId,
       author_id: teacherId,
       title: '체험 학교에 오신 것을 환영합니다!',
-      content: 'LearnGraph 체험 학교입니다. 데모 계정은 읽기 전용이므로 모든 기능을 둘러볼 수 있지만 데이터는 저장되지 않습니다. 직접 사용해보고 싶으시면 회원가입 후 이용해주세요.',
+      content: 'NodeBloom 체험 학교입니다. 데모 계정은 읽기 전용이므로 모든 기능을 둘러볼 수 있지만 데이터는 저장되지 않습니다. 직접 사용해보고 싶으시면 회원가입 후 이용해주세요.',
       target_role: 'all',
     })
 
@@ -647,7 +666,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         school_id: schoolId,
         sender_id: teacherId,
         receiver_id: studentId,
-        content: '환영합니다! LearnGraph 체험 학교에 오신 것을 축하드려요. 궁금한 점이 있으면 언제든 메시지 주세요.',
+        content: '환영합니다! NodeBloom 체험 학교에 오신 것을 축하드려요. 궁금한 점이 있으면 언제든 메시지 주세요.',
       },
       {
         school_id: schoolId,
@@ -780,7 +799,7 @@ const DEMO_NODES: DemoNode[] = [
     description: '의료, 교육, 예술, 자율주행 등 다양한 분야에서 AI가 어떻게 활용되는지 살펴봅니다.',
     difficulty: 5,
     goals: ['다양한 산업 분야의 AI 활용 예시를 든다', 'AI가 바꾸고 있는 직업을 안다'],
-    keyPoints: ['의료: 의료 영상 진단, 신약 개발', '교육: 개인화 학습 (LearnGraph 같은!)', '자율주행, 창작, 번역'],
+    keyPoints: ['의료: 의료 영상 진단, 신약 개발', '교육: 개인화 학습 (NodeBloom 같은!)', '자율주행, 창작, 번역'],
   },
   {
     key: 'future_ai',

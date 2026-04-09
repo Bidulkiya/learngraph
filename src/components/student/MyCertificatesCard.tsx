@@ -179,7 +179,7 @@ function openPrintableCertificate(cert: Certificate, studentName: string): void 
 </head>
 <body>
   <div class="cert">
-    <div class="logo">Learn<span class="accent">Graph</span></div>
+    <div class="logo">Node<span class="accent">Bloom</span></div>
     <h1 class="title">CERTIFICATE</h1>
     <p class="subtitle">OF COMPLETION · 수료 인증서</p>
     <div class="divider"></div>
@@ -188,7 +188,7 @@ function openPrintableCertificate(cert: Certificate, studentName: string): void 
       <span class="name">${escapeHtml(studentName)}</span>
     </div>
     <p class="body-text">
-      위 학생은 LearnGraph AI 기반 학습 플랫폼에서<br />
+      위 학생은 NodeBloom AI 기반 학습 플랫폼에서<br />
       <span class="course">${escapeHtml(cert.tree_title)}</span><br />
       과정을 성공적으로 수료하였음을 인증합니다.
     </p>
@@ -211,7 +211,7 @@ function openPrintableCertificate(cert: Certificate, studentName: string): void 
         <div class="value">${issuedDate}</div>
         <div>발급일</div>
       </div>
-      <div class="seal">LEARN<br/>GRAPH<br/>SEAL</div>
+      <div class="seal">NODE<br/>BLOOM<br/>SEAL</div>
       <div class="teacher-block">
         <div class="value">${escapeHtml(cert.teacher_name ?? '—')}</div>
         <div>담당 교사</div>

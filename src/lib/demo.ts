@@ -3,6 +3,9 @@
  *
  * 데모 계정은 읽기 전용이다. 모든 쓰기 Server Action 상단에서
  * assertNotDemo(user.email)를 호출하여 차단한다.
+ *
+ * 이메일 도메인(@learngraph.app)은 Supabase Auth에 저장된 기존 계정 식별자와
+ * 동일해야 하므로 브랜드 전환 후에도 변경하지 않는다. 표시명(UI/학교명)만 NodeBloom.
  */
 
 export const DEMO_TEACHER_EMAIL = 'demo_teacher@learngraph.app'

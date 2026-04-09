@@ -1,4 +1,4 @@
-# LearnGraph 개발 Phase 가이드
+# NodeBloom 개발 Phase 가이드
 
 > Claude Code가 각 Phase에서 무엇을 만들어야 하는지, 완료 기준이 무엇인지 참고하는 문서.
 > 각 Phase는 순서대로 진행하며, 이전 Phase의 결과물이 다음 Phase의 전제 조건이다.

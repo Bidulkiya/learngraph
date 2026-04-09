@@ -33,7 +33,7 @@ export default async function ParentDashboardPage() {
           <CardContent className="space-y-3">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               자녀의 학습 현황을 보려면 먼저 자녀 계정과 연결해야 합니다.
-              자녀에게 <strong>LearnGraph 앱에서 학부모 초대 코드</strong>를 받아
+              자녀에게 <strong>NodeBloom 앱에서 학부모 초대 코드</strong>를 받아
               아래 버튼을 눌러 입력해주세요.
             </p>
             <Link href="/parent/link">

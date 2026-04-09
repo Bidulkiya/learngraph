@@ -104,7 +104,7 @@ function buildPrintableHtml(title: string, content: string): string {
 </head>
 <body>
 ${body}
-<div class="footer">LearnGraph — AI 기반 학습 문서</div>
+<div class="footer">NodeBloom — AI 기반 학습 문서</div>
 </body>
 </html>`
 }
