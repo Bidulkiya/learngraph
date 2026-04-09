@@ -16,6 +16,11 @@ import type { Achievement } from '@/actions/achievements'
  * 스타일:
  * - 일반 업적: 골드 테두리 + 아이콘 + "업적 달성!"
  * - 히든 업적: 보라 테두리 + "🔓 히든 업적 해금!" + 반짝임
+ *
+ * 스택 동작:
+ * - 여러 개 동시에 호출 시 대체되지 않고 쌓임 (Toaster visibleToasts=5, expand)
+ * - 개별 지속 시간 5초 후 각각 자동 해제
+ * - 고유 id로 중복 알림 방지
  */
 export function notifyAchievement(achievement: Achievement): void {
   const isHidden = achievement.is_hidden
@@ -28,8 +33,11 @@ export function notifyAchievement(achievement: Achievement): void {
       />
     ),
     {
-      duration: isHidden ? 5000 : 3000,
-      position: 'bottom-right',
+      // 스택 방식 — 모든 업적 토스트는 5초 유지
+      duration: 5000,
+      position: 'top-right',
+      // 고유 ID로 같은 업적 중복 표시 방지
+      id: `achievement-${achievement.id}`,
     },
   )
 }

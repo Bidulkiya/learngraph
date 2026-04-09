@@ -51,10 +51,12 @@ interface StudentMetrics {
   perfectTree: number            // 0 or 1 (한 스킬트리 모든 노드 만점)
   crossSubjectTrees: number      // 다른 subject_hint로 완주한 스킬트리 수
   phoenixRecovery: number        // 0 or 1 (5연속 오답 후 만점 기록 존재)
-  rankingClassTop1: number       // 0 or 1
-  rankingSchoolTop1: number      // 0 or 1
-  rankingClassTop1Persistent: number  // 0 or 1 (계정 7일+ & 1등)
-  rankingSchoolTop1Persistent: number // 0 or 1 (계정 14일+ & 1등)
+  // 랭킹 메트릭은 "연속 N일 1등 유지" 방식으로 변경.
+  // daily_ranking_snapshots 테이블에서 최근 연속 일수를 집계한다.
+  rankingClassTop1: number            // 최근 연속 클래스 1등 일수
+  rankingSchoolTop1: number           // 최근 연속 스쿨 1등 일수
+  rankingClassTop1Persistent: number  // 동일 — 클래스 왕좌(14일) 판정용
+  rankingSchoolTop1Persistent: number // 동일 — 스쿨 왕좌(30일) 판정용
 }
 
 async function collectMetrics(
@@ -70,7 +72,7 @@ async function collectMetrics(
         .eq('student_id', userId),
       admin
         .from('profiles')
-        .select('xp, streak_days, today_study_minutes, created_at')
+        .select('xp, streak_days, today_study_minutes')
         .eq('id', userId)
         .single(),
       admin
@@ -237,15 +239,24 @@ async function collectMetrics(
     if (phoenixRecovery === 1) break
   }
 
-  // 랭킹 — class/school top1
-  const { rankingClassTop1, rankingSchoolTop1 } = await computeRanking(admin, userId)
+  // 랭킹 — 오늘의 class/school top1 여부 조회
+  const { classTop1Today, schoolTop1Today } = await computeRanking(admin, userId)
 
-  // 유지 조건: 계정 생성일 기준 일수 + 현재 1등
-  const createdAtMs = profile?.created_at ? new Date(profile.created_at).getTime() : Date.now()
-  const daysSinceCreation = Math.floor((Date.now() - createdAtMs) / (24 * 60 * 60 * 1000))
-  const rankingClassTop1Persistent = (rankingClassTop1 === 1 && daysSinceCreation >= 7) ? 1 : 0
-  const rankingSchoolTop1Persistent = (rankingSchoolTop1 === 1 && daysSinceCreation >= 14) ? 1 : 0
+  // 오늘의 스냅샷 upsert
+  const today = new Date().toISOString().slice(0, 10)
+  await admin
+    .from('daily_ranking_snapshots')
+    .upsert({
+      student_id: userId,
+      snapshot_date: today,
+      class_top1: classTop1Today,
+      school_top1: schoolTop1Today,
+    }, { onConflict: 'student_id,snapshot_date' })
 
+  // 오늘을 포함한 최근 연속 1등 일수 계산 (오늘부터 과거로 거슬러 올라감)
+  const { classStreak, schoolStreak } = await computeRankingStreaks(admin, userId, today)
+
+  // 모든 랭킹 메트릭은 연속 일수로 표현 — condition_value 와 직접 비교
   return {
     nodesUnlocked,
     perfectScores,
@@ -264,21 +275,76 @@ async function collectMetrics(
     perfectTree,
     crossSubjectTrees,
     phoenixRecovery,
-    rankingClassTop1,
-    rankingSchoolTop1,
-    rankingClassTop1Persistent,
-    rankingSchoolTop1Persistent,
+    // 랭킹 = 오늘부터 과거로 거슬러 올라가며 센 연속 1등 일수
+    rankingClassTop1: classStreak,
+    rankingSchoolTop1: schoolStreak,
+    rankingClassTop1Persistent: classStreak,
+    rankingSchoolTop1Persistent: schoolStreak,
   }
 }
 
 /**
- * 학생의 현재 클래스/스쿨 XP 랭킹 1등 여부.
- * 클래스/스쿨이 여러 개면 하나라도 1등이면 1 반환.
+ * 오늘을 포함한 최근 연속 "1등 유지" 일수 계산.
+ *
+ * 알고리즘: 최근 60일의 스냅샷을 최신순으로 가져와, 오늘부터 연속으로
+ * class_top1=true 인 일수를 센다. 중간에 false가 있으면 스트릭 종료.
+ * 스냅샷이 없는 날은 "1등 아님"으로 간주.
+ */
+async function computeRankingStreaks(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  today: string,
+): Promise<{ classStreak: number; schoolStreak: number }> {
+  // 60일 전까지 조회 — 스쿨 왕좌(30일)의 2배 여유
+  const sixtyDaysAgo = new Date()
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+  const sinceStr = sixtyDaysAgo.toISOString().slice(0, 10)
+
+  const { data: snapshots } = await admin
+    .from('daily_ranking_snapshots')
+    .select('snapshot_date, class_top1, school_top1')
+    .eq('student_id', userId)
+    .gte('snapshot_date', sinceStr)
+    .order('snapshot_date', { ascending: false }) // 최신순
+
+  if (!snapshots || snapshots.length === 0) {
+    return { classStreak: 0, schoolStreak: 0 }
+  }
+
+  // 날짜 기준 Map — 빠른 lookup
+  const byDate = new Map(snapshots.map(s => [s.snapshot_date, s]))
+
+  // 오늘부터 하루씩 과거로 이동하며 연속 카운트
+  const countStreak = (picker: (s: { class_top1: boolean; school_top1: boolean }) => boolean): number => {
+    let streak = 0
+    const cursor = new Date(today + 'T00:00:00')
+    while (true) {
+      const dateStr = cursor.toISOString().slice(0, 10)
+      const snap = byDate.get(dateStr)
+      if (!snap || !picker(snap)) break
+      streak++
+      cursor.setDate(cursor.getDate() - 1)
+      // 60일 이상이면 안전장치
+      if (streak > 60) break
+    }
+    return streak
+  }
+
+  return {
+    classStreak: countStreak(s => s.class_top1),
+    schoolStreak: countStreak(s => s.school_top1),
+  }
+}
+
+/**
+ * 학생의 오늘 시점 클래스/스쿨 XP 랭킹 1등 여부.
+ * 클래스/스쿨이 여러 개면 하나라도 1등이면 true 반환.
+ * 이 값은 daily_ranking_snapshots 에 기록되어 연속 일수 집계에 사용됨.
  */
 async function computeRanking(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
-): Promise<{ rankingClassTop1: number; rankingSchoolTop1: number }> {
+): Promise<{ classTop1Today: boolean; schoolTop1Today: boolean }> {
   // 내 클래스 목록 (approved)
   const { data: enrollments } = await admin
     .from('class_enrollments')
@@ -296,7 +362,7 @@ async function computeRanking(
     .eq('role', 'student')
   const schoolIds = memberships?.map(m => m.school_id) ?? []
 
-  let classTop = 0
+  let classTop = false
   if (classIds.length > 0) {
     for (const classId of classIds) {
       // 해당 클래스의 approved 학생들의 XP 중 최대
@@ -314,13 +380,13 @@ async function computeRanking(
         .order('xp', { ascending: false })
         .limit(1)
       if (students?.[0]?.id === userId) {
-        classTop = 1
+        classTop = true
         break
       }
     }
   }
 
-  let schoolTop = 0
+  let schoolTop = false
   if (schoolIds.length > 0) {
     for (const schoolId of schoolIds) {
       const { data: schoolMembers } = await admin
@@ -338,13 +404,13 @@ async function computeRanking(
         .order('xp', { ascending: false })
         .limit(1)
       if (students?.[0]?.id === userId) {
-        schoolTop = 1
+        schoolTop = true
         break
       }
     }
   }
 
-  return { rankingClassTop1: classTop, rankingSchoolTop1: schoolTop }
+  return { classTop1Today: classTop, schoolTop1Today: schoolTop }
 }
 
 /**

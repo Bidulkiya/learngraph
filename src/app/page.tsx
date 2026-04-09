@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   BookOpen, GraduationCap, Heart, Sparkles, TreePine, Bot, Mic, ClipboardCheck,
   Target, Award, Brain, FileText, Network, FlaskConical,
@@ -14,8 +13,28 @@ import { LogoSymbol } from '@/components/Logo'
 import { toast } from 'sonner'
 
 export default function LandingPage() {
-  const router = useRouter()
   const [demoLoading, setDemoLoading] = useState<'teacher' | 'student' | null>(null)
+
+  /**
+   * 로그인/회원가입 페이지로 이동 시 기존 세션 강제 정리.
+   *
+   * 배경: 학생/교사 체험 후 랜딩으로 돌아와 "로그인" 버튼을 누르면
+   * middleware가 기존 데모 세션 쿠키를 감지하여 /login에 있는 인증 유저를
+   * /student 같은 대시보드로 자동 리디렉트해버린다 → 마치 "데모 계정으로
+   * 자동 로그인되는 버그"처럼 보인다.
+   *
+   * router.push 전에 명시적으로 signOut하여 로그인/회원가입 화면에 도달하도록.
+   */
+  const handleAuthNav = async (path: '/login' | '/signup'): Promise<void> => {
+    try {
+      const supabase = createBrowserClient()
+      await supabase.auth.signOut()
+    } catch {
+      // 세션이 없어도 OK
+    }
+    // window.location으로 full navigation → middleware가 새 쿠키 상태로 판단
+    window.location.href = path
+  }
 
   // 데모 체험 — 서버에서 idempotent 환경 구축 후 클라이언트에서 직접 로그인.
   // 서버에서 로그인하면 브라우저 쿠키에 세션이 반영 안 돼서 리다이렉트 후 미인증 상태로
@@ -155,7 +174,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-center gap-2 text-sm">
             <button
               type="button"
-              onClick={() => router.push('/login')}
+              onClick={() => handleAuthNav('/login')}
               className="font-medium text-[#4F6BF6] hover:underline"
             >
               로그인
@@ -163,7 +182,7 @@ export default function LandingPage() {
             <span className="text-gray-300 dark:text-gray-700">·</span>
             <button
               type="button"
-              onClick={() => router.push('/signup')}
+              onClick={() => handleAuthNav('/signup')}
               className="font-medium text-[#4F6BF6] hover:underline"
             >
               회원가입
@@ -453,7 +472,7 @@ export default function LandingPage() {
 
             <button
               type="button"
-              onClick={() => router.push('/signup')}
+              onClick={() => handleAuthNav('/signup')}
               className="mt-4 inline-flex items-center gap-1 text-sm text-white/90 hover:text-white hover:underline"
             >
               또는 무료 계정 만들기

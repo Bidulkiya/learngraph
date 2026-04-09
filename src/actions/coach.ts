@@ -58,6 +58,36 @@ const DAYS: WeeklyPlanDay[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 const WEEKDAYS: WeeklyPlanDay[] = ['mon', 'tue', 'wed', 'thu', 'fri']
 
 /**
+ * 캐시된 plan JSONB가 새 스키마 (day: 영문 enum, nodes: {id,title}[]) 인지 검증.
+ *
+ * 배경: v1 스키마는 { day: "월", nodes: ["세포의 기본 구조"] } 이고,
+ *       v2 스키마는 { day: "mon", nodes: [{id, title}] } 이다.
+ *       weekly_plan_missions 테이블은 v2를 전제로 하기 때문에
+ *       v1 캐시가 있으면 미션이 0개로 남아 대시보드가 "0/0"을 표시한다.
+ *       캐시 로드 시 스키마 검증으로 재생성 트리거.
+ */
+function isValidPlanV2Schema(plan: unknown): boolean {
+  if (!Array.isArray(plan) || plan.length === 0) return false
+  return plan.every(d => {
+    if (!d || typeof d !== 'object') return false
+    const day = (d as { day?: unknown }).day
+    const nodes = (d as { nodes?: unknown }).nodes
+    if (typeof day !== 'string') return false
+    if (!DAYS.includes(day as WeeklyPlanDay)) return false
+    if (!Array.isArray(nodes)) return false
+    // 빈 배열은 OK (요일에 따라 0개 노드 가능)
+    return nodes.every(n =>
+      n !== null
+      && typeof n === 'object'
+      && 'id' in n
+      && 'title' in n
+      && typeof (n as { id: unknown }).id === 'string'
+      && typeof (n as { title: unknown }).title === 'string'
+    )
+  })
+}
+
+/**
  * 이번 주 월요일(yyyy-mm-dd, 로컬 타임존).
  * 일요일이면 전주 월요일이 아니라 "지난 월요일"로 계산 → 주말에도 이번 주 계획 유지.
  */
@@ -92,7 +122,7 @@ export async function getWeeklyPlanWithMissions(
     const weekStart = getMondayOfWeek(new Date())
     const today = getTodayDay()
 
-    // 1. 캐시 확인
+    // 1. 캐시 확인 — v2 스키마 검증 + 미션 존재 검증 통과해야만 캐시 사용
     if (!forceRefresh) {
       const { data: cached } = await admin
         .from('weekly_plans')
@@ -102,21 +132,40 @@ export async function getWeeklyPlanWithMissions(
         .maybeSingle()
 
       if (cached) {
-        // 미션 + 완료 상태 조회
+        const isValid = isValidPlanV2Schema(cached.plan)
         const missions = await fetchMissions(admin, user.id, weekStart)
-        const planOutput: WeeklyPlanOutput = {
-          plan: (cached.plan as WeeklyPlanOutput['plan']) ?? [],
-          motivation: cached.motivation ?? '',
+
+        // v2 스키마 + 미션이 1개 이상 존재해야 캐시 유효
+        if (isValid && missions.length > 0) {
+          const planOutput: WeeklyPlanOutput = {
+            plan: (cached.plan as WeeklyPlanOutput['plan']) ?? [],
+            motivation: cached.motivation ?? '',
+          }
+          return {
+            data: buildPlanResult(
+              weekStart,
+              planOutput,
+              missions,
+              cached.bonus_awarded ?? false,
+              today,
+            ),
+          }
         }
-        return {
-          data: buildPlanResult(
-            weekStart,
-            planOutput,
-            missions,
-            cached.bonus_awarded ?? false,
-            today,
-          ),
-        }
+
+        // 무효한 캐시 → 삭제 후 재생성 (v1 → v2 마이그레이션 + 0/0 표시 버그 수정)
+        console.warn(
+          `[getWeeklyPlanWithMissions] Invalid cache detected (valid=${isValid}, missions=${missions.length}). Regenerating...`
+        )
+        await admin
+          .from('weekly_plans')
+          .delete()
+          .eq('student_id', user.id)
+          .eq('week_start', weekStart)
+        await admin
+          .from('weekly_plan_missions')
+          .delete()
+          .eq('student_id', user.id)
+          .eq('week_start', weekStart)
       }
     }
 
@@ -233,10 +282,9 @@ async function getDemoWeeklyPlan(
   weekStart: string,
   today: WeeklyPlanDay
 ): Promise<{ data?: WeeklyPlanWithMissions; error?: string }> {
-  // 이미 캐시된 미션이 있으면 그대로 사용
+  // 이미 캐시된 미션 + v2 스키마 plan이 있으면 그대로 사용
   const existingMissions = await fetchMissions(admin, studentId, weekStart)
   if (existingMissions.length > 0) {
-    // plan 필드만 재구성
     const { data: cached } = await admin
       .from('weekly_plans')
       .select('plan, motivation, bonus_awarded')
@@ -244,7 +292,7 @@ async function getDemoWeeklyPlan(
       .eq('week_start', weekStart)
       .maybeSingle()
 
-    if (cached) {
+    if (cached && isValidPlanV2Schema(cached.plan)) {
       return {
         data: buildPlanResult(
           weekStart,
@@ -258,6 +306,18 @@ async function getDemoWeeklyPlan(
         ),
       }
     }
+
+    // 무효한 캐시 → 재구축
+    await admin
+      .from('weekly_plans')
+      .delete()
+      .eq('student_id', studentId)
+      .eq('week_start', weekStart)
+    await admin
+      .from('weekly_plan_missions')
+      .delete()
+      .eq('student_id', studentId)
+      .eq('week_start', weekStart)
   }
 
   // 체험 스킬트리 available 노드 조회

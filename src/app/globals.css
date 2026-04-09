@@ -83,38 +83,49 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/*
+ * 다크모드 팔레트 v2 — 순수 검정이 아닌 차가운 블루-그레이 톤.
+ *
+ * 디자인 원칙:
+ * - 배경: 슬레이트 네이비 (#0f1117) — 눈이 덜 피로한 부드러운 다크
+ * - 카드: 한 단계 밝은 톤 (#1e2030) — 계층감 확보
+ * - 텍스트: 순백이 아닌 약간의 푸른 톤 (#e2e8f0) — 대비 유지하되 눈부심 방지
+ * - 보조 텍스트: 슬레이트 그레이 (#94a3b8)
+ * - 테두리: 어두운 슬레이트 (#2d3748)
+ * - 프라이머리: 인디고 (#7c8dff) — 다크 배경에서 더 잘 보이도록 약간 밝게 조정
+ */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0f1117;
+  --foreground: #e2e8f0;
+  --card: #1e2030;
+  --card-foreground: #e2e8f0;
+  --popover: #1e2030;
+  --popover-foreground: #e2e8f0;
+  --primary: #7c8dff;
+  --primary-foreground: #0f1117;
+  --secondary: #252740;
+  --secondary-foreground: #e2e8f0;
+  --muted: #252740;
+  --muted-foreground: #94a3b8;
+  --accent: #252740;
+  --accent-foreground: #e2e8f0;
+  --destructive: #f87171;
+  --border: #2d3748;
+  --input: #2d3748;
+  --ring: #7c8dff;
+  --chart-1: #7c8dff;
+  --chart-2: #a78bfa;
+  --chart-3: #60a5fa;
+  --chart-4: #34d399;
+  --chart-5: #fbbf24;
+  --sidebar: #1a1b2e;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-primary: #7c8dff;
+  --sidebar-primary-foreground: #0f1117;
+  --sidebar-accent: #252740;
+  --sidebar-accent-foreground: #e2e8f0;
+  --sidebar-border: #2d3748;
+  --sidebar-ring: #7c8dff;
 }
 
 @layer base {
