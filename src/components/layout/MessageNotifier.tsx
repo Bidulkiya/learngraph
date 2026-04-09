@@ -16,6 +16,11 @@ interface Props {
   role: 'teacher' | 'student' | 'admin'
   latestUnread: LatestUnread | null
   totalUnread: number
+  /**
+   * 데모 계정 여부. true이면 페이지 진입 시 "새 메시지" 토스트를 띄우지 않는다.
+   * 데모는 시드로 들어간 환영 메시지가 unread로 보여서 매번 토스트가 떠 혼란을 줌.
+   */
+  isDemo?: boolean
 }
 
 /**
@@ -23,12 +28,13 @@ interface Props {
  * - 한 세션(sessionStorage) 내에서 한 번만 표시
  * - 클릭하면 메시지 페이지로 이동
  */
-export function MessageNotifier({ role, latestUnread, totalUnread }: Props) {
+export function MessageNotifier({ role, latestUnread, totalUnread, isDemo }: Props) {
   const router = useRouter()
   const shownRef = useRef(false)
 
   useEffect(() => {
     if (shownRef.current) return
+    if (isDemo) return
     if (!latestUnread || totalUnread === 0) return
 
     // 세션 스토리지로 중복 표시 방지
@@ -68,7 +74,7 @@ export function MessageNotifier({ role, latestUnread, totalUnread }: Props) {
         },
       }
     )
-  }, [latestUnread, totalUnread, role, router])
+  }, [latestUnread, totalUnread, role, router, isDemo])
 
   return null
 }

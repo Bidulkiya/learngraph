@@ -47,8 +47,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         role: 'teacher',
       })
     }
-    // 기존 데이터의 이름이 "데모 교사"였다면 자연스러운 이름으로 갱신
-    await admin.from('profiles').update({ name: '박지훈' }).eq('id', teacherId).eq('name', '데모 교사')
+    // 이름 무조건 갱신 (어떤 기존 이름이어도 덮어쓰기)
+    await admin.from('profiles').update({ name: '박지훈' }).eq('id', teacherId)
 
     // ============================================
     // 2. 데모 학생 계정
@@ -76,8 +76,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         role: 'student',
       })
     }
-    // 기존 데이터의 이름이 "데모 학생"이었다면 자연스러운 이름으로 갱신
-    await admin.from('profiles').update({ name: '김지수' }).eq('id', studentId).eq('name', '데모 학생')
+    // 이름 무조건 갱신 (어떤 기존 이름이어도 덮어쓰기)
+    await admin.from('profiles').update({ name: '김지수' }).eq('id', studentId)
 
     // 학생 게이미피케이션 데이터 (덮어쓰기 — 데모는 항상 같은 상태)
     await admin.from('profiles').update({
@@ -88,6 +88,26 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       today_study_minutes: 25,
       last_study_date: new Date().toISOString().slice(0, 10),
     }).eq('id', studentId)
+
+    // ============================================
+    // 2-bis. 데모 학생/교사의 "체험 학교가 아닌" 오염 데이터 전면 정리
+    // ============================================
+    // 데모 계정이 과거에 다른 스쿨/클래스에 가입된 흔적, 캐시된 weekly_plans,
+    // 잘못된 감정 리포트 등을 모두 제거하여 언제나 깨끗한 체험 환경을 보장.
+    // (체험 학교 ID는 아직 resolved 안 됐으므로 이름으로 찾는 서브쿼리 사용)
+    const demoUserIds = [teacherId, studentId]
+
+    // weekly_plans — 캐시 전면 삭제 (getWeeklyPlan은 데모면 하드코딩 fallback 반환)
+    await admin.from('weekly_plans').delete().in('student_id', demoUserIds)
+
+    // emotion_reports — 체험 스킬트리 아닌 것 삭제 (오늘 데이터는 아래 12에서 upsert)
+    await admin.from('emotion_reports').delete().in('student_id', demoUserIds)
+
+    // tutor_conversations — 이전 대화 기록 삭제 (데모는 매번 깨끗한 상태)
+    await admin.from('tutor_conversations').delete().in('student_id', demoUserIds)
+
+    // weekly_briefings — 데모 교사 대상 (class_id 관련은 아래 단계에서 재생성)
+    // 이 단계에선 보류: 체험 클래스 것만 남기고 삭제는 아래 13에서 처리
 
     // ============================================
     // 3. 데모 스쿨
@@ -156,6 +176,52 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       { class_id: classId, student_id: studentId },
       { onConflict: 'class_id,student_id' }
     )
+
+    // ============================================
+    // 4-bis. 데모 학생/교사의 "체험 스쿨/클래스가 아닌" 소속 전면 제거
+    // ============================================
+    // 데모 계정이 다른 실제 스쿨/클래스에 섞여있으면 /student/skill-tree에
+    // 다른 계정의 스킬트리가 보이는 등 격리가 깨진다. 매 setupDemoData 호출마다
+    // 체험 환경 외 모든 소속을 자동 정리.
+
+    // 다른 스쿨 멤버십 삭제
+    await admin.from('school_members').delete().in('user_id', demoUserIds).neq('school_id', schoolId)
+
+    // 다른 클래스 enrollment 삭제
+    await admin.from('class_enrollments').delete().eq('student_id', studentId).neq('class_id', classId)
+    await admin.from('class_students').delete().eq('student_id', studentId).neq('class_id', classId)
+
+    // 다른 클래스의 교사 배정도 제거 (데모 교사는 체험 클래스의 교사여야 함)
+    await admin.from('classes').update({ teacher_id: null }).eq('teacher_id', teacherId).neq('id', classId)
+
+    // 다른 스쿨/클래스에서 만든 skill_trees 중 데모 교사가 만든 것 삭제 (이전 데모 버전 잔여물 제거)
+    const { data: orphanTrees } = await admin
+      .from('skill_trees')
+      .select('id')
+      .eq('created_by', teacherId)
+      .neq('class_id', classId)
+    const orphanTreeIds = orphanTrees?.map(t => t.id) ?? []
+    if (orphanTreeIds.length > 0) {
+      // 의존 데이터부터
+      const { data: orphanNodes } = await admin.from('nodes').select('id').in('skill_tree_id', orphanTreeIds)
+      const orphanNodeIds = orphanNodes?.map(n => n.id) ?? []
+      if (orphanNodeIds.length > 0) {
+        await admin.from('flashcard_reviews').delete().in('flashcard_id',
+          (await admin.from('flashcards').select('id').in('node_id', orphanNodeIds)).data?.map(f => f.id) ?? []
+        )
+        await admin.from('flashcards').delete().in('node_id', orphanNodeIds)
+        await admin.from('quiz_attempts').delete().in('node_id', orphanNodeIds)
+        await admin.from('quizzes').delete().in('node_id', orphanNodeIds)
+        await admin.from('student_progress').delete().in('node_id', orphanNodeIds)
+      }
+      await admin.from('node_edges').delete().in('skill_tree_id', orphanTreeIds)
+      await admin.from('nodes').delete().in('skill_tree_id', orphanTreeIds)
+      await admin.from('emotion_reports').delete().in('skill_tree_id', orphanTreeIds)
+      await admin.from('skill_trees').delete().in('id', orphanTreeIds)
+    }
+
+    // 데모 학생의 "체험 스킬트리와 무관한" student_progress도 삭제 (다른 클래스 잔여물)
+    // 체험 스킬트리 ID는 아래 단계에서 알 수 있으니 그 후에 정리 → 아래 7에서 처리
 
     // ============================================
     // 5. 데모 스킬트리 "인공지능의 이해"
@@ -232,6 +298,26 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         const found = existingNodes.find(en => en.title === n.title)
         if (found) nodeIdMap.set(n.key, found.id)
       })
+    }
+
+    // ============================================
+    // 7-pre. 데모 학생의 "체험 스킬트리 아닌" 진도 데이터 삭제
+    // ============================================
+    // 체험 스킬트리(treeId)와 무관한 student_progress/quiz_attempts는 전부 제거.
+    // 이전 데모 세션에서 다른 스킬트리를 풀었던 잔여물을 완전히 정리.
+    await admin.from('student_progress').delete().eq('student_id', studentId).neq('skill_tree_id', treeId)
+    // quiz_attempts는 skill_tree_id 컬럼이 없으므로, 체험 스킬트리의 node_id들 제외한 것 삭제
+    const { data: demoNodeIdsForAttempts } = await admin
+      .from('nodes')
+      .select('id')
+      .eq('skill_tree_id', treeId)
+    const demoNodeIdList = demoNodeIdsForAttempts?.map(n => n.id) ?? []
+    if (demoNodeIdList.length > 0) {
+      await admin
+        .from('quiz_attempts')
+        .delete()
+        .eq('student_id', studentId)
+        .not('node_id', 'in', `(${demoNodeIdList.map(id => `"${id}"`).join(',')})`)
     }
 
     // ============================================
@@ -484,43 +570,45 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     // ============================================
     // 14. 공지사항 + 환영 메시지
     // ============================================
-    const { data: existingAnnouncements } = await admin
+    // 공지사항: 체험 스쿨의 기존 공지 전부 삭제 후 재생성 (항상 깨끗한 첫 인상)
+    // announcement_reads도 같이 정리 → 데모 학생이 "미읽음" 상태로 보이도록
+    const { data: existingAnnRows } = await admin
       .from('announcements')
       .select('id')
       .eq('school_id', schoolId)
-
-    if (!existingAnnouncements || existingAnnouncements.length === 0) {
-      await admin.from('announcements').insert({
-        school_id: schoolId,
-        author_id: teacherId,
-        title: '체험 학교에 오신 것을 환영합니다!',
-        content: 'LearnGraph 체험 학교입니다. 데모 계정은 읽기 전용이므로 모든 기능을 둘러볼 수 있지만 데이터는 저장되지 않습니다. 직접 사용해보고 싶으시면 회원가입 후 이용해주세요.',
-        target_role: 'all',
-      })
+    const existingAnnIds = existingAnnRows?.map(a => a.id) ?? []
+    if (existingAnnIds.length > 0) {
+      await admin.from('announcement_reads').delete().in('announcement_id', existingAnnIds)
+      await admin.from('announcements').delete().in('id', existingAnnIds)
     }
+    await admin.from('announcements').insert({
+      school_id: schoolId,
+      author_id: teacherId,
+      title: '체험 학교에 오신 것을 환영합니다!',
+      content: 'LearnGraph 체험 학교입니다. 데모 계정은 읽기 전용이므로 모든 기능을 둘러볼 수 있지만 데이터는 저장되지 않습니다. 직접 사용해보고 싶으시면 회원가입 후 이용해주세요.',
+      target_role: 'all',
+    })
 
-    const { data: existingMessages } = await admin
+    // 직접 메시지: 교사→학생 메시지 전부 삭제 후 재생성 (미읽음 상태)
+    await admin
       .from('direct_messages')
-      .select('id')
-      .eq('sender_id', teacherId)
-      .eq('receiver_id', studentId)
+      .delete()
+      .or(`and(sender_id.eq.${teacherId},receiver_id.eq.${studentId}),and(sender_id.eq.${studentId},receiver_id.eq.${teacherId})`)
 
-    if (!existingMessages || existingMessages.length === 0) {
-      await admin.from('direct_messages').insert([
-        {
-          school_id: schoolId,
-          sender_id: teacherId,
-          receiver_id: studentId,
-          content: '환영합니다! LearnGraph 체험 학교에 오신 것을 축하드려요. 궁금한 점이 있으면 언제든 메시지 주세요.',
-        },
-        {
-          school_id: schoolId,
-          sender_id: teacherId,
-          receiver_id: studentId,
-          content: '오늘 퀴즈 성적이 정말 좋네요. 이 페이스로 계속 가봅시다!',
-        },
-      ])
-    }
+    await admin.from('direct_messages').insert([
+      {
+        school_id: schoolId,
+        sender_id: teacherId,
+        receiver_id: studentId,
+        content: '환영합니다! LearnGraph 체험 학교에 오신 것을 축하드려요. 궁금한 점이 있으면 언제든 메시지 주세요.',
+      },
+      {
+        school_id: schoolId,
+        sender_id: teacherId,
+        receiver_id: studentId,
+        content: '오늘 퀴즈 성적이 정말 좋네요. 이 페이스로 계속 가봅시다!',
+      },
+    ])
 
     return {}
   } catch (err) {

@@ -4,6 +4,7 @@ import { RoleGuard, getCurrentProfile } from "@/components/layout/RoleGuard"
 import { MessageNotifier } from "@/components/layout/MessageNotifier"
 import { DemoBanner } from "@/components/layout/DemoBanner"
 import { getUnreadSummary } from "@/actions/messages"
+import { isDemoAccount } from "@/lib/demo"
 
 export default async function StudentLayout({
   children,
@@ -16,6 +17,7 @@ export default async function StudentLayout({
   ])
 
   const unread = unreadRes.data ?? { totalUnread: 0, latestUnread: null }
+  const isDemo = isDemoAccount(profile?.email)
 
   return (
     <RoleGuard allowedRole="student">
@@ -33,6 +35,7 @@ export default async function StudentLayout({
         role="student"
         latestUnread={unread.latestUnread}
         totalUnread={unread.totalUnread}
+        isDemo={isDemo}
       />
     </RoleGuard>
   )

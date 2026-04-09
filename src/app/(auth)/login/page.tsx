@@ -29,6 +29,16 @@ function LoginForm() {
     setError("")
     setDemoLoading(role)
     try {
+      const supabase = createBrowserClient()
+
+      // 0. 기존 세션이 있으면 먼저 강제 로그아웃 (레거시 데모 계정이나 다른 계정 쿠키 정리)
+      // 이전에 demo_student1 등으로 로그인했던 쿠키가 남아있으면 체험 환경이 오염됨.
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // 세션이 없어도 OK
+      }
+
       // 1. 서버에서 데모 환경 idempotent 구축 + 이메일/비번 회신
       const setupRes = await loginAsDemo(role)
       if (setupRes.error || !setupRes.data) {
@@ -38,7 +48,6 @@ function LoginForm() {
       }
 
       // 2. 클라이언트에서 직접 로그인 (브라우저 쿠키 보장)
-      const supabase = createBrowserClient()
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: setupRes.data.email,
         password: setupRes.data.password,
