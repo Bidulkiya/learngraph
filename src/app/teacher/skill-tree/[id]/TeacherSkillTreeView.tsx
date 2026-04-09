@@ -59,31 +59,32 @@ export function TeacherSkillTreeView({ treeId, treeTitle, treeDescription, theme
   }
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full flex-col gap-3 sm:gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link href="/teacher/skill-tree">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white">
-              <TreePine className="h-5 w-5 text-[#10B981]" />
-              {treeTitle}
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 truncate text-lg font-bold text-gray-900 sm:text-xl dark:text-white">
+              <TreePine className="h-5 w-5 shrink-0 text-[#10B981]" />
+              <span className="truncate">{treeTitle}</span>
             </h1>
-            <p className="text-sm text-gray-500">{treeDescription}</p>
+            <p className="truncate text-xs text-gray-500 sm:text-sm">{treeDescription}</p>
           </div>
-          <Badge variant="secondary">{nodes.length}개 노드</Badge>
+          <Badge variant="secondary" className="shrink-0 text-[10px] sm:text-xs">{nodes.length}개 노드</Badge>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <SimulationDialog treeId={treeId} treeTitle={treeTitle} />
           {editMode && (
             <Button onClick={handleAddNode} size="sm" variant="outline">
               <Plus className="mr-1 h-4 w-4" />
-              노드 추가
+              <span className="hidden sm:inline">노드 추가</span>
+              <span className="sm:hidden">추가</span>
             </Button>
           )}
           <Button
@@ -92,7 +93,9 @@ export function TeacherSkillTreeView({ treeId, treeTitle, treeDescription, theme
             variant={editMode ? 'default' : 'outline'}
             className={editMode ? 'bg-[#4F6BF6] hover:bg-[#4F6BF6]/90' : ''}
           >
-            {editMode ? <><Eye className="mr-1 h-4 w-4" />보기 모드</> : <><Edit className="mr-1 h-4 w-4" />편집 모드</>}
+            {editMode
+              ? <><Eye className="mr-1 h-4 w-4" /><span className="hidden sm:inline">보기 모드</span><span className="sm:hidden">보기</span></>
+              : <><Edit className="mr-1 h-4 w-4" /><span className="hidden sm:inline">편집 모드</span><span className="sm:hidden">편집</span></>}
           </Button>
         </div>
       </div>

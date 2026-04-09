@@ -19,6 +19,7 @@ import {
   Mail,
   Heart,
   Award,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LogoSymbol } from "@/components/Logo"
@@ -30,6 +31,10 @@ type MenuKey = 'messages' | 'tutor' | 'dashboard' | 'classes' | 'skill-tree' | '
 interface SidebarProps {
   role: Role
   unreadMessageCount?: number
+  /** 모바일 오버레이 상태 (DashboardShell이 관리) */
+  mobileOpen?: boolean
+  /** 모바일 메뉴 항목 클릭 시 사이드바 닫기 */
+  onMobileClose?: () => void
 }
 
 interface MenuItem {
@@ -79,21 +84,51 @@ const roleConfig: Record<Role, { label: string; color: string; icon: React.Eleme
   parent: { label: "학부모", color: "text-pink-500", icon: Heart },
 }
 
-export function Sidebar({ role, unreadMessageCount = 0 }: SidebarProps) {
+export function Sidebar({
+  role,
+  unreadMessageCount = 0,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const pathname = usePathname()
   const config = roleConfig[role]
   const items = menuItems[role]
   const RoleIcon = config.icon
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+    <aside
+      className={cn(
+        "flex w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950",
+        // 모바일: fixed overlay + transform 슬라이드 (z-50으로 backdrop 위)
+        "fixed inset-y-0 left-0 z-50 h-full transform transition-transform duration-300 ease-out",
+        mobileOpen ? "translate-x-0" : "-translate-x-full",
+        // 데스크톱 (md+): 정적 flex item으로 복귀, 항상 보임
+        "md:static md:h-auto md:translate-x-0 md:transition-none",
+      )}
+      aria-hidden={!mobileOpen ? "true" : undefined}
+    >
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-2 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-        <LogoSymbol size={32} />
-        <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
-          Node<span className="text-[#6366F1]">Bloom</span>
-        </span>
-      </Link>
+      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+        <Link
+          href="/"
+          className="flex items-center gap-2"
+          onClick={onMobileClose}
+        >
+          <LogoSymbol size={32} />
+          <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
+            Node<span className="text-[#6366F1]">Bloom</span>
+          </span>
+        </Link>
+        {/* 모바일 닫기 버튼 */}
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="-mr-2 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 md:hidden dark:hover:bg-gray-800 dark:hover:text-gray-300"
+          aria-label="사이드바 닫기"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
       {/* Role Badge */}
       <div className="flex items-center gap-2 px-5 py-3">
@@ -102,7 +137,7 @@ export function Sidebar({ role, unreadMessageCount = 0 }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-2">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
         {items.map((item) => {
           const isActive = pathname === item.href || (item.href !== `/${role}` && pathname.startsWith(item.href))
           const Icon = item.icon
@@ -111,8 +146,10 @@ export function Sidebar({ role, unreadMessageCount = 0 }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onMobileClose}
               className={cn(
-                "relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                // min-h-11 = 44px for mobile touch target
+                "relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-[#4F6BF6]/10 text-[#4F6BF6] dark:bg-[#4F6BF6]/20"
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-white"

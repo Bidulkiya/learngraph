@@ -93,7 +93,7 @@ export function QuizCard({ quiz, index, total, onSubmit, disabled }: QuizCardPro
               return (
                 <label
                   key={i}
-                  className={`group flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 text-sm transition-all duration-200 ${
+                  className={`group flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border-2 p-3 text-sm transition-all duration-200 ${
                     isSelected
                       ? 'scale-[1.02] border-[#4F6BF6] bg-[#4F6BF6]/10 shadow-sm'
                       : 'border-gray-200 hover:scale-[1.01] hover:border-[#4F6BF6]/50 hover:bg-[#4F6BF6]/5 dark:border-gray-700'

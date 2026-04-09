@@ -631,7 +631,8 @@ export function SkillTreeGraph({
   return (
     <div
       ref={containerRef}
-      className="lg-skill-tree relative h-full w-full min-h-[500px] rounded-2xl border border-white/10 overflow-hidden shadow-2xl"
+      className="lg-skill-tree relative h-full w-full min-h-[360px] touch-pan-y sm:min-h-[500px] rounded-2xl border border-white/10 overflow-hidden shadow-2xl"
+      style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
     >
       {editable && (
         <div className="absolute top-3 right-3 z-10 flex gap-2">

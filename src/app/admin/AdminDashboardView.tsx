@@ -97,7 +97,7 @@ export function AdminDashboardView({
           <CardTitle className="text-base">📊 스쿨 전체 요약</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3 lg:grid-cols-5">
             <OverviewStat
               icon={<School className="h-4 w-4" />}
               label="스쿨"
@@ -169,12 +169,12 @@ function OverviewStat({
   color: string
 }) {
   return (
-    <div className="rounded-lg border p-3 dark:border-gray-800">
-      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+    <div className="rounded-lg border p-2.5 dark:border-gray-800 sm:p-3">
+      <div className="flex items-center gap-1.5 text-[10px] text-gray-500 sm:text-xs">
         <span style={{ color }}>{icon}</span>
         {label}
       </div>
-      <p className="mt-1 text-2xl font-bold" style={{ color }}>
+      <p className="mt-1 text-xl font-bold sm:text-2xl" style={{ color }}>
         {value.toLocaleString()}
       </p>
     </div>

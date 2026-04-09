@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { LogOut, Moon, Sun, User } from "lucide-react"
+import { LogOut, Menu, Moon, Sun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { StudyTimer } from "@/components/student/StudyTimer"
+import { LogoSymbol } from "@/components/Logo"
 import type { Role } from "@/types/user"
 
 interface HeaderProps {
@@ -22,6 +23,8 @@ interface HeaderProps {
   userName?: string
   nickname?: string | null
   avatarUrl?: string | null
+  /** 모바일 햄버거 버튼 클릭 시 콜백 (DashboardShell에서 주입) */
+  onMenuClick?: () => void
 }
 
 const roleLabels: Record<Role, string> = {
@@ -44,7 +47,13 @@ const profilePathByRole: Partial<Record<Role, string>> = {
   teacher: '/teacher/profile',
 }
 
-export function Header({ role, userName = "사용자", nickname, avatarUrl }: HeaderProps) {
+export function Header({
+  role,
+  userName = "사용자",
+  nickname,
+  avatarUrl,
+  onMenuClick,
+}: HeaderProps) {
   const router = useRouter()
   // 초기값을 렌더 시점이 아니라 lazy initializer로 — useEffect 카스케이드 제거
   const [dark, setDark] = useState<boolean>(() => {
@@ -74,33 +83,60 @@ export function Header({ role, userName = "사용자", nickname, avatarUrl }: He
   const profilePath = profilePathByRole[role]
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-950">
-      <div className="flex items-center gap-3">
-        <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+    <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-3 sm:px-6 dark:border-gray-800 dark:bg-gray-950">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        {/* 모바일 햄버거 버튼 */}
+        {onMenuClick && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMenuClick}
+            className="h-9 w-9 md:hidden"
+            aria-label="메뉴 열기"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
+
+        {/* 모바일 전용 로고 심볼 (사이드바가 숨겨진 상태에서 브랜드 유지) */}
+        <div className="md:hidden">
+          <LogoSymbol size={24} />
+        </div>
+
+        {/* 데스크톱 타이틀 */}
+        <h2 className="hidden truncate text-sm font-medium text-gray-500 md:block dark:text-gray-400">
           {roleLabels[role]} 대시보드
         </h2>
-        <Badge variant="outline" className={roleBadgeColors[role]}>
+        <Badge variant="outline" className={`shrink-0 text-[10px] sm:text-xs ${roleBadgeColors[role]}`}>
           {roleLabels[role]}
         </Badge>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         {/* Study timer (학생 only) */}
         {role === 'student' && <StudyTimer />}
 
         {/* Dark mode toggle */}
-        <Button variant="ghost" size="icon" onClick={toggleDarkMode} className="h-9 w-9">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleDarkMode}
+          className="h-9 w-9"
+          aria-label={dark ? "라이트 모드" : "다크 모드"}
+        >
           {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
         {/* User menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
+          <DropdownMenuTrigger className="flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1.5 text-sm hover:bg-accent sm:gap-2 sm:px-2">
             <Avatar className="h-7 w-7">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
               <AvatarFallback className="text-xs">{initial}</AvatarFallback>
             </Avatar>
-            <span className="font-medium text-gray-700 dark:text-gray-300">{displayName}</span>
+            <span className="hidden max-w-[140px] truncate font-medium text-gray-700 sm:inline dark:text-gray-300">
+              {displayName}
+            </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8}>
             <DropdownMenuItem

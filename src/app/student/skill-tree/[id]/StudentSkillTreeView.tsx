@@ -37,34 +37,34 @@ export function StudentSkillTreeView({ treeTitle, treeDescription, theme, nodes,
   }
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full flex-col gap-3 sm:gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link href="/student">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white">
-              <TreePine className="h-5 w-5 text-[#4F6BF6]" />
-              {treeTitle}
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 truncate text-lg font-bold text-gray-900 sm:text-xl dark:text-white">
+              <TreePine className="h-5 w-5 shrink-0 text-[#4F6BF6]" />
+              <span className="truncate">{treeTitle}</span>
             </h1>
-            <p className="text-sm text-gray-500">{treeDescription}</p>
+            <p className="truncate text-xs text-gray-500 sm:text-sm">{treeDescription}</p>
           </div>
         </div>
-        <Badge variant="secondary" className="text-sm">
+        <Badge variant="secondary" className="shrink-0 text-xs sm:text-sm">
           진도: {completed}/{total}
         </Badge>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-gray-500">
-        <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-[#10B981]" /> 완료</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-[#F59E0B]" /> 도전 가능</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-[#4F6BF6]" /> 진행 중</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-[#94A3B8]" /> 잠김</span>
+      <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 sm:gap-4 sm:text-xs">
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full bg-[#10B981] sm:h-3 sm:w-3" /> 완료</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full bg-[#F59E0B] sm:h-3 sm:w-3" /> 도전</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full bg-[#4F6BF6] sm:h-3 sm:w-3" /> 진행</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-full bg-[#94A3B8] sm:h-3 sm:w-3" /> 잠김</span>
       </div>
 
       {/* Graph */}

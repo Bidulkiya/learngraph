@@ -137,6 +137,62 @@
   }
   html {
     @apply font-sans;
+    /* 터치 하이라이트 색상 제거 (모바일) */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* iOS safe area 대응 — 노치/홈 인디케이터 영역 여백 */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* 터치 타겟 최소 44px (iOS 권장) */
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* 모바일 스크롤바 숨김 (iOS Safari 오버스크롤 바운스는 유지) */
+  @media (max-width: 767px) {
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgb(156 163 175 / 0.4);
+      border-radius: 2px;
+    }
+  }
+
+  /* 모바일에서 iOS zoom 방지 — input 폰트 16px */
+  @media (max-width: 767px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+
+  /* 가로 스크롤 방지 (body 전체) */
+  html, body {
+    overflow-x: hidden;
+  }
+
+  /* 텍스트 한 줄 말줄임 유틸리티 (Tailwind truncate와 동일 동작) */
+  .text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
