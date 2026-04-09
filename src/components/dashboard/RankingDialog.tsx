@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { Crown, Flame, Loader2, TreePine } from 'lucide-react'
 import {
   Dialog,
@@ -220,11 +221,27 @@ function RankingRow({
       {/* 순위 아이콘 */}
       <RankBadge rank={entry.rank} />
 
-      {/* 이름 */}
+      {/* 아바타 */}
+      {entry.avatar_url ? (
+        <Image
+          src={entry.avatar_url}
+          alt={entry.nickname ?? entry.name}
+          width={32}
+          height={32}
+          unoptimized
+          className="h-8 w-8 shrink-0 rounded-full border border-gray-200 bg-white dark:border-gray-700"
+        />
+      ) : (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-500 dark:bg-gray-800">
+          {(entry.nickname ?? entry.name)[0]}
+        </div>
+      )}
+
+      {/* 닉네임 (fallback: 이름) */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className={`truncate font-semibold ${isMe ? 'text-[#6366F1]' : ''}`}>
-            {entry.name}
+            {entry.nickname ?? entry.name}
           </span>
           {isMe && (
             <Badge className="shrink-0 bg-[#6366F1] px-1.5 py-0 text-[9px]">나</Badge>

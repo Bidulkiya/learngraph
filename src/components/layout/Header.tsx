@@ -10,9 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { StudyTimer } from "@/components/student/StudyTimer"
 import type { Role } from "@/types/user"
@@ -20,6 +20,8 @@ import type { Role } from "@/types/user"
 interface HeaderProps {
   role: Role
   userName?: string
+  nickname?: string | null
+  avatarUrl?: string | null
 }
 
 const roleLabels: Record<Role, string> = {
@@ -36,7 +38,13 @@ const roleBadgeColors: Record<Role, string> = {
   parent: "bg-pink-500/10 text-pink-500 border-pink-300",
 }
 
-export function Header({ role, userName = "사용자" }: HeaderProps) {
+// 프로필 페이지 경로 (parent/admin은 프로필 페이지 없음 → undefined)
+const profilePathByRole: Partial<Record<Role, string>> = {
+  student: '/student/profile',
+  teacher: '/teacher/profile',
+}
+
+export function Header({ role, userName = "사용자", nickname, avatarUrl }: HeaderProps) {
   const router = useRouter()
   // 초기값을 렌더 시점이 아니라 lazy initializer로 — useEffect 카스케이드 제거
   const [dark, setDark] = useState<boolean>(() => {
@@ -44,6 +52,10 @@ export function Header({ role, userName = "사용자" }: HeaderProps) {
     return document.documentElement.classList.contains("dark")
   })
   const [loggingOut, setLoggingOut] = useState(false)
+
+  // 표시용: 닉네임이 있으면 우선, 없으면 이름
+  const displayName = nickname || userName
+  const initial = (displayName?.[0] ?? '?').toUpperCase()
 
   function toggleDarkMode(): void {
     const next = !dark
@@ -58,6 +70,8 @@ export function Header({ role, userName = "사용자" }: HeaderProps) {
     router.push("/login")
     router.refresh()
   }
+
+  const profilePath = profilePathByRole[role]
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-950">
@@ -83,12 +97,16 @@ export function Header({ role, userName = "사용자" }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
             <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-xs">{userName[0]}</AvatarFallback>
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+              <AvatarFallback className="text-xs">{initial}</AvatarFallback>
             </Avatar>
-            <span className="font-medium text-gray-700 dark:text-gray-300">{userName}</span>
+            <span className="font-medium text-gray-700 dark:text-gray-300">{displayName}</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8}>
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!profilePath}
+              onClick={() => { if (profilePath) router.push(profilePath) }}
+            >
               <User className="mr-2 h-4 w-4" />
               프로필
             </DropdownMenuItem>

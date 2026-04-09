@@ -96,13 +96,23 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .eq('email', DEMO_TEACHER_EMAIL)
       .maybeSingle()
 
+    const TEACHER_NICKNAME = '박지훈 선생님'
+    const TEACHER_AVATAR_SEED = '박지훈 선생님'
+    const TEACHER_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(TEACHER_AVATAR_SEED)}`
+
     let teacherId = existingTeacherProfile?.id
     if (!teacherId) {
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: DEMO_TEACHER_EMAIL,
         password: DEMO_PASSWORD,
         email_confirm: true,
-        user_metadata: { name: '박지훈', role: 'teacher' },
+        user_metadata: {
+          name: '박지훈',
+          role: 'teacher',
+          nickname: TEACHER_NICKNAME,
+          avatar_url: TEACHER_AVATAR_URL,
+          avatar_seed: TEACHER_AVATAR_SEED,
+        },
       })
       if (createErr) return { error: '데모 교사 생성 실패: ' + createErr.message }
       teacherId = created.user.id
@@ -111,10 +121,20 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         email: DEMO_TEACHER_EMAIL,
         name: '박지훈',
         role: 'teacher',
+        nickname: TEACHER_NICKNAME,
+        avatar_url: TEACHER_AVATAR_URL,
+        avatar_seed: TEACHER_AVATAR_SEED,
       })
     }
-    // 이름 무조건 갱신 (어떤 기존 이름이어도 덮어쓰기)
-    await admin.from('profiles').update({ name: '박지훈' }).eq('id', teacherId)
+    // 이름/닉네임/아바타 무조건 갱신
+    await admin.from('profiles').update({
+      name: '박지훈',
+      nickname: TEACHER_NICKNAME,
+      avatar_url: TEACHER_AVATAR_URL,
+      avatar_seed: TEACHER_AVATAR_SEED,
+      subject: '과학',
+      bio: '10년차 중학교 과학 교사입니다. 학생들과 함께 탐구하는 수업을 좋아해요.',
+    }).eq('id', teacherId)
 
     // ============================================
     // 2. 데모 학생 계정
@@ -125,13 +145,23 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .eq('email', DEMO_STUDENT_EMAIL)
       .maybeSingle()
 
+    const STUDENT_NICKNAME = '지수'
+    const STUDENT_AVATAR_SEED = '지수'
+    const STUDENT_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(STUDENT_AVATAR_SEED)}`
+
     let studentId = existingStudentProfile?.id
     if (!studentId) {
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: DEMO_STUDENT_EMAIL,
         password: DEMO_PASSWORD,
         email_confirm: true,
-        user_metadata: { name: '김지수', role: 'student' },
+        user_metadata: {
+          name: '김지수',
+          role: 'student',
+          nickname: STUDENT_NICKNAME,
+          avatar_url: STUDENT_AVATAR_URL,
+          avatar_seed: STUDENT_AVATAR_SEED,
+        },
       })
       if (createErr) return { error: '데모 학생 생성 실패: ' + createErr.message }
       studentId = created.user.id
@@ -140,10 +170,21 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         email: DEMO_STUDENT_EMAIL,
         name: '김지수',
         role: 'student',
+        nickname: STUDENT_NICKNAME,
+        avatar_url: STUDENT_AVATAR_URL,
+        avatar_seed: STUDENT_AVATAR_SEED,
       })
     }
-    // 이름 무조건 갱신 (어떤 기존 이름이어도 덮어쓰기)
-    await admin.from('profiles').update({ name: '김지수' }).eq('id', studentId)
+    // 이름/닉네임/아바타 무조건 갱신
+    await admin.from('profiles').update({
+      name: '김지수',
+      nickname: STUDENT_NICKNAME,
+      avatar_url: STUDENT_AVATAR_URL,
+      avatar_seed: STUDENT_AVATAR_SEED,
+      grade: '중2',
+      bio: '과학과 수학이 재미있어요! 이번 학기에 과학 90점 넘기는 게 목표예요!',
+      interests: ['과학', '수학', '역사'],
+    }).eq('id', studentId)
 
     // 학생 게이미피케이션 데이터 (덮어쓰기 — 데모는 항상 같은 상태)
     await admin.from('profiles').update({

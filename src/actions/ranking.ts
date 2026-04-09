@@ -10,6 +10,7 @@ export interface RankingEntry {
   rank: number
   student_id: string
   name: string
+  nickname: string | null
   avatar_url: string | null
   value: number        // 주 메트릭 (진도 %, 스트릭 일수, XP)
   detail?: string      // "4/14" 같은 부가 표시
@@ -90,7 +91,7 @@ export async function getProgressRanking(
     // 4. 학생 프로필 조회
     const { data: profiles } = await admin
       .from('profiles')
-      .select('id, name, avatar_url')
+      .select('id, name, nickname, avatar_url')
       .in('id', studentIds)
 
     // 5. 진도율 계산 + 정렬
@@ -101,6 +102,7 @@ export async function getProgressRanking(
         return {
           student_id: p.id,
           name: p.name,
+          nickname: p.nickname ?? null,
           avatar_url: p.avatar_url,
           value: percent,
           detail: `${completed}/${totalNodes}`,
@@ -147,7 +149,7 @@ export async function getStreakRanking(
 
     const { data: profiles } = await admin
       .from('profiles')
-      .select('id, name, avatar_url, streak_days')
+      .select('id, name, nickname, avatar_url, streak_days')
       .in('id', studentIds)
       .eq('role', 'student')
 
@@ -155,6 +157,7 @@ export async function getStreakRanking(
       .map(p => ({
         student_id: p.id,
         name: p.name,
+        nickname: p.nickname ?? null,
         avatar_url: p.avatar_url,
         value: p.streak_days ?? 0,
         detail: `${p.streak_days ?? 0}일`,
@@ -201,7 +204,7 @@ export async function getXpRanking(
 
     const { data: profiles } = await admin
       .from('profiles')
-      .select('id, name, avatar_url, xp')
+      .select('id, name, nickname, avatar_url, xp')
       .in('id', studentIds)
       .eq('role', 'student')
 
@@ -212,6 +215,7 @@ export async function getXpRanking(
         return {
           student_id: p.id,
           name: p.name,
+          nickname: p.nickname ?? null,
           avatar_url: p.avatar_url,
           value: xp,
           detail: `${xp.toLocaleString()} XP`,

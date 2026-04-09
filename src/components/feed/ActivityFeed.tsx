@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Image from 'next/image'
 import { TreePine, CheckCircle, Award, Trophy, Flame } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +19,7 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 const EMOJIS = ['👏', '🔥', '⭐']
 
 function getActionText(item: FeedItem): string {
-  const name = item.user_name
+  const name = item.user_nickname ?? item.user_name
   const detail = item.detail as { title?: string; score?: number; days?: number }
   switch (item.action_type) {
     case 'node_unlock':
@@ -116,8 +117,27 @@ export function ActivityFeed({ initialFeed }: { initialFeed: FeedItem[] }) {
             className="rounded-lg border p-3 text-sm dark:border-gray-800"
           >
             <div className="flex items-start gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-                {ACTION_ICONS[item.action_type] ?? <CheckCircle className="h-4 w-4" />}
+              {/* 아바타 + 액션 아이콘 뱃지 */}
+              <div className="relative shrink-0">
+                {item.user_avatar ? (
+                  <Image
+                    src={item.user_avatar}
+                    alt={item.user_nickname ?? item.user_name}
+                    width={40}
+                    height={40}
+                    unoptimized
+                    className="h-10 w-10 rounded-full border border-gray-200 bg-white dark:border-gray-700"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                    {ACTION_ICONS[item.action_type] ?? <CheckCircle className="h-4 w-4" />}
+                  </div>
+                )}
+                {item.user_avatar && (
+                  <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white ring-2 ring-white dark:bg-gray-900 dark:ring-gray-900">
+                    {ACTION_ICONS[item.action_type] ?? <CheckCircle className="h-3 w-3" />}
+                  </div>
+                )}
               </div>
               <div className="flex-1">
                 <p className="text-gray-800 dark:text-gray-200">{getActionText(item)}</p>

@@ -10,6 +10,8 @@ export interface FeedItem {
   id: string
   user_id: string
   user_name: string
+  user_nickname: string | null
+  user_avatar: string | null
   action_type: FeedActionType
   detail: Record<string, unknown>
   created_at: string
@@ -121,13 +123,15 @@ export async function getClassFeed(
 
     if (!feed || feed.length === 0) return { data: [] }
 
-    // 사용자 이름
+    // 사용자 이름 + 닉네임 + 아바타
     const userIds = [...new Set(feed.map(f => f.user_id))]
     const { data: profiles } = await admin
       .from('profiles')
-      .select('id, name')
+      .select('id, name, nickname, avatar_url')
       .in('id', userIds)
-    const nameMap = new Map(profiles?.map(p => [p.id, p.name]) ?? [])
+    const profileMap = new Map(
+      profiles?.map(p => [p.id, { name: p.name, nickname: p.nickname, avatar_url: p.avatar_url }]) ?? []
+    )
 
     // 리액션 집계
     const feedIds = feed.map(f => f.id)
@@ -146,19 +150,24 @@ export async function getClassFeed(
       emojiMap.set(r.emoji, cur)
     })
 
-    const result: FeedItem[] = feed.map(f => ({
-      id: f.id,
-      user_id: f.user_id,
-      user_name: nameMap.get(f.user_id) ?? '익명',
-      action_type: f.action_type as FeedActionType,
-      detail: (f.detail ?? {}) as Record<string, unknown>,
-      created_at: f.created_at,
-      reactions: Array.from((reactionMap.get(f.id) ?? new Map()).entries()).map(([emoji, v]) => ({
-        emoji,
-        count: v.count,
-        by_me: v.by_me,
-      })),
-    }))
+    const result: FeedItem[] = feed.map(f => {
+      const p = profileMap.get(f.user_id)
+      return {
+        id: f.id,
+        user_id: f.user_id,
+        user_name: p?.name ?? '익명',
+        user_nickname: p?.nickname ?? null,
+        user_avatar: p?.avatar_url ?? null,
+        action_type: f.action_type as FeedActionType,
+        detail: (f.detail ?? {}) as Record<string, unknown>,
+        created_at: f.created_at,
+        reactions: Array.from((reactionMap.get(f.id) ?? new Map()).entries()).map(([emoji, v]) => ({
+          emoji,
+          count: v.count,
+          by_me: v.by_me,
+        })),
+      }
+    })
 
     return { data: result }
   } catch (err) {
@@ -202,11 +211,13 @@ export async function getMyFeed(): Promise<{ data?: FeedItem[]; error?: string }
     const feedIds = feed.map(f => f.id)
 
     const [profilesRes, reactionsRes] = await Promise.all([
-      admin.from('profiles').select('id, name').in('id', userIds),
+      admin.from('profiles').select('id, name, nickname, avatar_url').in('id', userIds),
       admin.from('feed_reactions').select('feed_id, emoji, user_id').in('feed_id', feedIds),
     ])
 
-    const nameMap = new Map(profilesRes.data?.map(p => [p.id, p.name]) ?? [])
+    const profileMap = new Map(
+      profilesRes.data?.map(p => [p.id, { name: p.name, nickname: p.nickname, avatar_url: p.avatar_url }]) ?? []
+    )
 
     const reactionMap = new Map<string, Map<string, { count: number; by_me: boolean }>>()
     reactionsRes.data?.forEach(r => {
@@ -218,19 +229,24 @@ export async function getMyFeed(): Promise<{ data?: FeedItem[]; error?: string }
       emojiMap.set(r.emoji, cur)
     })
 
-    const result: FeedItem[] = feed.map(f => ({
-      id: f.id,
-      user_id: f.user_id,
-      user_name: nameMap.get(f.user_id) ?? '익명',
-      action_type: f.action_type as FeedActionType,
-      detail: (f.detail ?? {}) as Record<string, unknown>,
-      created_at: f.created_at,
-      reactions: Array.from((reactionMap.get(f.id) ?? new Map()).entries()).map(([emoji, v]) => ({
-        emoji,
-        count: v.count,
-        by_me: v.by_me,
-      })),
-    }))
+    const result: FeedItem[] = feed.map(f => {
+      const p = profileMap.get(f.user_id)
+      return {
+        id: f.id,
+        user_id: f.user_id,
+        user_name: p?.name ?? '익명',
+        user_nickname: p?.nickname ?? null,
+        user_avatar: p?.avatar_url ?? null,
+        action_type: f.action_type as FeedActionType,
+        detail: (f.detail ?? {}) as Record<string, unknown>,
+        created_at: f.created_at,
+        reactions: Array.from((reactionMap.get(f.id) ?? new Map()).entries()).map(([emoji, v]) => ({
+          emoji,
+          count: v.count,
+          by_me: v.by_me,
+        })),
+      }
+    })
 
     return { data: result }
   } catch (err) {

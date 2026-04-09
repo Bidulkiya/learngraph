@@ -24,7 +24,12 @@ export default async function TeacherLayout({
       <div className="flex h-screen">
         <Sidebar role="teacher" unreadMessageCount={unread.totalUnread} />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <Header role="teacher" userName={profile?.name} />
+          <Header
+            role="teacher"
+            userName={profile?.name}
+            nickname={profile?.nickname}
+            avatarUrl={profile?.avatar_url}
+          />
           <DemoBanner email={profile?.email} />
           <main className="flex-1 overflow-y-auto bg-gray-50 p-6 dark:bg-gray-900">
             {children}
