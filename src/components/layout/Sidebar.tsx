@@ -18,13 +18,14 @@ import {
   Megaphone,
   Mail,
   Heart,
+  Award,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LogoSymbol } from "@/components/Logo"
 
 type Role = "teacher" | "student" | "admin" | "parent"
 
-type MenuKey = 'messages' | 'tutor' | 'dashboard' | 'classes' | 'skill-tree' | 'quizzes' | 'recording' | 'join' | 'wrong-answers' | 'groups' | 'schools' | 'announcements' | 'link-student'
+type MenuKey = 'messages' | 'tutor' | 'dashboard' | 'classes' | 'skill-tree' | 'quizzes' | 'recording' | 'join' | 'wrong-answers' | 'groups' | 'schools' | 'announcements' | 'link-student' | 'achievements'
 
 interface SidebarProps {
   role: Role
@@ -52,6 +53,7 @@ const menuItems: Record<Role, MenuItem[]> = {
   student: [
     { key: 'dashboard', href: "/student", label: "대시보드", icon: LayoutDashboard },
     { key: 'skill-tree', href: "/student/skill-tree", label: "내 학습", icon: TreePine },
+    { key: 'achievements', href: "/student/achievements", label: "업적", icon: Award },
     { key: 'wrong-answers', href: "/student/wrong-answers", label: "오답 노트", icon: BookX },
     { key: 'groups', href: "/student/groups", label: "스터디 그룹", icon: Users },
     { key: 'tutor', href: "/student/tutor", label: "AI 튜터", icon: MessageSquare },

@@ -265,39 +265,61 @@ export default async function StudentDashboard() {
         <ParentInviteCard />
       </div>
 
-      {/* 내 업적 */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Award className="h-4 w-4 text-[#7C5CFC]" />
-            내 업적 ({earnedAchievements.length}/{achievements.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {earnedAchievements.map(a => (
-              <div
-                key={a.id}
-                className="flex flex-col items-center gap-1 rounded-lg border-2 border-[#7C5CFC]/30 bg-gradient-to-br from-[#7C5CFC]/5 to-[#4F6BF6]/5 p-3 text-center"
-                title={a.description}
-              >
-                <span className="text-2xl">{a.icon}</span>
-                <span className="text-xs font-medium">{a.title}</span>
+      {/* 내 업적 — 대시보드 요약 카드 (최근 획득 3개 + 전체 링크) */}
+      <Link href="/student/achievements" className="block">
+        <Card className="transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Award className="h-4 w-4 text-[#7C5CFC]" />
+              내 업적 ({earnedAchievements.length}/{achievements.length})
+            </CardTitle>
+            <span className="text-xs text-[#7C5CFC]">전체 보기 →</span>
+          </CardHeader>
+          <CardContent>
+            {earnedAchievements.length === 0 ? (
+              <p className="py-4 text-center text-sm text-gray-400">
+                첫 업적을 달성해보세요! 노드 1개를 언락하면 🌱 첫 걸음 업적을 얻어요.
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {/* 최근 획득 업적 3개 하이라이트 + 나머지 자리 locked */}
+                {earnedAchievements
+                  .slice()
+                  .sort((a, b) => {
+                    const ta = a.earned_at ? new Date(a.earned_at).getTime() : 0
+                    const tb = b.earned_at ? new Date(b.earned_at).getTime() : 0
+                    return tb - ta
+                  })
+                  .slice(0, 3)
+                  .map(a => (
+                    <div
+                      key={a.id}
+                      className="flex flex-col items-center gap-1 rounded-lg border-2 border-[#7C5CFC]/40 bg-gradient-to-br from-[#7C5CFC]/10 to-[#6366F1]/5 p-3 text-center shadow-sm"
+                      title={a.description}
+                    >
+                      <span className="text-2xl">{a.icon}</span>
+                      <span className="line-clamp-1 text-xs font-medium">{a.title}</span>
+                    </div>
+                  ))}
+                {/* 다음 도전 locked 슬롯 3개 */}
+                {lockedAchievements
+                  .filter(a => !a.is_hidden)
+                  .slice(0, 6 - Math.min(earnedAchievements.length, 3))
+                  .map(a => (
+                    <div
+                      key={a.id}
+                      className="flex flex-col items-center gap-1 rounded-lg border bg-gray-50 p-3 text-center opacity-50 dark:border-gray-800 dark:bg-gray-900"
+                      title={a.description}
+                    >
+                      <span className="text-2xl grayscale">{a.icon}</span>
+                      <span className="line-clamp-1 text-xs font-medium text-gray-500">???</span>
+                    </div>
+                  ))}
               </div>
-            ))}
-            {lockedAchievements.slice(0, 5 - (earnedAchievements.length % 5)).map(a => (
-              <div
-                key={a.id}
-                className="flex flex-col items-center gap-1 rounded-lg border bg-gray-50 p-3 text-center opacity-50 dark:border-gray-800 dark:bg-gray-900"
-                title={a.description}
-              >
-                <span className="text-2xl grayscale">{a.icon}</span>
-                <span className="text-xs font-medium text-gray-500">???</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </Link>
 
       <ActivityFeed initialFeed={feed} />
 

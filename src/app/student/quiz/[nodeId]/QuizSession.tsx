@@ -11,6 +11,7 @@ import { QuizResult } from '@/components/quiz/QuizResult'
 import { generateQuizForNode, submitQuizAnswer, completeNode } from '@/actions/quiz'
 import type { Quiz } from '@/types/quiz'
 import { toast } from 'sonner'
+import { notifyAchievement } from '@/components/student/AchievementToast'
 
 interface Props {
   nodeId: string
@@ -109,6 +110,11 @@ export function QuizSession({ nodeId, nodeTitle, nodeDescription, nodeDifficulty
           toast.error('노드 언락 실패: ' + unlockRes.error)
         } else {
           toast.success('🎉 노드 언락!')
+          // 새로 획득한 업적을 순차 토스트로 알림 (골드/보라 이펙트)
+          const newAch = unlockRes.data?.newAchievements ?? []
+          newAch.forEach((ach, idx) => {
+            setTimeout(() => notifyAchievement(ach), 800 + idx * 600)
+          })
         }
       }
     }

@@ -8,6 +8,7 @@ import { assertNotDemo } from '@/lib/demo'
 import { quizSchema, essayGradingSchema, quizHintSchema } from '@/lib/ai/schemas'
 import { QUIZ_PROMPT, QUIZ_HINT_PROMPT } from '@/lib/ai/prompts'
 import type { Quiz } from '@/types/quiz'
+import type { Achievement } from './achievements'
 
 /**
  * Generate quizzes for a node, or return existing ones.
@@ -213,11 +214,12 @@ ${answer}
 /**
  * Complete a node after passing the quiz (70%+ correct).
  * Updates progress and unlocks subsequent nodes.
+ * 반환값에 새로 획득한 업적 목록을 포함 — 클라이언트에서 토스트 알림용.
  */
 export async function completeNode(
   nodeId: string,
   score: number
-): Promise<{ data?: { certificateIssued: boolean }; error?: string }> {
+): Promise<{ data?: { certificateIssued: boolean; newAchievements: Achievement[] }; error?: string }> {
   try {
     const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
@@ -377,10 +379,12 @@ export async function completeNode(
       console.error('[completeNode] mission update failed:', e)
     }
 
-    // 업적 자동 체크
+    // 업적 자동 체크 — 새로 획득한 업적 수집 (클라이언트 토스트용)
+    let newAchievements: Achievement[] = []
     try {
       const { checkAndAwardAchievements } = await import('./achievements')
-      await checkAndAwardAchievements()
+      const achRes = await checkAndAwardAchievements()
+      newAchievements = achRes.data?.newAchievements ?? []
     } catch (e) {
       console.error('[completeNode] achievements check failed:', e)
     }
@@ -412,7 +416,7 @@ export async function completeNode(
       console.error('[completeNode] certificate issuance failed:', e)
     }
 
-    return { data: { certificateIssued } }
+    return { data: { certificateIssued, newAchievements } }
   } catch (err) {
     return { error: String(err) }
   }
