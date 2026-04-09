@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertNotDemo } from '@/lib/demo'
 
@@ -70,8 +70,7 @@ export async function createGroup(
   name: string
 ): Promise<{ data?: { id: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -106,8 +105,7 @@ export async function createGroup(
 
 export async function getMyGroups(): Promise<{ data?: StudyGroup[]; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -176,8 +174,7 @@ export async function getMyGroups(): Promise<{ data?: StudyGroup[]; error?: stri
 
 export async function joinGroup(groupId: string): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -201,8 +198,7 @@ export async function joinGroup(groupId: string): Promise<{ error?: string }> {
 
 export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -244,8 +240,7 @@ export async function sendGroupMessage(
   content: string
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -275,8 +270,7 @@ export async function getGroupMessages(
   groupId: string
 ): Promise<{ data?: GroupMessage[]; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()

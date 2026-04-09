@@ -2,7 +2,7 @@
 
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isDemoAccount, assertNotDemo } from '@/lib/demo'
 import { flashcardsSchema } from '@/lib/ai/schemas'
@@ -87,8 +87,7 @@ export async function generateFlashcards(
     if (existing && existing.length > 0) return { data: existing as Flashcard[] }
 
     // 데모는 미리 만든 카드만 사용 — AI 호출 차단 (no-op으로 빈 배열 반환)
-    const supabase = await createServerClient()
-    const { data: { user: authUser } } = await supabase.auth.getUser()
+    const authUser = await getCachedUser()
     if (isDemoAccount(authUser?.email)) return { data: [] }
 
     const { data: node } = await admin
@@ -137,8 +136,7 @@ export async function getFlashcardsForNode(
   nodeId: string
 ): Promise<{ data?: Flashcard[]; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(nodeId)) return { error: '유효하지 않은 노드 ID입니다.' }
 
@@ -172,8 +170,7 @@ export async function recordFlashcardReview(
   result: 'known' | 'unknown'
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(flashcardId)) return { error: '유효하지 않은 카드 ID입니다.' }
 

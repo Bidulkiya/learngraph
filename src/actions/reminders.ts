@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertNotDemo } from '@/lib/demo'
 
@@ -53,8 +53,7 @@ export async function getTodayReviews(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -102,8 +101,7 @@ export async function markReviewCompleted(
   scorePercent: number = 100
 ): Promise<{ data?: { nextDays: number; nextDate: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)

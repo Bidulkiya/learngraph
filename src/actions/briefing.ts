@@ -2,7 +2,7 @@
 
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isDemoAccount } from '@/lib/demo'
 import { weeklyBriefingSchema } from '@/lib/ai/schemas'
@@ -42,8 +42,7 @@ export async function generateWeeklyBriefing(
   forceRefresh = false
 ): Promise<{ data?: WeeklyBriefing; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(classId)) return { error: '유효하지 않은 클래스 ID입니다.' }
 

@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface TeacherDashboardData {
@@ -27,8 +27,7 @@ export async function getTeacherDashboardData(
   teacherId: string
 ): Promise<{ data?: TeacherDashboardData; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -156,8 +155,7 @@ export interface AdminDashboardData {
 
 export async function getAdminDashboardData(): Promise<{ data?: AdminDashboardData; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -270,8 +268,7 @@ export async function getStudentDashboardData(
   studentId: string
 ): Promise<{ data?: StudentDashboardData; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()

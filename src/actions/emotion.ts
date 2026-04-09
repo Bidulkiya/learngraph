@@ -2,7 +2,7 @@
 
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isDemoAccount } from '@/lib/demo'
 import { emotionReportSchema, type EmotionReportOutput } from '@/lib/ai/schemas'
@@ -64,8 +64,7 @@ export async function analyzeStudentEmotion(
   skillTreeId: string
 ): Promise<{ data?: EmotionReport; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     if (!isUuid(studentId) || !isUuid(skillTreeId)) {
@@ -213,8 +212,7 @@ export async function getClassEmotionOverview(
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(classId)) return { error: '유효하지 않은 클래스 ID입니다.' }
 
@@ -298,8 +296,7 @@ export async function getMyLatestEmotion(
   skillTreeId?: string
 ): Promise<{ data?: EmotionReport | null; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { data: null }
 
     const admin = createAdminClient()

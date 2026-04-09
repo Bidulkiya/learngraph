@@ -1,6 +1,6 @@
 import { cache } from "react"
 import { redirect } from "next/navigation"
-import { createServerClient } from "@/lib/supabase/server"
+import { getCachedUser } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Role, Profile } from "@/types/user"
 
@@ -14,14 +14,11 @@ interface RoleGuardProps {
  * RoleGuard, getCurrentProfile, getUnreadSummary 등이 같은 페이지 로드에서
  * profiles 테이블을 3-4번 중복 조회하던 문제 해결.
  *
- * cache()는 Next.js Server Component에서 동일 request 내 결과를 자동 메모이즈한다.
- * profile 조회에 admin client를 쓰는 이유: anon client는 RLS 때문에 추가 쿼리가
- * 발생할 수 있고, getUser() 인증이 이미 통과한 상태이므로 service_role로 직접 조회.
+ * 내부에서 `getCachedUser()`를 사용하므로 Server Action들이 같은 SSR request
+ * 내에서 `getCachedUser()`를 호출해도 auth/v1/user 네트워크 요청이 한 번만 발생.
  */
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
+  const user = await getCachedUser()
   if (!user) return null
 
   const admin = createAdminClient()

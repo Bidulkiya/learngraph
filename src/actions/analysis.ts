@@ -2,7 +2,7 @@
 
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertNotDemo } from '@/lib/demo'
 import { studentGroupsSchema, bottleneckSchema, type StudentGroupsOutput, type BottleneckOutput } from '@/lib/ai/schemas'
@@ -12,8 +12,7 @@ export async function analyzeStudentGroups(
   classId: string
 ): Promise<{ data?: StudentGroupsOutput; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -88,8 +87,7 @@ export async function analyzeBottlenecks(
   schoolId: string
 ): Promise<{ data?: BottleneckOutput; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -188,8 +186,7 @@ export async function getTeacherActivity(
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()

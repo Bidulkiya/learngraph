@@ -3,7 +3,7 @@
 import { generateText } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import OpenAI from 'openai'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { TUTOR_SYSTEM_PROMPT, TUTOR_SOCRATIC_PROMPT, TUTOR_EMOTION_ADAPTATION, TUTOR_LEARNING_STYLE } from '@/lib/ai/prompts'
 import { assertNotDemo } from '@/lib/demo'
@@ -27,8 +27,7 @@ export async function chatWithTutor(
   mode: 'normal' | 'socratic' = 'normal'
 ): Promise<{ data?: { content: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -160,8 +159,7 @@ export async function getTutorHistory(
   limit: number = 50
 ): Promise<{ data?: ChatMessage[]; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -188,8 +186,7 @@ export async function getTutorHistory(
  */
 export async function clearTutorHistory(): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)

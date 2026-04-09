@@ -3,7 +3,7 @@
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import OpenAI from 'openai'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertNotDemo } from '@/lib/demo'
 import { lessonSummarySchema, quizSchema, type LessonSummaryOutput } from '@/lib/ai/schemas'
@@ -18,8 +18,7 @@ export async function transcribeRecording(
   formData: FormData
 ): Promise<{ data?: { recordingId: string; transcript: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -85,8 +84,7 @@ export async function summarizeLesson(
   recordingId: string
 ): Promise<{ data?: LessonSummaryOutput; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -129,8 +127,7 @@ export async function generateQuizFromRecording(
   recordingId: string
 ): Promise<{ data?: { questions: number }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -166,8 +163,7 @@ export async function getMyRecordings(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()

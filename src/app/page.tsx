@@ -9,22 +9,54 @@ import {
   School as SchoolIcon, ArrowRight, ExternalLink, Loader2, Rocket,
 } from 'lucide-react'
 import { loginAsDemo } from '@/actions/school'
+import { createBrowserClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 export default function LandingPage() {
   const router = useRouter()
   const [demoLoading, setDemoLoading] = useState<'teacher' | 'student' | null>(null)
 
-  // 데모 체험 — loginAsDemo 서버액션 호출 후 window.location으로 full navigation
+  // 데모 체험 — 서버에서 idempotent 환경 구축 후 클라이언트에서 직접 로그인.
+  // 서버에서 로그인하면 브라우저 쿠키에 세션이 반영 안 돼서 리다이렉트 후 미인증 상태로
+  // /login으로 튕김. 반드시 클라이언트에서 signInWithPassword를 호출해야 쿠키가 설정됨.
   const handleDemo = async (role: 'teacher' | 'student'): Promise<void> => {
     setDemoLoading(role)
-    const res = await loginAsDemo(role)
-    if (res.error || !res.data) {
-      toast.error(res.error ?? '데모 로그인에 실패했습니다')
+    try {
+      const supabase = createBrowserClient()
+
+      // 기존 세션이 있으면 먼저 강제 로그아웃 (다른 계정 쿠키가 남아있으면 체험 환경 오염)
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // 세션이 없어도 OK
+      }
+
+      // 1. 서버: 데모 환경 idempotent 구축 + 이메일/비번 회신
+      const res = await loginAsDemo(role)
+      if (res.error || !res.data) {
+        toast.error(res.error ?? '데모 로그인에 실패했습니다')
+        setDemoLoading(null)
+        return
+      }
+
+      // 2. 클라이언트: 직접 로그인 (브라우저 쿠키 보장)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: res.data.email,
+        password: res.data.password,
+      })
+      if (signInError) {
+        toast.error('데모 로그인 실패: ' + signInError.message)
+        setDemoLoading(null)
+        return
+      }
+
+      // 3. 페이지 이동 — full navigation으로 미들웨어가 신규 쿠키를 읽도록
+      window.location.href = res.data.redirect
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast.error('데모 로그인 중 오류가 발생했습니다: ' + msg)
       setDemoLoading(null)
-      return
     }
-    window.location.href = res.data.redirect
   }
 
   return (

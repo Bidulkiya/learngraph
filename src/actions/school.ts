@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertNotDemo } from '@/lib/demo'
 
@@ -54,8 +54,7 @@ export async function createSchool(
   description: string
 ): Promise<{ data?: School; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -102,8 +101,7 @@ export async function createSchool(
 
 export async function getMySchools(): Promise<{ data?: Array<School & { teacher_count: number; student_count: number }>; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -149,8 +147,7 @@ export async function getSchoolDetail(
   schoolId: string
 ): Promise<{ data?: SchoolDetailData; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -277,8 +274,7 @@ export async function approveSchoolMember(
   userId: string
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -306,8 +302,7 @@ export async function rejectSchoolMember(
   userId: string
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -341,8 +336,7 @@ export async function createClass(
   teacherId: string
 ): Promise<{ data?: SchoolClass; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -405,8 +399,7 @@ export async function getMySchoolMemberships(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -446,8 +439,7 @@ export async function joinSchoolAsTeacher(
   teacherCode: string
 ): Promise<{ data?: { schoolId: string; schoolName: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -500,8 +492,7 @@ export async function joinWithCode(
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -606,8 +597,7 @@ export async function requestClassEnrollment(
   classId: string
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -683,8 +673,7 @@ export async function approveEnrollment(
   enrollmentId: string
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -772,8 +761,7 @@ export async function rejectEnrollment(
   enrollmentId: string
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)
@@ -804,8 +792,7 @@ export async function getMyClasses(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -890,8 +877,7 @@ export async function getClassEnrollments(
   classId: string
 ): Promise<{ data?: Array<{ id: string; student_id: string; student_name: string; student_email: string; status: string; requested_at: string }>; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()

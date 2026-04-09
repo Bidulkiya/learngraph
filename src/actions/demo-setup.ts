@@ -16,10 +16,57 @@ const DEMO_TREE_TITLE = '인공지능의 이해'
  * - 게이미피케이션 데이터 (XP, 업적, 미션, 감정, 브리핑)
  *
  * 모든 생성은 "이미 있으면 스킵" 패턴으로 재실행 안전.
+ *
+ * 성능: 완전히 구축된 상태면 fast-path로 ~6개 병렬 쿼리 후 즉시 return.
+ * 미구축 상태에서만 전체 30+ 쿼리 실행.
  */
 export async function setupDemoData(): Promise<{ error?: string }> {
   try {
     const admin = createAdminClient()
+
+    // ============================================
+    // 0. Fast-path: 이미 완전 구축됐는지 6개 병렬 쿼리로 확인
+    // ============================================
+    // 정상 구축된 상태: profile 2개 + school + class + tree + 14 nodes + 오늘 미션
+    // 이 조건이 모두 만족되면 즉시 return (로딩 시간 대폭 단축).
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const [
+      teacherFast,
+      studentFast,
+      schoolFast,
+    ] = await Promise.all([
+      admin.from('profiles').select('id, name').eq('email', DEMO_TEACHER_EMAIL).maybeSingle(),
+      admin.from('profiles').select('id, name, xp, streak_days').eq('email', DEMO_STUDENT_EMAIL).maybeSingle(),
+      admin.from('schools').select('id').eq('name', DEMO_SCHOOL_NAME).maybeSingle(),
+    ])
+
+    if (
+      teacherFast.data?.id &&
+      studentFast.data?.id &&
+      teacherFast.data.name === '박지훈' &&
+      studentFast.data.name === '김지수' &&
+      studentFast.data.xp === 180 &&
+      schoolFast.data?.id
+    ) {
+      // 추가 병렬 체크: 클래스 + 스킬트리 + 노드 수 + 오늘 미션
+      const [classCheck, treeCheck, missionCheck] = await Promise.all([
+        admin.from('classes').select('id').eq('school_id', schoolFast.data.id).eq('name', DEMO_CLASS_NAME).maybeSingle(),
+        admin.from('skill_trees').select('id, nodes(count)').eq('title', DEMO_TREE_TITLE).eq('created_by', teacherFast.data.id).maybeSingle(),
+        admin.from('daily_missions').select('id', { count: 'exact', head: true }).eq('student_id', studentFast.data.id).eq('mission_date', todayStr),
+      ])
+
+      const nodeCount = treeCheck.data?.nodes
+      const nodes = Array.isArray(nodeCount) ? nodeCount[0]?.count ?? 0 : 0
+      if (
+        classCheck.data?.id &&
+        treeCheck.data?.id &&
+        nodes === 14 &&
+        (missionCheck.count ?? 0) >= 3
+      ) {
+        // 모든 핵심 entity가 이미 구축됨 → 전체 setup skip
+        return {}
+      }
+    }
 
     // ============================================
     // 1. 데모 교사 계정

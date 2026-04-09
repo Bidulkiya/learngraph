@@ -1,7 +1,7 @@
 'use server'
 
 import OpenAI from 'openai'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { assertNotDemo } from '@/lib/demo'
 
 const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -13,8 +13,7 @@ export async function transcribeAudio(
   formData: FormData
 ): Promise<{ data?: { text: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const demoBlock = assertNotDemo(user.email)

@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isDemoAccount } from '@/lib/demo'
 
@@ -26,8 +26,7 @@ export async function issueCertificate(
   skillTreeId: string
 ): Promise<{ data?: Certificate; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(skillTreeId)) return { error: '유효하지 않은 스킬트리 ID입니다.' }
 
@@ -119,8 +118,7 @@ export async function getMyCertificates(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -143,8 +141,7 @@ export async function getCertificate(
   certificateId: string
 ): Promise<{ data?: Certificate & { student_name: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(certificateId)) return { error: '유효하지 않은 인증서 ID입니다.' }
 

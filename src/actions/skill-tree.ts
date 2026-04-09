@@ -2,7 +2,7 @@
 
 import { generateObject } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { skillTreeSchema, type SkillTreeOutput } from '@/lib/ai/schemas'
 import { SKILL_TREE_PROMPT } from '@/lib/ai/prompts'
 import { embedAndStoreDocument } from '@/lib/ai/embeddings'
@@ -22,8 +22,7 @@ export async function extractPdfText(
   formData: FormData
 ): Promise<{ text?: string; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const file = formData.get('file') as File | null
@@ -59,8 +58,7 @@ export async function generateSkillTree(
     const apiKey = process.env.ANTHROPIC_API_KEY ?? ''
     console.log(`[generateSkillTree] API key prefix: ${apiKey.slice(0, 10)}... model: claude-sonnet-4-6 textLen: ${fileContent.length}`)
 
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다. 다시 로그인해주세요.' }
 
     // 데모 계정 차단
@@ -111,8 +109,7 @@ export async function saveSkillTree(
 ): Promise<{ id?: string; error?: string }> {
   try {
     // 인증 확인 (anon key 클라이언트)
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -371,8 +368,7 @@ export async function updateNodePosition(
   nodeId: string, x: number, y: number
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -398,8 +394,7 @@ export async function updateNode(
   nodeId: string, title: string, description: string, difficulty: number
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -434,8 +429,7 @@ export async function addNode(
   skillTreeId: string, title: string, description: string, difficulty: number
 ): Promise<{ id?: string; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -468,8 +462,7 @@ export async function addNode(
 
 export async function deleteNode(nodeId: string): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -492,8 +485,7 @@ export async function addEdge(
   skillTreeId: string, sourceId: string, targetId: string
 ): Promise<{ id?: string; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -528,8 +520,7 @@ export async function addEdge(
 
 export async function deleteEdge(edgeId: string): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -554,8 +545,7 @@ export async function deleteEdge(edgeId: string): Promise<{ error?: string }> {
  */
 export async function fetchSkillTreeDetail(treeId: string) {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()

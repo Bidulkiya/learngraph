@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertNotDemo, isDemoAccount } from '@/lib/demo'
 
@@ -34,8 +34,7 @@ export async function sendMessage(
   content: string
 ): Promise<{ data?: { id: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -98,8 +97,7 @@ export async function getConversation(
   otherUserId: string
 ): Promise<{ data?: DirectMessage[]; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // Injection 방어: UUID 형식만 허용
@@ -134,8 +132,7 @@ export async function getConversations(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -213,8 +210,7 @@ export async function getUnreadSummary(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { data: { totalUnread: 0, latestUnread: null } }
 
     const admin = createAdminClient()
@@ -285,8 +281,7 @@ export async function markConversationRead(
   otherUserId: string
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(otherUserId)) return { error: '유효하지 않은 사용자 ID입니다.' }
 
@@ -315,8 +310,7 @@ export async function getMessageContacts(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()

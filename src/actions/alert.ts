@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical'
@@ -51,8 +51,7 @@ export async function calculateRiskScore(
   studentId: string
 ): Promise<{ data?: RiskAssessment; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(studentId)) return { error: '유효하지 않은 학생 ID입니다.' }
 
@@ -112,8 +111,7 @@ export async function getClassRiskAlerts(
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
     if (!isUuid(classId)) return { error: '유효하지 않은 클래스 ID입니다.' }
 
@@ -185,8 +183,7 @@ export async function getAdminRiskOverview(): Promise<{
   error?: string
 }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()

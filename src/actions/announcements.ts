@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertNotDemo, isDemoAccount } from '@/lib/demo'
 
@@ -23,8 +23,7 @@ export async function createAnnouncement(
   targetRole: 'all' | 'teacher' | 'student' = 'all'
 ): Promise<{ data?: { id: string }; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모 계정 차단
@@ -76,8 +75,7 @@ export async function getAnnouncements(
   options: { unreadOnly?: boolean } = {}
 ): Promise<{ data?: Announcement[]; error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
@@ -150,8 +148,7 @@ export async function markAnnouncementRead(
   announcementId: string
 ): Promise<{ error?: string }> {
   try {
-    const supabase = await createServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
     // 데모는 읽음 상태 저장 차단 — 다음 데모 사용자도 동일한 미읽음 상태로 보기 위함
