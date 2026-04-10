@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   BookOpen, GraduationCap, Heart, Sparkles, TreePine, Bot, Mic, ClipboardCheck,
-  Target, Award, Brain, FileText, Network, FlaskConical,
+  Target, Award, Brain, FileText, Network, FlaskConical, Users,
   RefreshCw, AlertTriangle,
   School as SchoolIcon, ArrowRight, ExternalLink, Loader2, Rocket,
 } from 'lucide-react'
@@ -233,7 +233,7 @@ export default function LandingPage() {
       </FadeInSection>
 
       {/* ═══════════════════════════════════════════════
-          섹션 3: AI 13종 통합
+          섹션 3: AI 16종 통합
       ═══════════════════════════════════════════════ */}
       <FadeInSection>
         <section className="relative overflow-hidden bg-gradient-to-br from-[#4F6BF6]/[0.04] to-[#7C5CFC]/[0.04] dark:from-[#4F6BF6]/[0.08] dark:to-[#7C5CFC]/[0.08]">
@@ -244,7 +244,7 @@ export default function LandingPage() {
                 AI 통합 기능
               </div>
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
-                <CountUp end={13} />가지 AI 기능이 하나로
+                <CountUp end={16} />가지 AI 기능이 하나로
               </h2>
               <p className="mt-3 text-gray-500">
                 Claude Sonnet 4.6 · OpenAI Whisper · text-embedding-3-small
@@ -289,8 +289,17 @@ export default function LandingPage() {
                 title="학부모 리포트 + 인증서"
                 desc="주간 브리핑을 AI가 작성, 스킬트리 완료 시 수료 인증서 자동 발급" />
               <AIFeature icon={<FlaskConical />} color="#A855F7"
-                title="사전 시뮬레이션"
-                desc="스킬트리 배포 전 100명 가상 학생으로 병목·난이도를 미리 검증" />
+                title="사전 시뮬레이션 + AI 재생성"
+                desc="100명 가상 학생으로 병목 검증 → AI가 스킬트리를 자동 개선" />
+              <AIFeature icon={<Users />} color="#6366F1"
+                title="학생 그룹 분석"
+                desc="AI가 학습 수준별로 학생을 자동 분류하여 맞춤 지도 지원" />
+              <AIFeature icon={<BookOpen />} color="#10B981"
+                title="AI 플래시카드"
+                desc="노드 완료 시 핵심 개념 복습 카드를 자동 생성" />
+              <AIFeature icon={<Network />} color="#EC4899"
+                title="개념 연결 추천"
+                desc="학생이 배운 개념과 연관된 심화 개념을 AI가 추천" />
             </div>
           </div>
         </section>
@@ -312,7 +321,7 @@ export default function LandingPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <GamificationCard icon="🎯" title="일일 미션 + 주간 챌린지" desc="매일 작은 목표를 달성하며 학습 루틴을 만듭니다" />
-            <GamificationCard icon="🏆" title="업적 · 배지 10종" desc="첫 수료, 10연속 정답 등 성취마다 배지를 획득" />
+            <GamificationCard icon="🏆" title="업적 · 배지 36종" desc="학습/스트릭/랭킹/소셜/히든 5카테고리 배지 획득" />
             <GamificationCard icon="⚡" title="XP · 레벨 시스템" desc="노드 완료와 퀴즈 만점으로 경험치를 쌓고 레벨 업" />
             <GamificationCard icon="🔥" title="학습 스트릭" desc="연속 학습일이 쌓일수록 동기부여" />
             <GamificationCard icon="👁️" title="학습 스타일 진단" desc="시각형/텍스트형/실습형 중 나에게 맞는 학습법 찾기" />
@@ -321,8 +330,8 @@ export default function LandingPage() {
             <GamificationCard icon="📓" title="오답 노트" desc="틀린 문제와 AI 피드백이 자동으로 정리" />
             <GamificationCard icon="🎓" title="수료 인증서" desc="스킬트리 100% 완료 시 인증서 자동 발급 + 다운로드" />
             <GamificationCard icon="👥" title="스터디 그룹" desc="같은 클래스 친구들과 실시간 그룹 채팅" />
-            <GamificationCard icon="💬" title="AI 튜터 음성 질문" desc="목소리로 질문하고 음성 또는 텍스트로 답변" />
-            <GamificationCard icon="🎨" title="과목별 테마" desc="과학/수학/국어 각각 맞춤 비주얼 테마" />
+            <GamificationCard icon="🥇" title="랭킹 시스템" desc="클래스/스쿨 XP·스트릭·진도 랭킹으로 경쟁" />
+            <GamificationCard icon="🎨" title="DiceBear 아바타" desc="닉네임 기반 캐릭터가 자동 생성, 프로필에서 변경 가능" />
           </div>
         </section>
       </FadeInSection>
