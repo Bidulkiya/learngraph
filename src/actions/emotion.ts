@@ -5,7 +5,7 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isDemoAccount } from '@/lib/demo'
-import { emotionReportSchema, type EmotionReportOutput } from '@/lib/ai/schemas'
+import { emotionReportSchema } from '@/lib/ai/schemas'
 import { EMOTION_ANALYSIS_PROMPT } from '@/lib/ai/prompts'
 
 export interface EmotionReport {

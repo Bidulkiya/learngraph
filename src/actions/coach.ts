@@ -526,6 +526,9 @@ export async function markWeeklyMissionsForNode(nodeId: string): Promise<void> {
     const user = await getCachedUser()
     if (!user) return
 
+    // 데모 계정은 미션 쓰기 차단 (silent skip)
+    if (isDemoAccount(user.email)) return
+
     const admin = createAdminClient()
     const weekStart = getMondayOfWeek(new Date())
 

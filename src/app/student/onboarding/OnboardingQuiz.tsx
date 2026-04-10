@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Eye, Hammer, CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
+import { BookOpen, CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { saveLearningStyle } from '@/actions/learning-style'

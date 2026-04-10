@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react'
 import Image from 'next/image'
 import { TreePine, CheckCircle, Award, Trophy, Flame } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { toggleReaction, type FeedItem } from '@/actions/feed'
 import { toast } from 'sonner'
 

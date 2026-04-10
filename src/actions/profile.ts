@@ -329,6 +329,10 @@ export async function initializeProfileAfterSignup(
     const user = await getCachedUser()
     if (!user) return { error: '인증이 필요합니다.' }
 
+    // 데모 계정은 초기화 불필요 (이미 demo-setup에서 설정됨)
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return { data: { initialized: false } }
+
     const formatError = validateNicknameFormat(nickname)
     if (formatError) return { error: formatError }
 

@@ -10,7 +10,6 @@ import { NodeEditor } from '@/components/skill-tree/NodeEditor'
 import { SimulationDialog } from '@/components/skill-tree/SimulationDialog'
 import { useSkillTree } from '@/hooks/useSkillTree'
 import type { D3Node, D3Edge } from '@/lib/d3/skill-tree-layout'
-import { toast } from 'sonner'
 
 interface Props {
   treeId: string
