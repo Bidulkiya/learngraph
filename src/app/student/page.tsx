@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ClipboardCheck, Target, RotateCcw, Award, Sparkles } from 'lucide-react'
+import { ClipboardCheck, Target, RotateCcw, Award } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,8 @@ import { ActivityFeed } from '@/components/feed/ActivityFeed'
 import { ConceptMapCard } from '@/components/dashboard/ConceptMapCard'
 import { ParentInviteCard } from '@/components/student/ParentInviteCard'
 import { MyCertificatesCard } from '@/components/student/MyCertificatesCard'
+import { RediagnoseButton } from '@/components/student/RediagnoseButton'
+import { isDemoAccount } from '@/lib/demo'
 
 const STYLE_INFO: Record<string, { emoji: string; label: string }> = {
   visual: { emoji: '👁️', label: '시각형' },
@@ -115,12 +117,7 @@ export default async function StudentDashboard() {
             )}
           </p>
         </div>
-        <Link href="/student/onboarding">
-          <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[#4F6BF6]">
-            <Sparkles className="mr-1 h-3 w-3" />
-            재진단
-          </Button>
-        </Link>
+        <RediagnoseButton isDemo={isDemoAccount(profile.email)} />
       </div>
 
       <AnnouncementBanner announcements={announcements} />
