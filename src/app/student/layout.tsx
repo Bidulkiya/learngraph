@@ -2,6 +2,7 @@ import { DashboardShell } from "@/components/layout/DashboardShell"
 import { RoleGuard, getCurrentProfile } from "@/components/layout/RoleGuard"
 import { MessageNotifier } from "@/components/layout/MessageNotifier"
 import { DemoBanner } from "@/components/layout/DemoBanner"
+import { DemoTutorial } from "@/components/layout/DemoTutorial"
 import { getUnreadSummary } from "@/actions/messages"
 import { isDemoAccount } from "@/lib/demo"
 
@@ -32,6 +33,7 @@ export default async function StudentLayout({
           {children}
         </main>
       </DashboardShell>
+      {isDemo && <DemoTutorial role="student" />}
       <MessageNotifier
         role="student"
         latestUnread={unread.latestUnread}
