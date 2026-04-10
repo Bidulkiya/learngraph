@@ -1,0 +1,32 @@
+{
+  "name": "NodeBloom",
+  "short_name": "NodeBloom",
+  "description": "AI가 수업을 설계하고, 학생이 게임처럼 성장합니다",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#6366F1",
+  "orientation": "portrait-primary",
+  "categories": ["education"],
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
