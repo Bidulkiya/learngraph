@@ -2,7 +2,7 @@
 
 import { getCachedUser } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { assertNotDemo } from '@/lib/demo'
+import { assertNotDemo, isDemoAccount } from '@/lib/demo'
 
 export interface DailyMission {
   id: string
@@ -55,6 +55,11 @@ export async function getTodayMissions(): Promise<{
 
     if (existing && existing.length > 0) {
       return { data: existing as DailyMission[] }
+    }
+
+    // 데모 계정: 미션이 없으면 빈 배열 (새로 생성하지 않음)
+    if (isDemoAccount(user.email)) {
+      return { data: [] }
     }
 
     // Generate 3 random missions

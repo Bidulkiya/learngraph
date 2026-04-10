@@ -12,9 +12,10 @@ export default async function StudentSkillTreeExplorePage({ params }: Props) {
   if (!profile) return null
   const admin = createAdminClient()
 
+  // 트리 + 노드 + 엣지 + 진도를 최대한 병렬 조회
   const { data: tree } = await admin
     .from('skill_trees')
-    .select('*')
+    .select('id, title, description, subject_hint, class_id, created_by')
     .eq('id', id)
     .single()
 
@@ -47,23 +48,23 @@ export default async function StudentSkillTreeExplorePage({ params }: Props) {
     }
   }
 
-  const { data: nodes } = await admin
-    .from('nodes')
-    .select('*')
-    .eq('skill_tree_id', id)
-    .order('order_index')
-
-  const { data: edges } = await admin
-    .from('node_edges')
-    .select('*')
-    .eq('skill_tree_id', id)
-
-  // Fetch student progress
-  const { data: progress } = await admin
-    .from('student_progress')
-    .select('*')
-    .eq('skill_tree_id', id)
-    .eq('student_id', profile?.id ?? '')
+  // 노드 + 엣지 + 진도 병렬 조회 (권한 체크 후)
+  const [{ data: nodes }, { data: edges }, { data: progress }] = await Promise.all([
+    admin
+      .from('nodes')
+      .select('id, title, description, difficulty, order_index, position_x, position_y')
+      .eq('skill_tree_id', id)
+      .order('order_index'),
+    admin
+      .from('node_edges')
+      .select('id, source_node_id, target_node_id, label')
+      .eq('skill_tree_id', id),
+    admin
+      .from('student_progress')
+      .select('node_id, status')
+      .eq('skill_tree_id', id)
+      .eq('student_id', profile.id),
+  ])
 
   // Map progress to node status
   const progressMap = new Map<string, string>()

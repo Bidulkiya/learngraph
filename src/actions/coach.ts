@@ -227,23 +227,23 @@ export async function getWeeklyPlanWithMissions(
       })).filter(day => day.nodes.length > 0),
     }
 
-    // 5. weekly_plans upsert
-    await admin
-      .from('weekly_plans')
-      .upsert({
-        student_id: user.id,
-        week_start: weekStart,
-        plan: sanitizedPlan.plan,
-        motivation: sanitizedPlan.motivation,
-        bonus_awarded: false,
-      }, { onConflict: 'student_id,week_start' })
-
-    // 6. weekly_plan_missions 재구축 (기존 것 삭제 후 insert)
-    await admin
-      .from('weekly_plan_missions')
-      .delete()
-      .eq('student_id', user.id)
-      .eq('week_start', weekStart)
+    // 5+6. weekly_plans upsert + weekly_plan_missions 삭제 병렬 (독립 테이블)
+    await Promise.all([
+      admin
+        .from('weekly_plans')
+        .upsert({
+          student_id: user.id,
+          week_start: weekStart,
+          plan: sanitizedPlan.plan,
+          motivation: sanitizedPlan.motivation,
+          bonus_awarded: false,
+        }, { onConflict: 'student_id,week_start' }),
+      admin
+        .from('weekly_plan_missions')
+        .delete()
+        .eq('student_id', user.id)
+        .eq('week_start', weekStart),
+    ])
 
     const missionRows = sanitizedPlan.plan.flatMap(day =>
       day.nodes.map(node => ({
