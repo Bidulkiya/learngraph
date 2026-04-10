@@ -11,11 +11,11 @@
 
 ## 프로젝트 현황
 - **라우트**: 39개 (Static 8 + Dynamic 31)
-- **Server Action**: 35개 파일 / **141개 함수**
+- **Server Action**: 35개 파일 / **136개 함수**
 - **DB 테이블**: 40개 (마이그레이션 001~020)
 - **AI 기능**: 16종 통합
-- **컴포넌트**: 68개
-- **소스 파일**: 190개 (.ts/.tsx)
+- **컴포넌트**: 67개
+- **소스 파일**: 192개 (.ts/.tsx)
 - **역할 시스템**: 4자 (teacher / student / parent / admin)
 
 ## 기술 스택 (절대 변경 금지)
@@ -53,7 +53,7 @@ nodebloom/
 │   │   ├── layout.tsx              # 루트 레이아웃 (metadata)
 │   │   ├── page.tsx                # 랜딩 페이지
 │   │   └── icon.svg                # 파비콘 (NodeBloom SVG 로고)
-│   ├── actions/                    # 35개 Server Action 파일, 141개 함수
+│   ├── actions/                    # 35개 Server Action 파일, 136개 함수
 │   │   ├── skill-tree.ts           # 스킬트리 생성/수정 (AI)
 │   │   ├── quiz.ts                 # 퀴즈 생성/채점/힌트 (AI)
 │   │   ├── tutor.ts                # 소크라틱 AI 튜터 (RAG)

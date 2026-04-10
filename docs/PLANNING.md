@@ -36,7 +36,7 @@
 
 ### 2.2 문제 ② — 교사의 수업 준비가 과중하다
 **현실**: 수업 자료, 퀴즈, 학습지, 복습 문제를 모두 교사가 손으로 만든다.
-**해결**: **13종 AI 통합 기능**이 스킬트리·퀴즈·학습지·복습 카드·주간 브리핑까지 자동 생성. 교사는 검수와 소통에 집중.
+**해결**: **16종 AI 통합 기능**이 스킬트리·퀴즈·학습지·복습 카드·주간 브리핑까지 자동 생성. 교사는 검수와 소통에 집중.
 
 ### 2.3 문제 ③ — 학부모는 자녀의 학습을 전혀 모른다
 **현실**: 시험 점수만 보고 판단, 평상시의 노력과 어려움은 보이지 않는다.
@@ -100,7 +100,7 @@
 ┌─────────────────────────────────────────────────┐
 │  Next.js 16 (App Router + Turbopack + RSC)      │
 │  ├─ 32 routes (4자 역할별)                      │
-│  ├─ Server Actions (112 함수)                   │
+│  ├─ Server Actions (136 함수)                   │
 │  └─ Client Components (D3, 차트, 인터랙션)      │
 └─────────────────────────────────────────────────┘
          │                    │                  │
@@ -125,7 +125,7 @@
                   └──────────────────┘
 ```
 
-### 4.2 데이터 흐름 예시 (학생이 노드 언락)
+### 4.2 데이터 흐름 예시 (학생이 노드 잠금해제)
 ```
 1. 학생 퀴즈 제출 (/student/quiz/[nodeId])
     └── submitQuizAnswer() Server Action
@@ -145,7 +145,7 @@
 
 ---
 
-## 5. AI 13종 기능 요약
+## 5. AI 16종 기능 요약
 
 | # | 기능 | 한 줄 설명 |
 |---|---|---|
@@ -173,7 +173,7 @@
 - 프로필 카드에 Lv.N + 진행 바 표시
 
 ### 6.2 일일 미션 5유형
-1. 노드 1개 언락하기 (+30 XP)
+1. 노드 1개 잠금해제하기 (+30 XP)
 2. 퀴즈 3개 풀기 (+25 XP)
 3. AI 튜터에게 1번 질문하기 (+20 XP)
 4. 복습 노드 1개 다시 풀기 (+25 XP)
@@ -181,10 +181,10 @@
 
 매일 랜덤 3개 자동 생성, 진도 자동 추적.
 
-### 6.3 업적/배지 10종
-- `first_unlock` 🔓 첫 노드 언락
-- `five_unlocks` ⚡ 5개 노드 언락
-- `ten_unlocks` 🏃 10개 노드 언락
+### 6.3 업적/배지 36종
+- `first_unlock` 🔓 첫 노드 잠금해제
+- `five_unlocks` ⚡ 5개 노드 잠금해제
+- `ten_unlocks` 🏃 10개 노드 잠금해제
 - `perfect_quiz` 💯 퀴즈 만점
 - `perfect_streak` 🔥 7일 스트릭
 - ... (총 10종)
@@ -294,7 +294,7 @@ profiles (id, email, name, role, xp, streak_days, learning_style)
                     certificates (스킬트리 100% 완료 시)
 ```
 
-### 8.2 38개 테이블 카테고리
+### 8.2 40개 테이블 카테고리
 - **사용자/권한 (7)**: profiles, schools, school_members, classes, class_enrollments, class_students, subjects
 - **스킬트리 (4)**: skill_trees, nodes, node_edges, document_chunks
 - **학습 진도 (3)**: student_progress, quizzes, quiz_attempts
@@ -304,7 +304,7 @@ profiles (id, email, name, role, xp, streak_days, learning_style)
 - **커뮤니케이션 (8)**: announcements, announcement_reads, direct_messages, activity_feed, feed_reactions, study_groups, study_group_members, study_group_messages
 - **기타 (2)**: node_memos, *(subjects는 사용자/권한에 포함)*
 
-상세 컬럼은 [DEVELOPMENT.md](./DEVELOPMENT.md#3-db-스키마-38개-테이블) 참조.
+상세 컬럼은 [DEVELOPMENT.md](./DEVELOPMENT.md#3-db-스키마-40개-테이블) 참조.
 
 ---
 
@@ -330,10 +330,10 @@ profiles (id, email, name, role, xp, streak_days, learning_style)
 
 | 지표 | 수치 |
 |---|---|
-| **라우트** | 32개 |
-| **Server Action 함수** | 112개 |
-| **DB 테이블** | 38개 |
-| **DB 마이그레이션** | 15개 |
+| **라우트** | 39개 |
+| **Server Action 함수** | 136개 |
+| **DB 테이블** | 40개 |
+| **DB 마이그레이션** | 20개 |
 | **AI 통합 기능** | 13종 |
 | **역할 시스템** | 4자 (교사/학생/학부모/운영자) |
 | **게이미피케이션 요소** | XP, 레벨, 스트릭, 배지 10종, 미션 5유형, 플래시카드, 인증서 |

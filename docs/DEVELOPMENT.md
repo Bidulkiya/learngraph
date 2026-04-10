@@ -8,8 +8,8 @@
 ## 목차
 1. [기술 스택](#1-기술-스택)
 2. [프로젝트 구조](#2-프로젝트-구조)
-3. [DB 스키마 (38개 테이블)](#3-db-스키마-38개-테이블)
-4. [AI 핵심 로직 (13종)](#4-ai-핵심-로직-13종)
+3. [DB 스키마 (40개 테이블)](#3-db-스키마-40개-테이블)
+4. [AI 핵심 로직 (16종)](#4-ai-핵심-로직-16종)
 5. [Server Action 패턴](#5-server-action-패턴)
 6. [4자 역할 시스템](#6-4자-역할-시스템)
 7. [스쿨/클래스 초대 플로우](#7-스쿨클래스-초대-플로우)
@@ -53,16 +53,16 @@
 ```
 nodebloom/
 ├── src/
-│   ├── app/                        # 32 routes
-│   │   ├── (auth)/                 # login, signup, verify, callback
-│   │   ├── teacher/                # 교사 라우트 (11)
-│   │   ├── student/                # 학생 라우트 (10)
+│   ├── app/                        # 39 routes
+│   │   ├── (auth)/                 # login, signup, verify, callback, forgot-password, reset-password, terms, privacy
+│   │   ├── teacher/                # 교사 라우트 (12)
+│   │   ├── student/                # 학생 라우트 (13)
 │   │   ├── admin/                  # 운영자 라우트 (6)
 │   │   ├── parent/                 # 학부모 라우트 (2)
 │   │   ├── layout.tsx              # 루트 metadata
 │   │   ├── page.tsx                # 랜딩 페이지
 │   │   └── icon.svg                # 파비콘 (NodeBloom 로고)
-│   ├── actions/                    # 32 파일 / 112 함수
+│   ├── actions/                    # 35 파일 / 136 함수
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui
 │   │   ├── Logo.tsx                # NodeBloom SVG 로고
@@ -81,14 +81,14 @@ nodebloom/
 │   │   └── demo.ts                 # 데모 판별/가드
 │   ├── hooks/                      # useSkillTree, useQuiz, useVoice
 │   └── types/                      # 도메인 타입
-├── supabase/migrations/            # 15 마이그레이션 (001~015)
+├── supabase/migrations/            # 20 마이그레이션 (001~020)
 ├── middleware.ts                   # Auth + role 라우팅
 └── docs/                           # 개발 문서
 ```
 
 ---
 
-## 3. DB 스키마 (38개 테이블)
+## 3. DB 스키마 (40개 테이블)
 
 ### 3.1 사용자 + 권한
 | 테이블 | 주요 컬럼 | 용도 |
