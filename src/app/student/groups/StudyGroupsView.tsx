@@ -17,6 +17,7 @@ import {
 import {
   createGroup,
   joinGroup,
+  leaveGroup,
   sendGroupMessage,
   getGroupMessages,
   getMyGroups,
@@ -143,7 +144,23 @@ export function StudyGroupsView({ initialGroups, classes, currentUserId }: Props
                         <p className="text-xs text-gray-500">{g.class_name}</p>
                       </div>
                       {g.is_member ? (
-                        <Badge className="bg-[#10B981]">가입됨</Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs text-gray-500 hover:text-red-500"
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            if (!confirm('정말 이 그룹을 탈퇴하시겠습니까?')) return
+                            const res = await leaveGroup(g.id)
+                            if (res.error) { toast.error(res.error); return }
+                            toast.success('그룹을 탈퇴했습니다')
+                            if (selected?.id === g.id) setSelected(null)
+                            const refreshed = await getMyGroups()
+                            if (refreshed.data) setGroups(refreshed.data)
+                          }}
+                        >
+                          탈퇴
+                        </Button>
                       ) : (
                         <Button
                           size="sm"

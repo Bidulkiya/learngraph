@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import Image from 'next/image'
 import { TreePine, CheckCircle, Award, Trophy, Flame } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { toggleReaction, type FeedItem } from '@/actions/feed'
+import { toggleReaction, getClassFeed, type FeedItem } from '@/actions/feed'
 import { toast } from 'sonner'
 
 const ACTION_ICONS: Record<string, React.ReactNode> = {
@@ -47,9 +47,28 @@ function formatTime(iso: string): string {
   return `${days}일 전`
 }
 
-export function ActivityFeed({ initialFeed }: { initialFeed: FeedItem[] }) {
+interface Props {
+  initialFeed: FeedItem[]
+  /** 클래스 필터 드롭다운용 — 제공되지 않으면 필터 숨김 */
+  classes?: Array<{ id: string; name: string }>
+}
+
+export function ActivityFeed({ initialFeed, classes }: Props) {
   const [feed, setFeed] = useState(initialFeed)
+  const [selectedClass, setSelectedClass] = useState<string>('all')
   const [, startTransition] = useTransition()
+
+  const handleClassFilter = (classId: string): void => {
+    setSelectedClass(classId)
+    if (classId === 'all') {
+      setFeed(initialFeed)
+      return
+    }
+    startTransition(async () => {
+      const res = await getClassFeed(classId)
+      if (res.data) setFeed(res.data)
+    })
+  }
 
   const handleReact = (feedId: string, emoji: string): void => {
     // 낙관적 업데이트
@@ -106,8 +125,20 @@ export function ActivityFeed({ initialFeed }: { initialFeed: FeedItem[] }) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base">반 활동 타임라인</CardTitle>
+        {classes && classes.length > 1 && (
+          <select
+            value={selectedClass}
+            onChange={(e) => handleClassFilter(e.target.value)}
+            className="rounded-md border bg-background px-2 py-1 text-xs"
+          >
+            <option value="all">전체</option>
+            {classes.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {feed.map(item => (

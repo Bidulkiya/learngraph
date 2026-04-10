@@ -5,34 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { assertNotDemo } from '@/lib/demo'
 import type { LearningStyle } from '@/types/user'
 
-/**
- * 학생 본인의 학습 스타일 조회.
- */
-export async function getLearningStyle(): Promise<{
-  data?: { style: LearningStyle | null; needsOnboarding: boolean }
-  error?: string
-}> {
-  try {
-    const user = await getCachedUser()
-    if (!user) return { error: '인증이 필요합니다.' }
-
-    const admin = createAdminClient()
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('learning_style')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    return {
-      data: {
-        style: (profile?.learning_style as LearningStyle | null) ?? null,
-        needsOnboarding: !profile?.learning_style,
-      },
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
+// getLearningStyle — 삭제됨. getCurrentProfile()의 learning_style 필드로 직접 조회.
 
 /**
  * 학습 스타일 초기화 (재진단용).

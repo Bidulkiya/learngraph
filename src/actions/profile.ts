@@ -411,38 +411,7 @@ export async function initializeProfileAfterSignup(
   }
 }
 
-/**
- * 회원가입 완료 화면에서 사용할 프로필 정보 조회.
- * avatar_url, nickname, role만 반환.
- */
-export async function getSignupCompletionInfo(): Promise<{
-  data?: { nickname: string; avatarUrl: string; role: string }
-  error?: string
-}> {
-  try {
-    const user = await getCachedUser()
-    if (!user) return { error: '인증이 필요합니다.' }
-
-    const admin = createAdminClient()
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('nickname, avatar_url, role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile) return { error: '프로필을 찾을 수 없습니다.' }
-
-    return {
-      data: {
-        nickname: profile.nickname ?? '',
-        avatarUrl: profile.avatar_url ?? '',
-        role: profile.role ?? 'student',
-      },
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
+// getSignupCompletionInfo — 삭제됨. 클라이언트 state로 대체.
 
 // ============================================
 // 계정 삭제

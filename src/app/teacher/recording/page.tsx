@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { TreePine, ClipboardCheck, Mic } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { TreePine, ClipboardCheck, Mic, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { getMyRecordings } from '@/actions/recording'
 import { RecordingTreeMode } from './RecordingTreeMode'
 import { RecordingQuizMode } from './RecordingQuizMode'
 
@@ -71,6 +73,77 @@ export default function RecordingPage() {
           </p>
         </CardContent>
       </Card>
+
+      <RecentRecordingsList />
+    </div>
+  )
+}
+
+interface Recording {
+  id: string
+  title: string
+  duration_seconds: number | null
+  transcript: string | null
+  summary: string | null
+  created_at: string
+}
+
+function RecentRecordingsList() {
+  const [expanded, setExpanded] = useState(false)
+  const [recordings, setRecordings] = useState<Recording[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!expanded || loaded) return
+    getMyRecordings().then(res => {
+      if (res.data) setRecordings(res.data as Recording[])
+      setLoaded(true)
+    })
+  }, [expanded, loaded])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  return (
+    <div>
+      <Button
+        variant="ghost"
+        className="w-full justify-between text-sm text-gray-500"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <span className="flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5" />
+          최근 녹음 기록
+        </span>
+        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </Button>
+      {expanded && (
+        <div className="mt-2 space-y-2">
+          {recordings.length === 0 ? (
+            <p className="py-4 text-center text-xs text-gray-400">
+              {loaded ? '녹음 기록이 없습니다' : '불러오는 중...'}
+            </p>
+          ) : (
+            recordings.map(r => (
+              <Card key={r.id}>
+                <CardContent className="py-3">
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{r.title || '제목 없음'}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(r.created_at).toLocaleDateString('ko-KR')}
+                        {r.duration_seconds ? ` · ${Math.round(r.duration_seconds / 60)}분` : ''}
+                      </p>
+                      {r.summary && (
+                        <p className="mt-1 line-clamp-2 text-xs text-gray-500">{r.summary}</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }

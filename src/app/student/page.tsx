@@ -22,6 +22,8 @@ import { ConceptMapCard } from '@/components/dashboard/ConceptMapCard'
 import { ParentInviteCard } from '@/components/student/ParentInviteCard'
 import { MyCertificatesCard } from '@/components/student/MyCertificatesCard'
 import { RediagnoseButton } from '@/components/student/RediagnoseButton'
+import { ReviewItemActions } from '@/components/student/ReviewItemActions'
+import { EmotionMiniCard } from '@/components/student/EmotionMiniCard'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { isDemoAccount } from '@/lib/demo'
 
@@ -157,6 +159,9 @@ export default async function StudentDashboard() {
         primarySkillTreeId={primarySkillTreeId}
       />
 
+      {/* 학습 감정 미니 카드 */}
+      <EmotionMiniCard />
+
       {/* 2순위: 주간 계획 (클라이언트 컴포넌트 — 내부에서 fetch) */}
       <WeeklyPlanCard />
 
@@ -284,9 +289,7 @@ async function ReviewsSection() {
                   <Badge className={cfg.badge}>{cfg.label}</Badge>
                   <span className="font-medium">{r.node_title}</span>
                 </div>
-                <Link href={`/student/quiz/${r.node_id}`}>
-                  <Button size="sm" variant="outline">복습하기</Button>
-                </Link>
+                <ReviewItemActions reviewId={r.id} nodeId={r.node_id} />
               </li>
             )
           })}

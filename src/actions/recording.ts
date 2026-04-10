@@ -126,43 +126,7 @@ export async function summarizeLesson(
   }
 }
 
-/**
- * 전사 내용으로 복습 퀴즈 생성
- */
-export async function generateQuizFromRecording(
-  recordingId: string
-): Promise<{ data?: { questions: number }; error?: string }> {
-  try {
-    const user = await getCachedUser()
-    if (!user) return { error: '인증이 필요합니다.' }
-
-    const demoBlock = assertNotDemo(user.email)
-    if (demoBlock) return demoBlock
-
-    const admin = createAdminClient()
-    const { data: recording } = await admin
-      .from('lesson_recordings')
-      .select('transcript, teacher_id')
-      .eq('id', recordingId)
-      .single()
-
-    if (!recording) return { error: '녹음을 찾을 수 없습니다.' }
-    if (recording.teacher_id !== user.id) return { error: '이 녹음에 접근할 권한이 없습니다.' }
-    if (!recording.transcript) return { error: '전사 내용이 없습니다.' }
-
-    // 녹음 내용 기반으로 퀴즈 생성
-    const { object: quiz } = await generateObject({
-      model: anthropic('claude-sonnet-4-6'),
-      schema: quizSchema,
-      prompt: QUIZ_PROMPT('수업 복습', recording.transcript.slice(0, 2000), 2),
-    })
-
-    return { data: { questions: quiz.questions.length } }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return { error: `퀴즈 생성 실패: ${msg}` }
-  }
-}
+// generateQuizFromRecording — 삭제됨. generateNodeQuizFromTranscript로 대체.
 
 /**
  * 전사 텍스트에서 교육 내용만 추출하고 잡음(농담, 잡담, 진행 멘트, 말 더듬기)을 제거.
