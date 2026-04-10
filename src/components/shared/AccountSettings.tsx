@@ -49,7 +49,7 @@ function PasswordChangeSection({ isDemo }: { isDemo: boolean }) {
 
   const handleChange = async (): Promise<void> => {
     if (isDemo) {
-      toast.error('체험 모드에서는 비밀번호를 변경할 수 없습니다.')
+      toast.error('둘러보기 모드에서는 비밀번호를 변경할 수 없습니다.')
       return
     }
     if (!passwordsMatch) return
@@ -160,7 +160,7 @@ function AccountDeleteSection({ isDemo }: { isDemo: boolean }) {
 
   const handleDelete = async (): Promise<void> => {
     if (isDemo) {
-      toast.error('체험 모드에서는 계정을 삭제할 수 없습니다.')
+      toast.error('둘러보기 모드에서는 계정을 삭제할 수 없습니다.')
       return
     }
     if (confirmText !== '삭제합니다') {
@@ -207,7 +207,7 @@ function AccountDeleteSection({ isDemo }: { isDemo: boolean }) {
             variant="destructive"
             onClick={() => {
               if (isDemo) {
-                toast.error('체험 모드에서는 계정을 삭제할 수 없습니다.')
+                toast.error('둘러보기 모드에서는 계정을 삭제할 수 없습니다.')
                 return
               }
               setDialogOpen(true)

@@ -35,7 +35,7 @@ export function DemoLoginButtons() {
         ) : (
           <GraduationCap className="mr-2 h-4 w-4" />
         )}
-        교사 체험하기
+        교사로 둘러보기
       </Button>
       <Button
         onClick={() => handleDemo('student')}
@@ -47,7 +47,7 @@ export function DemoLoginButtons() {
         ) : (
           <BookOpen className="mr-2 h-4 w-4" />
         )}
-        학생 체험하기
+        학생으로 둘러보기
       </Button>
     </div>
   )

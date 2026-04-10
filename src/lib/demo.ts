@@ -48,7 +48,7 @@ export function assertNotDemo(
 ): { error: string } | null {
   if (isDemoAccount(email)) {
     return {
-      error: '체험 모드에서는 이 기능을 사용할 수 없습니다. 회원가입 후 이용해주세요!',
+      error: '둘러보기 모드에서는 이 기능을 사용할 수 없습니다. 회원가입 후 이용해주세요!',
     }
   }
   return null

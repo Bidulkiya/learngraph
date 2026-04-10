@@ -51,7 +51,7 @@ const STUDENT_STEPS: TutorialStep[] = [
     icon: <TreePine className="h-16 w-16 text-[#10B981]" />,
     title: '수업 내용이 스킬트리로 정리됩니다',
     description:
-      '노드를 하나씩 언락하며 학습해요. 퀴즈를 풀면 다음 노드가 열립니다!',
+      '노드를 하나씩 잠금해제하며 학습해요. 퀴즈를 풀면 다음 노드가 열립니다!',
     detail: "'내 학습' 메뉴에서 확인해보세요.",
   },
   {
@@ -72,7 +72,7 @@ const STUDENT_STEPS: TutorialStep[] = [
     icon: <Rocket className="h-16 w-16 text-[#A855F7]" />,
     title: '준비되셨나요?',
     description:
-      '체험 모드에서는 둘러보기만 가능합니다.',
+      '둘러보기 모드에서는 구경만 가능합니다.',
     detail:
       '직접 스킬트리를 만들고 퀴즈를 풀어보려면 회원가입하세요!',
   },
@@ -85,7 +85,7 @@ const STUDENT_STEPS: TutorialStep[] = [
 const TEACHER_STEPS: TutorialStep[] = [
   {
     icon: <LogoSymbol size={64} />,
-    title: '교사 체험 모드에 오신 것을 환영합니다! 📚',
+    title: '교사 둘러보기 모드에 오신 것을 환영합니다! 📚',
     description:
       'AI가 수업 자료를 분석해서 커리큘럼을 자동으로 만들어드립니다.',
     detail: '어떤 기능이 있는지 살펴볼게요!',
@@ -117,7 +117,7 @@ const TEACHER_STEPS: TutorialStep[] = [
   {
     icon: <Rocket className="h-16 w-16 text-[#A855F7]" />,
     title: '준비되셨나요?',
-    description: '둘러보기만 가능한 체험 모드입니다.',
+    description: '둘러보기만 가능한 모드입니다.',
     detail: '직접 사용해보려면 회원가입하세요!',
   },
 ]
@@ -200,9 +200,11 @@ export function DemoTutorial({ role }: Props) {
               <X className="h-4 w-4" />
             </button>
 
-            {/* 아이콘 */}
-            <div className="relative flex items-center justify-center text-white">
-              {currentStep.icon}
+            {/* 아이콘 — 반투명 흰색 원형 배경으로 대비 확보 */}
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-white/20 shadow-lg backdrop-blur-sm">
+              <div className="text-white drop-shadow-lg">
+                {currentStep.icon}
+              </div>
             </div>
           </div>
 

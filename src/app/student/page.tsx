@@ -327,7 +327,7 @@ async function AchievementsSection() {
         <CardContent>
           {earnedAchievements.length === 0 ? (
             <p className="py-4 text-center text-sm text-gray-400">
-              첫 업적을 달성해보세요! 노드 1개를 언락하면 🌱 첫 걸음 업적을 얻어요.
+              첫 업적을 달성해보세요! 노드 1개를 잠금해제하면 🌱 첫 걸음 업적을 얻어요.
             </p>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">

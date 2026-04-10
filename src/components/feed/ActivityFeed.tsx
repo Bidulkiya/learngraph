@@ -22,7 +22,7 @@ function getActionText(item: FeedItem): string {
   const detail = item.detail as { title?: string; score?: number; days?: number }
   switch (item.action_type) {
     case 'node_unlock':
-      return `${name}님이 "${detail.title ?? '노드'}"를 언락했습니다! 🎉`
+      return `${name}님이 "${detail.title ?? '노드'}"를 잠금해제했습니다! 🎉`
     case 'quiz_complete':
       return `${name}님이 퀴즈를 ${detail.score ?? 0}점으로 통과했습니다! 👍`
     case 'badge_earned':

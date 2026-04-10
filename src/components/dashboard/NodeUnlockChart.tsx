@@ -28,7 +28,7 @@ interface Props {
 const BOTTLENECK_THRESHOLD = 30 // % 미만이면 병목
 const WARNING_THRESHOLD = 60 // % 미만이면 주의
 
-export function NodeUnlockChart({ skillTreeId, title = '노드별 언락율' }: Props) {
+export function NodeUnlockChart({ skillTreeId, title = '노드별 잠금해제율' }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [nodes, setNodes] = useState<NodeUnlockRate[]>([])
@@ -120,7 +120,7 @@ export function NodeUnlockChart({ skillTreeId, title = '노드별 언락율' }: 
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <span>
-                  언락율이 30% 미만인 <strong>{bottleneckCount}개 노드</strong>가 병목 구간입니다
+                  잠금해제율이 30% 미만인 <strong>{bottleneckCount}개 노드</strong>가 병목 구간입니다
                 </span>
               </div>
             )}

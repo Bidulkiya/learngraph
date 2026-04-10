@@ -26,7 +26,7 @@ export function RediagnoseButton({ isDemo }: Props) {
 
   const handleClick = async (): Promise<void> => {
     if (isDemo) {
-      toast.error('체험 모드에서는 학습 스타일 재진단을 할 수 없습니다. 회원가입 후 이용해주세요!')
+      toast.error('둘러보기 모드에서는 학습 스타일 재진단을 할 수 없습니다. 회원가입 후 이용해주세요!')
       return
     }
 

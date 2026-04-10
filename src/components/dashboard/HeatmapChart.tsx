@@ -14,7 +14,7 @@ interface HeatmapChartProps {
   data: HeatmapDataPoint[]
 }
 
-export function HeatmapChart({ title = '노드별 언락률', data }: HeatmapChartProps) {
+export function HeatmapChart({ title = '노드별 잠금해제율', data }: HeatmapChartProps) {
   if (data.length === 0) {
     return (
       <Card>
@@ -47,7 +47,7 @@ export function HeatmapChart({ title = '노드별 언락률', data }: HeatmapCha
             <YAxis fontSize={11} domain={[0, 100]} unit="%" />
             <Tooltip
               contentStyle={{ borderRadius: 8, fontSize: 12 }}
-              formatter={(value) => [`${value}%`, '언락률']}
+              formatter={(value) => [`${value}%`, '잠금해제율']}
             />
             <Bar dataKey="unlockRate" fill="#4F6BF6" radius={[4, 4, 0, 0]} />
           </BarChart>

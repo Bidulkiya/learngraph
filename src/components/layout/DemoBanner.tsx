@@ -32,7 +32,7 @@ export function DemoBanner({ email }: DemoBannerProps) {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2 text-xs sm:gap-3 sm:px-4 sm:py-2.5 sm:text-sm">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <span className="text-sm sm:text-base">🎮</span>
-          <span className="truncate font-semibold">체험 모드</span>
+          <span className="truncate font-semibold">둘러보기 모드</span>
           <span className="hidden text-white/85 sm:inline">
             — 둘러보기만 가능합니다. 데이터가 저장되지 않아요.
           </span>

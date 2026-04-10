@@ -3,8 +3,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DEMO_TEACHER_EMAIL, DEMO_STUDENT_EMAIL, DEMO_PASSWORD } from '@/lib/demo'
 
-const DEMO_SCHOOL_NAME = 'NodeBloom 체험 학교'
-const DEMO_CLASS_NAME = 'AI 학습 체험반'
+const DEMO_SCHOOL_NAME = 'NodeBloom 둘러보기 학교'
+const DEMO_CLASS_NAME = 'AI 학습 둘러보기반'
 const DEMO_TREE_TITLE = '인공지능의 이해'
 
 /**
@@ -39,7 +39,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .from('schools')
       .update({
         name: DEMO_SCHOOL_NAME,
-        description: '심사위원 체험용 데모 스쿨 — 읽기 전용',
+        description: '심사위원 둘러보기용 데모 스쿨 — 읽기 전용',
       })
       .eq('name', LEGACY_DEMO_SCHOOL_NAME)
 
@@ -96,8 +96,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .eq('email', DEMO_TEACHER_EMAIL)
       .maybeSingle()
 
-    const TEACHER_NICKNAME = '박지훈 선생님'
-    const TEACHER_AVATAR_SEED = '박지훈 선생님'
+    const TEACHER_NICKNAME = '데모 선생님'
+    const TEACHER_AVATAR_SEED = '데모 선생님'
     const TEACHER_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(TEACHER_AVATAR_SEED)}`
 
     let teacherId = existingTeacherProfile?.id
@@ -107,7 +107,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         password: DEMO_PASSWORD,
         email_confirm: true,
         user_metadata: {
-          name: '박지훈',
+          name: '데모',
           role: 'teacher',
           nickname: TEACHER_NICKNAME,
           avatar_url: TEACHER_AVATAR_URL,
@@ -119,7 +119,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       await admin.from('profiles').upsert({
         id: teacherId,
         email: DEMO_TEACHER_EMAIL,
-        name: '박지훈',
+        name: '데모',
         role: 'teacher',
         nickname: TEACHER_NICKNAME,
         avatar_url: TEACHER_AVATAR_URL,
@@ -128,12 +128,12 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     }
     // 이름/닉네임/아바타 무조건 갱신
     await admin.from('profiles').update({
-      name: '박지훈',
+      name: '데모',
       nickname: TEACHER_NICKNAME,
       avatar_url: TEACHER_AVATAR_URL,
       avatar_seed: TEACHER_AVATAR_SEED,
       subject: '과학',
-      bio: '10년차 중학교 과학 교사입니다. 학생들과 함께 탐구하는 수업을 좋아해요.',
+      bio: '둘러보기 전용 데모 교사 계정입니다.',
     }).eq('id', teacherId)
 
     // ============================================
@@ -145,8 +145,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .eq('email', DEMO_STUDENT_EMAIL)
       .maybeSingle()
 
-    const STUDENT_NICKNAME = '지수'
-    const STUDENT_AVATAR_SEED = '지수'
+    const STUDENT_NICKNAME = '데모 학생'
+    const STUDENT_AVATAR_SEED = '데모 학생'
     const STUDENT_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(STUDENT_AVATAR_SEED)}`
 
     let studentId = existingStudentProfile?.id
@@ -156,7 +156,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         password: DEMO_PASSWORD,
         email_confirm: true,
         user_metadata: {
-          name: '김지수',
+          name: '데모',
           role: 'student',
           nickname: STUDENT_NICKNAME,
           avatar_url: STUDENT_AVATAR_URL,
@@ -168,7 +168,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       await admin.from('profiles').upsert({
         id: studentId,
         email: DEMO_STUDENT_EMAIL,
-        name: '김지수',
+        name: '데모',
         role: 'student',
         nickname: STUDENT_NICKNAME,
         avatar_url: STUDENT_AVATAR_URL,
@@ -177,12 +177,12 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     }
     // 이름/닉네임/아바타 무조건 갱신
     await admin.from('profiles').update({
-      name: '김지수',
+      name: '데모',
       nickname: STUDENT_NICKNAME,
       avatar_url: STUDENT_AVATAR_URL,
       avatar_seed: STUDENT_AVATAR_SEED,
       grade: '중2',
-      bio: '과학과 수학이 재미있어요! 이번 학기에 과학 90점 넘기는 게 목표예요!',
+      bio: '둘러보기 전용 데모 학생 계정입니다.',
       interests: ['과학', '수학', '역사'],
     }).eq('id', studentId)
 
@@ -231,7 +231,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         .from('schools')
         .insert({
           name: DEMO_SCHOOL_NAME,
-          description: '심사위원 체험용 데모 스쿨 — 읽기 전용',
+          description: '심사위원 둘러보기용 데모 스쿨 — 읽기 전용',
           created_by: teacherId,
         })
         .select('id')
@@ -264,7 +264,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         .insert({
           school_id: schoolId,
           name: DEMO_CLASS_NAME,
-          description: 'AI의 기초부터 실제 활용까지 배우는 체험 클래스',
+          description: 'AI의 기초부터 실제 활용까지 배우는 둘러보기 클래스',
           teacher_id: teacherId,
         })
         .select('id')
@@ -579,7 +579,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         {
           student_id: studentId,
           mission_type: 'unlock_node',
-          title: '노드 1개 언락하기',
+          title: '노드 1개 잠금해제하기',
           target: 1,
           progress: 1,
           completed: true,
@@ -658,7 +658,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     await admin.from('weekly_briefings').upsert({
       class_id: classId,
       week_start: mondayStr,
-      summary: '이번 주 체험반 학생은 총 4개 노드를 완료하며 평균 90점의 우수한 성적을 기록했습니다. 학습 참여도가 높고 기본 개념에 대한 이해가 잘 잡혀 있습니다. 전반적으로 학습 흐름이 안정적입니다.',
+      summary: '이번 주 둘러보기반 학생은 총 4개 노드를 완료하며 평균 90점의 우수한 성적을 기록했습니다. 학습 참여도가 높고 기본 개념에 대한 이해가 잘 잡혀 있습니다. 전반적으로 학습 흐름이 안정적입니다.',
       highlights: [
         '진도율 29% 달성 (4/14 노드 완료)',
         '퀴즈 평균 90점 기록',
@@ -691,8 +691,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     await admin.from('announcements').insert({
       school_id: schoolId,
       author_id: teacherId,
-      title: '체험 학교에 오신 것을 환영합니다!',
-      content: 'NodeBloom 체험 학교입니다. 데모 계정은 읽기 전용이므로 모든 기능을 둘러볼 수 있지만 데이터는 저장되지 않습니다. 직접 사용해보고 싶으시면 회원가입 후 이용해주세요.',
+      title: '둘러보기 학교에 오신 것을 환영합니다!',
+      content: 'NodeBloom 둘러보기 학교입니다. 데모 계정은 읽기 전용이므로 모든 기능을 둘러볼 수 있지만 데이터는 저장되지 않습니다. 직접 사용해보고 싶으시면 회원가입 후 이용해주세요.',
       target_role: 'all',
     })
 
@@ -707,7 +707,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         school_id: schoolId,
         sender_id: teacherId,
         receiver_id: studentId,
-        content: '환영합니다! NodeBloom 체험 학교에 오신 것을 축하드려요. 궁금한 점이 있으면 언제든 메시지 주세요.',
+        content: '환영합니다! NodeBloom 둘러보기 학교에 오신 것을 축하드려요. 궁금한 점이 있으면 언제든 메시지 주세요.',
       },
       {
         school_id: schoolId,

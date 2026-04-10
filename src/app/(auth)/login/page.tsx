@@ -196,7 +196,7 @@ function LoginForm() {
         </div>
       </form>
 
-      {/* 데모 체험 영역 */}
+      {/* 데모 둘러보기 영역 */}
       <div className="mt-6">
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -220,7 +220,7 @@ function LoginForm() {
             ) : (
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             )}
-            교사 체험
+            교사 둘러보기
           </Button>
           <Button
             type="button"
@@ -234,11 +234,11 @@ function LoginForm() {
             ) : (
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             )}
-            학생 체험
+            학생 둘러보기
           </Button>
         </div>
         <p className="mt-2 text-center text-[11px] text-gray-400">
-          체험 모드는 읽기 전용으로 둘러볼 수 있습니다
+          둘러보기 모드는 읽기 전용입니다
         </p>
       </div>
     </>

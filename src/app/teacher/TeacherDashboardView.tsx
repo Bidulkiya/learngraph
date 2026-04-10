@@ -156,7 +156,7 @@ export function TeacherDashboardView({
           subtitle="고유 학생 수"
         />
         <ProgressCard
-          label="평균 언락률"
+          label="평균 잠금해제율"
           value={`${dashboardData?.avgUnlockRate ?? 0}%`}
           icon="Zap"
           iconColor="#7C5CFC"
@@ -197,7 +197,7 @@ export function TeacherDashboardView({
         <div className="lg:col-span-2">
           <NodeUnlockChart
             skillTreeId={effectiveSkillTreeId}
-            title="노드별 언락율"
+            title="노드별 잠금해제율"
           />
         </div>
         <RiskAlert students={dashboardData?.riskStudents ?? []} />

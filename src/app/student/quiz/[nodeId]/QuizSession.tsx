@@ -107,9 +107,9 @@ export function QuizSession({ nodeId, nodeTitle, nodeDescription, nodeDifficulty
       if (finalPercent >= 70) {
         const unlockRes = await completeNode(nodeId, finalPercent)
         if (unlockRes.error) {
-          toast.error('노드 언락 실패: ' + unlockRes.error)
+          toast.error('노드 잠금해제 실패: ' + unlockRes.error)
         } else {
-          toast.success('🎉 노드 언락!')
+          toast.success('🎉 노드 잠금해제!')
           // 새로 획득한 업적을 순차 토스트로 알림 (골드/보라 이펙트)
           const newAch = unlockRes.data?.newAchievements ?? []
           newAch.forEach((ach, idx) => {
@@ -264,7 +264,7 @@ export function QuizSession({ nodeId, nodeTitle, nodeDescription, nodeDifficulty
               )}
             </div>
             <CardTitle className={`text-2xl ${passed ? 'text-[#10B981]' : 'text-gray-600'}`}>
-              {passed ? '🎉 노드 언락!' : '아쉬워요!'}
+              {passed ? '🎉 노드 잠금해제!' : '아쉬워요!'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
@@ -292,7 +292,7 @@ export function QuizSession({ nodeId, nodeTitle, nodeDescription, nodeDifficulty
                   <span>+{nodeDifficulty * 20} XP 획득!</span>
                 </div>
                 <p className="text-sm font-medium text-[#10B981]">
-                  축하합니다! 노드가 언락되었습니다 🎊
+                  축하합니다! 노드가 잠금해제되었습니다 🎊
                 </p>
                 <Link href={`/student/skill-tree/${skillTreeId}`}>
                   <Button className="w-full bg-[#10B981] hover:bg-[#10B981]/90">

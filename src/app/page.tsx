@@ -119,15 +119,16 @@ export default function LandingPage() {
 
           {/* 메인 카피 */}
           <h2 className="mx-auto mb-5 max-w-4xl text-3xl font-bold leading-tight text-gray-900 dark:text-white sm:text-5xl">
-            노드가 <span className="bg-gradient-to-r from-[#6366F1] to-[#A855F7] bg-clip-text text-transparent">피다</span>,
+            AI가 수업을{' '}
+            <span className="bg-gradient-to-r from-[#6366F1] to-[#A855F7] bg-clip-text text-transparent">설계</span>하고,
             <br />
-            지식이 <span className="bg-gradient-to-r from-[#10B981] to-[#34D399] bg-clip-text text-transparent">자라다</span>.
+            학생이 게임처럼{' '}
+            <span className="bg-gradient-to-r from-[#10B981] to-[#34D399] bg-clip-text text-transparent">성장</span>합니다.
           </h2>
-          <p className="mx-auto mb-10 max-w-2xl text-base text-gray-600 dark:text-gray-400 sm:text-lg">
-            수업 자료 한 장을 올리면 AI가 커리큘럼을 설계하고,
-            학생이 퀴즈를 풀어 노드를 하나씩 언락하면 꽃이 피듯 지식이 확장됩니다.
+          <p className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-gray-600 dark:text-gray-400 sm:text-lg">
+            수업 자료 하나로 스킬트리 · 퀴즈 · 학습 문서가 자동 생성됩니다.
             <br className="hidden sm:block" />
-            교사 · 학생 · 학부모 · 운영자 네 주체가 하나의 여정에서 연결됩니다.
+            교사 · 학생 · 학부모 · 운영자, 네 주체가 하나로 연결됩니다.
           </p>
 
           {/* CTA 버튼 2개 — 눈에 띄게 큼 */}
@@ -144,7 +145,7 @@ export default function LandingPage() {
                 ) : (
                   <GraduationCap className="h-5 w-5" />
                 )}
-                교사로 체험하기
+                교사로 둘러보기
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </span>
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
@@ -161,14 +162,14 @@ export default function LandingPage() {
                 ) : (
                   <BookOpen className="h-5 w-5" />
                 )}
-                학생으로 체험하기
+                학생으로 둘러보기
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </span>
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
             </button>
           </div>
           <p className="mb-8 text-xs text-gray-500">
-            회원가입 없이 즉시 체험 · 인터랙티브 가이드가 주요 기능을 안내해드려요
+            회원가입 없이 즉시 둘러보기 · 인터랙티브 가이드가 주요 기능을 안내해드려요
           </p>
 
           {/* 로그인 / 회원가입 */}
@@ -217,7 +218,7 @@ export default function LandingPage() {
               icon={<BookOpen className="h-7 w-7" />}
               title="학생"
               color="#4F6BF6"
-              headline="게임처럼 노드를 언락"
+              headline="게임처럼 노드를 잠금해제"
               description="내 학습 스타일에 맞게 적응하는 AI 튜터, 매일 쌓이는 경험치, 스트릭과 배지. 배우는 것이 즐거워지는 학습 경험."
             />
             <ValueCard
@@ -428,14 +429,12 @@ export default function LandingPage() {
               지금 바로 시작하세요
             </div>
             <h2 className="mb-5 text-3xl font-bold sm:text-5xl">
-              첫 3분 만에
-              <br />
-              AI 교육 플랫폼을 경험하세요
+              3분이면 충분합니다
             </h2>
-            <p className="mb-10 text-base text-white/90 sm:text-lg">
-              데모 계정으로 회원가입 없이 즉시 체험하거나
-              <br />
-              무료 계정을 만들어 나만의 스킬트리를 생성하세요
+            <p className="mb-10 text-base leading-relaxed text-white/90 sm:text-lg">
+              둘러보기로 주요 기능을 직접 확인하거나,
+              <br className="hidden sm:block" />
+              무료 계정을 만들어 나만의 스킬트리를 시작하세요.
             </p>
 
             <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-3 sm:flex-row">
@@ -451,7 +450,7 @@ export default function LandingPage() {
                   ) : (
                     <GraduationCap className="h-5 w-5" />
                   )}
-                  교사로 체험하기
+                  교사로 둘러보기
                 </span>
               </button>
               <button
@@ -466,7 +465,7 @@ export default function LandingPage() {
                   ) : (
                     <BookOpen className="h-5 w-5" />
                   )}
-                  학생으로 체험하기
+                  학생으로 둘러보기
                 </span>
               </button>
             </div>

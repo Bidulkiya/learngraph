@@ -109,7 +109,7 @@ export async function generateWeeklyBriefing(
 
     // 데모는 미리 생성된 캐시만 사용 — 새 브리핑 생성 차단 (AI 비용)
     if (isDemoAccount(user.email)) {
-      return { error: '체험 모드에서는 이 기능을 사용할 수 없습니다. 회원가입 후 이용해주세요!' }
+      return { error: '둘러보기 모드에서는 이 기능을 사용할 수 없습니다. 회원가입 후 이용해주세요!' }
     }
 
     // 2. 지난 7일 데이터 집계

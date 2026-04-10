@@ -20,7 +20,7 @@ const MISSION_TEMPLATES: Array<{
   target: number
   xp_reward: number
 }> = [
-  { type: 'unlock_node', title: '노드 1개 언락하기', target: 1, xp_reward: 30 },
+  { type: 'unlock_node', title: '노드 1개 잠금해제하기', target: 1, xp_reward: 30 },
   { type: 'complete_quiz', title: '퀴즈 3개 풀기', target: 3, xp_reward: 25 },
   { type: 'ask_tutor', title: 'AI 튜터에게 1번 질문하기', target: 1, xp_reward: 20 },
   { type: 'review_node', title: '복습 노드 1개 다시 풀기', target: 1, xp_reward: 25 },

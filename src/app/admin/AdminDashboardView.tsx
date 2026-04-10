@@ -141,7 +141,7 @@ export function AdminDashboardView({
       {filter.skillTreeId && (
         <NodeUnlockChart
           skillTreeId={filter.skillTreeId}
-          title="노드별 언락율"
+          title="노드별 잠금해제율"
         />
       )}
 
