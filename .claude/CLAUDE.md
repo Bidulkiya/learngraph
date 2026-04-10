@@ -2,18 +2,20 @@
 
 ## 프로젝트 개요
 교사가 수업 자료를 업로드하면 AI가 자동으로 스킬트리(Skill Tree)를 생성하고,
-학생이 퀴즈를 풀어 노드를 언락하며 학습하는 차세대 교육 플랫폼.
-슬로건: **"노드가 피다, 지식이 자라다"** — 노드를 하나씩 언락하면 꽃이 피듯 지식이 확장된다.
+학생이 퀴즈를 풀어 노드를 잠금해제하며 학습하는 차세대 교육 플랫폼.
+슬로건: **"노드가 피다, 지식이 자라다"** — 노드를 하나씩 잠금해제하면 꽃이 피듯 지식이 확장된다.
 
 - **공모전**: KEG 바이브 코딩 대회 2026 — AI활용 차세대 교육 솔루션
 - **핵심 가치**: 교사 · 학생 · 학부모 · 운영자 **4자 연동**
 - **브랜드 컬러**: `#6366F1` (인디고) · `#A855F7` (연보라) · `#10B981` (초록)
 
 ## 프로젝트 현황
-- **라우트**: 32개 (Server/Client 혼합)
-- **Server Action**: 32개 파일 / **112개 함수**
-- **DB 테이블**: 38개 (마이그레이션 001~015)
-- **AI 기능**: 13종 통합
+- **라우트**: 39개 (Static 8 + Dynamic 31)
+- **Server Action**: 35개 파일 / **141개 함수**
+- **DB 테이블**: 40개 (마이그레이션 001~020)
+- **AI 기능**: 16종 통합
+- **컴포넌트**: 68개
+- **소스 파일**: 190개 (.ts/.tsx)
 - **역할 시스템**: 4자 (teacher / student / parent / admin)
 
 ## 기술 스택 (절대 변경 금지)
@@ -40,16 +42,18 @@ nodebloom/
 │   ├── PLANNING.md            # 프로젝트 기획서
 │   └── planning/              # 제출용 PDF
 ├── src/
-│   ├── app/                        # Next.js 16 App Router (32 routes)
-│   │   ├── (auth)/                 # login, signup, verify, callback
-│   │   ├── teacher/                # 11 routes — dashboard, skill-tree, classes, quizzes, recording, report, messages, join
-│   │   ├── student/                # 10 routes — dashboard, skill-tree, quiz, tutor, wrong-answers, groups, messages, onboarding, join
+│   ├── app/                        # Next.js 16 App Router (39 routes)
+│   │   ├── (auth)/                 # login, signup, verify, callback, forgot-password, reset-password, terms, privacy
+│   │   ├── teacher/                # 12 routes — dashboard, skill-tree, classes, quizzes, recording, report, messages, join, profile
+│   │   ├── student/                # 13 routes — dashboard, skill-tree, quiz, tutor, wrong-answers, groups, messages, onboarding, join, achievements, profile
 │   │   ├── admin/                  # 6 routes — dashboard, schools, announcements, messages
 │   │   ├── parent/                 # 2 routes — dashboard, link
+│   │   ├── not-found.tsx           # 404 페이지
+│   │   ├── error.tsx               # 에러 바운더리
 │   │   ├── layout.tsx              # 루트 레이아웃 (metadata)
 │   │   ├── page.tsx                # 랜딩 페이지
 │   │   └── icon.svg                # 파비콘 (NodeBloom SVG 로고)
-│   ├── actions/                    # 32개 Server Action 파일, 112개 함수
+│   ├── actions/                    # 35개 Server Action 파일, 141개 함수
 │   │   ├── skill-tree.ts           # 스킬트리 생성/수정 (AI)
 │   │   ├── quiz.ts                 # 퀴즈 생성/채점/힌트 (AI)
 │   │   ├── tutor.ts                # 소크라틱 AI 튜터 (RAG)
@@ -60,7 +64,7 @@ nodebloom/
 │   │   ├── cross-curriculum.ts     # 크로스커리큘럼 지식 맵 (AI)
 │   │   ├── learning-doc.ts         # HTML 학습지 자동 생성 (AI)
 │   │   ├── weakness.ts             # 약점 진단 + 오답 분석 (AI)
-│   │   ├── simulation.ts           # 사전 시뮬레이션 (AI)
+│   │   ├── simulation.ts           # 사전 시뮬레이션 + AI 재생성 (AI)
 │   │   ├── briefing.ts             # 주간 AI 브리핑
 │   │   ├── report.ts               # 학부모 리포트 (AI)
 │   │   ├── certificate.ts          # 수료 인증서 자동 발급
@@ -77,9 +81,12 @@ nodebloom/
 │   │   ├── memo.ts                 # 노드 메모
 │   │   ├── study-time.ts           # 학습 시간 타이머
 │   │   ├── dashboard.ts            # 대시보드 집계
+│   │   ├── dashboard-filters.ts    # 대시보드 컨텍스트 선택 + 노드별 잠금해제율
 │   │   ├── analysis.ts             # 학생 그룹/병목 분석 (AI)
 │   │   ├── recommendations.ts      # 개념 추천 (AI)
-│   │   ├── learning-style.ts       # 학습 스타일 진단
+│   │   ├── ranking.ts              # XP/스트릭/진도 랭킹
+│   │   ├── profile.ts              # 프로필/닉네임/아바타/계정 삭제
+│   │   ├── learning-style.ts       # 학습 스타일 진단/재진단
 │   │   ├── voice.ts                # 음성 입력 (Whisper)
 │   │   └── demo-setup.ts           # 데모 환경 idempotent 구축
 │   ├── components/
@@ -92,7 +99,8 @@ nodebloom/
 │   │   ├── student/                # WeeklyPlanCard, StudyTimer, MyCertificatesCard
 │   │   ├── feed/                   # ActivityFeed
 │   │   ├── shared/                 # AnnouncementBanner
-│   │   └── layout/                 # Sidebar, Header, DemoBanner, MessageNotifier, RoleGuard
+│   │   ├── shared/                 # AnnouncementBanner, MessengerView, EmptyState, AccountSettings
+│   │   └── layout/                 # Sidebar, Header, DemoBanner, DemoTutorial, DemoJoyrideGuide, DashboardShell, MessageNotifier, RoleGuard
 │   ├── lib/
 │   │   ├── supabase/
 │   │   │   ├── client.ts           # 브라우저 클라이언트
@@ -210,18 +218,20 @@ const { data } = await admin.from('profiles').select('*').eq('id', user.id).sing
 3. 학생 → 클래스 코드로 수강신청 → 교사 승인 → 학습 시작
 4. 학부모 → 자녀의 6자리 초대 코드로 자동 연결
 
-### AI 통합 13종
+### AI 통합 16종
 1. 스킬트리 자동 생성 · 2. AI 퀴즈 + 서술형 채점 · 3. 소크라틱 AI 튜터 (RAG)
 4. 수업 녹음 → 전사 → 요약 · 5. 주간 학습 플랜 · 6. 학습 감정 분석
 7. 이탈 조기 경보 · 8. 적응형 복습 엔진 · 9. 크로스커리큘럼 지식 맵
 10. HTML 학습지 자동 생성 · 11. 약점 진단 + 오답 분석
-12. 학부모 리포트 + 인증서 · 13. 사전 시뮬레이션
+12. 학부모 리포트 + 인증서 · 13. 사전 시뮬레이션 + AI 재생성
+14. 학생 그룹 분석 · 15. 플래시카드 자동 생성 · 16. 개념 연결 추천
 
-### 데모 모드 (읽기 전용)
+### 둘러보기 모드 (읽기 전용)
 - **판별**: `isDemoAccount(email)` — `demo_teacher@learngraph.app` 또는 `demo_student@learngraph.app`
 - **가드**: 모든 쓰기 Server Action 상단에서 `assertNotDemo(user.email)` 호출
 - **시드**: `setupDemoData()` — idempotent (fast-path로 이미 구축된 경우 즉시 return)
-- **UI**: `DemoBanner` 컴포넌트 4개 레이아웃 상단 표시
+- **UI**: `DemoBanner` 컴포넌트 4개 레이아웃 상단 표시 + `DemoTutorial` 카드 + `DemoJoyrideGuide` 인터랙티브 가이드
+- **계정명**: 데모 학생(`데모 학생`) / 데모 교사(`데모 선생님`)
 
 ---
 
@@ -247,6 +257,6 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ## 주의사항
 - **API Key 노출 금지** — `.env.local` 파일은 절대 커밋하지 않음
-- **데모 데이터** — 실제 학생 정보 사용 금지, 모두 가상 데이터 (`김지수` / `박지훈`)
+- **데모 데이터** — 실제 학생 정보 사용 금지, 데모 계정은 `데모`/`데모 학생`/`데모 선생님` (이메일: `demo_student@learngraph.app`, `demo_teacher@learngraph.app`)
 - **비용 관리** — Claude Sonnet 4.6 사용, 캐싱 우선 (weekly_plans, emotion_reports, weekly_briefings 등 DB에 캐시 후 재조회)
 - **브랜드**: LearnGraph 언급 발견 시 전부 NodeBloom으로 교체. 예외: `demo.ts`의 이메일 도메인(`@learngraph.app`), `demo-setup.ts`의 `LEGACY_DEMO_SCHOOL_NAME` 상수(migration 참조용)는 의도적 유지
