@@ -26,19 +26,21 @@ import {
   checkNicknameAvailable,
 } from '@/actions/profile'
 import type { Profile } from '@/types/user'
+import { AccountSettings } from '@/components/shared/AccountSettings'
 import { toast } from 'sonner'
 
 interface Props {
   initial: Profile
   classes: Array<{ id: string; name: string }>
   schools: Array<{ id: string; name: string }>
+  isDemo?: boolean
 }
 
 const SUBJECTS = ['수학', '과학', '국어', '영어', '사회', '역사', '예술', '체육', '기타']
 
 type NicknameCheckStatus = 'idle' | 'checking' | 'available' | 'unavailable'
 
-export function TeacherProfileForm({ initial, classes, schools }: Props) {
+export function TeacherProfileForm({ initial, classes, schools, isDemo = false }: Props) {
   // 기본 정보 상태
   const [subject, setSubject] = useState<string>(initial.subject ?? '')
   const [bio, setBio] = useState<string>(initial.bio ?? '')
@@ -483,6 +485,9 @@ export function TeacherProfileForm({ initial, classes, schools }: Props) {
           </Button>
         </CardContent>
       </Card>
+
+      {/* 비밀번호 변경 + 계정 삭제 */}
+      <AccountSettings isDemo={isDemo} />
     </div>
   )
 }

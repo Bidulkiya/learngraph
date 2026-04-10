@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { getProfile } from '@/actions/profile'
 import { getMyClasses, getMySchoolMemberships } from '@/actions/school'
+import { isDemoAccount } from '@/lib/demo'
 import { TeacherProfileForm } from './TeacherProfileForm'
 
 export default async function TeacherProfilePage() {
@@ -27,6 +28,7 @@ export default async function TeacherProfilePage() {
       initial={profileRes.data}
       classes={classes}
       schools={schools}
+      isDemo={isDemoAccount(current.email)}
     />
   )
 }

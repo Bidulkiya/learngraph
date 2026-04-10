@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { LogOut, Menu, Moon, Sun, User } from "lucide-react"
+import { LogOut, Menu, Monitor, Moon, Sun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -55,10 +55,11 @@ export function Header({
   onMenuClick,
 }: HeaderProps) {
   const router = useRouter()
-  // 초기값을 렌더 시점이 아니라 lazy initializer로 — useEffect 카스케이드 제거
-  const [dark, setDark] = useState<boolean>(() => {
-    if (typeof document === 'undefined') return false
-    return document.documentElement.classList.contains("dark")
+  // 다크모드 3상태 순환: system → light → dark → system
+  type ThemeMode = 'system' | 'light' | 'dark'
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof localStorage === 'undefined') return 'system'
+    return (localStorage.getItem('nodebloom-theme') as ThemeMode) ?? 'system'
   })
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -66,11 +67,33 @@ export function Header({
   const displayName = nickname || userName
   const initial = (displayName?.[0] ?? '?').toUpperCase()
 
-  function toggleDarkMode(): void {
-    const next = !dark
-    setDark(next)
-    document.documentElement.classList.toggle("dark", next)
+  function applyTheme(mode: ThemeMode): void {
+    if (typeof document === 'undefined') return
+    if (mode === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else if (mode === 'light') {
+      document.documentElement.classList.remove('dark')
+    } else {
+      // system
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      document.documentElement.classList.toggle('dark', prefersDark)
+    }
   }
+
+  function cycleTheme(): void {
+    const order: ThemeMode[] = ['system', 'light', 'dark']
+    const currentIdx = order.indexOf(themeMode)
+    const next = order[(currentIdx + 1) % order.length]
+    setThemeMode(next)
+    localStorage.setItem('nodebloom-theme', next)
+    applyTheme(next)
+  }
+
+  const themeIcon = themeMode === 'dark'
+    ? <Moon className="h-4 w-4" />
+    : themeMode === 'light'
+    ? <Sun className="h-4 w-4" />
+    : <Monitor className="h-4 w-4" />
 
   async function handleLogout(): Promise<void> {
     setLoggingOut(true)
@@ -116,15 +139,16 @@ export function Header({
         {/* Study timer (학생 only) */}
         {role === 'student' && <StudyTimer />}
 
-        {/* Dark mode toggle */}
+        {/* 다크모드 3상태 순환: 시스템 → 라이트 → 다크 */}
         <Button
           variant="ghost"
           size="icon"
-          onClick={toggleDarkMode}
+          onClick={cycleTheme}
           className="h-9 w-9"
-          aria-label={dark ? "라이트 모드" : "다크 모드"}
+          title={`현재: ${themeMode === 'system' ? '시스템' : themeMode === 'light' ? '라이트' : '다크'}`}
+          aria-label={`테마: ${themeMode}`}
         >
-          {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {themeIcon}
         </Button>
 
         {/* User menu */}

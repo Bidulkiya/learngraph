@@ -60,6 +60,9 @@ export default function SignupPage() {
   const [emailMessage, setEmailMessage] = useState("")
   const emailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // 약관 동의
+  const [termsAgreed, setTermsAgreed] = useState(false)
+
   // 완료 화면
   const [completed, setCompleted] = useState<{ nickname: string; avatarUrl: string; role: Role } | null>(null)
 
@@ -465,11 +468,32 @@ export default function SignupPage() {
               <p className="text-sm text-red-500">{error}</p>
             )}
 
+            {/* 약관 동의 */}
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsAgreed}
+                onChange={(e) => setTermsAgreed(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-[#4F6BF6] focus:ring-[#4F6BF6]"
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                가입 시{' '}
+                <Link href="/terms" target="_blank" className="text-[#4F6BF6] underline hover:text-[#4F6BF6]/80">
+                  이용약관
+                </Link>
+                {' '}및{' '}
+                <Link href="/privacy" target="_blank" className="text-[#4F6BF6] underline hover:text-[#4F6BF6]/80">
+                  개인정보처리방침
+                </Link>
+                에 동의합니다.
+              </span>
+            </label>
+
             {/* Submit */}
             <Button
               type="submit"
               className="w-full bg-[#4F6BF6] hover:bg-[#4F6BF6]/90"
-              disabled={loading || nicknameStatus !== 'available' || emailStatus === 'unavailable'}
+              disabled={loading || nicknameStatus !== 'available' || emailStatus === 'unavailable' || !termsAgreed}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               가입하기

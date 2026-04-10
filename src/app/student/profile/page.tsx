@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { getProfile } from '@/actions/profile'
+import { isDemoAccount } from '@/lib/demo'
 import { StudentProfileForm } from './StudentProfileForm'
 
 export default async function StudentProfilePage() {
@@ -11,5 +12,10 @@ export default async function StudentProfilePage() {
   const res = await getProfile()
   if (!res.data) redirect('/student')
 
-  return <StudentProfileForm initial={res.data} />
+  return (
+    <StudentProfileForm
+      initial={res.data}
+      isDemo={isDemoAccount(current.email)}
+    />
+  )
 }

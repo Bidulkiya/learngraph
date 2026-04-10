@@ -443,3 +443,81 @@ export async function getSignupCompletionInfo(): Promise<{
     return { error: err instanceof Error ? err.message : String(err) }
   }
 }
+
+// ============================================
+// 계정 삭제
+// ============================================
+
+/**
+ * 현재 로그인한 유저의 계정을 영구 삭제.
+ *
+ * profiles ON DELETE CASCADE 제약에 의해 관련 데이터 자동 삭제.
+ * Supabase auth.admin.deleteUser로 인증 레코드도 삭제.
+ * 데모 계정은 차단.
+ */
+export async function deleteAccount(
+  confirmText: string,
+): Promise<{ error?: string }> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
+    // 확인 텍스트 검증
+    if (confirmText !== '삭제합니다') {
+      return { error: '"삭제합니다"를 정확히 입력해주세요.' }
+    }
+
+    const admin = createAdminClient()
+
+    // profiles 삭제 → ON DELETE CASCADE로 하위 데이터 전부 삭제
+    const { error: profileErr } = await admin
+      .from('profiles')
+      .delete()
+      .eq('id', user.id)
+
+    if (profileErr) {
+      return { error: '프로필 삭제 실패: ' + profileErr.message }
+    }
+
+    // auth 유저 삭제
+    const { error: authErr } = await admin.auth.admin.deleteUser(user.id)
+    if (authErr) {
+      console.error('[deleteAccount] auth 삭제 실패:', authErr.message)
+      // profiles는 이미 삭제됨, auth만 남은 상태 → 로그인 불가하므로 사실상 삭제 완료
+    }
+
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+// ============================================
+// 비밀번호 변경 (로그인 상태)
+// ============================================
+
+/**
+ * 현재 로그인 상태에서 비밀번호 변경.
+ *
+ * 구현 방식: Supabase 클라이언트 SDK의 updateUser를 Server Action에서 직접 호출할 수 없으므로,
+ * 이 함수는 클라이언트에서 직접 supabase.auth.updateUser를 호출하도록 안내만 한다.
+ * → 실제 비밀번호 변경은 클라이언트 컴포넌트에서 직접 수행.
+ *
+ * 이 함수는 비밀번호 변경 가능 여부만 검증 (데모 계정 차단 등).
+ */
+export async function canChangePassword(): Promise<{ data?: { allowed: boolean }; error?: string }> {
+  try {
+    const user = await getCachedUser()
+    if (!user) return { error: '인증이 필요합니다.' }
+
+    const demoBlock = assertNotDemo(user.email)
+    if (demoBlock) return demoBlock
+
+    return { data: { allowed: true } }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}

@@ -28,10 +28,12 @@ import {
   checkNicknameAvailable,
 } from '@/actions/profile'
 import type { Profile } from '@/types/user'
+import { AccountSettings } from '@/components/shared/AccountSettings'
 import { toast } from 'sonner'
 
 interface Props {
   initial: Profile
+  isDemo?: boolean
 }
 
 const GRADES = [
@@ -45,7 +47,7 @@ const INTEREST_TAGS = ['과학', '수학', '국어', '영어', '사회', '역사
 
 type NicknameCheckStatus = 'idle' | 'checking' | 'available' | 'unavailable'
 
-export function StudentProfileForm({ initial }: Props) {
+export function StudentProfileForm({ initial, isDemo = false }: Props) {
   // 기본 정보 상태
   const [grade, setGrade] = useState<string>(initial.grade ?? '')
   const [bio, setBio] = useState<string>(initial.bio ?? '')
@@ -534,6 +536,9 @@ export function StudentProfileForm({ initial }: Props) {
           </Button>
         </CardContent>
       </Card>
+
+      {/* 비밀번호 변경 + 계정 삭제 */}
+      <AccountSettings isDemo={isDemo} />
     </div>
   )
 }

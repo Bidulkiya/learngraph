@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   BookOpen, GraduationCap, Heart, Sparkles, TreePine, Bot, Mic, ClipboardCheck,
   Target, Award, Brain, FileText, Network, FlaskConical,
@@ -496,7 +497,13 @@ export default function LandingPage() {
               <span className="text-sm text-gray-500">© 2026</span>
             </div>
 
-            <div className="flex items-center gap-4 text-xs text-gray-500">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 sm:gap-4">
+              <Link href="/terms" className="transition-colors hover:text-[#6366F1]">
+                이용약관
+              </Link>
+              <Link href="/privacy" className="transition-colors hover:text-[#6366F1]">
+                개인정보처리방침
+              </Link>
               <span className="flex items-center gap-1">
                 <Sparkles className="h-3 w-3 text-[#A855F7]" />
                 Powered by Claude AI
