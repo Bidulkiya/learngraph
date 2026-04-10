@@ -45,6 +45,40 @@ function validateNicknameFormat(nickname: string): string | null {
 }
 
 /**
+ * 이메일 중복 가능 여부 체크.
+ * 회원가입 시 실시간 중복 확인에서 호출.
+ * 보안: 인증 없이 호출 가능 (회원가입 전이므로).
+ */
+export async function checkEmailAvailable(
+  email: string,
+): Promise<{ data?: { available: boolean; reason?: string }; error?: string }> {
+  try {
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) return { data: { available: false, reason: '이메일을 입력해주세요.' } }
+
+    // 기본 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(trimmed)) {
+      return { data: { available: false, reason: '올바른 이메일 형식이 아닙니다.' } }
+    }
+
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('email', trimmed)
+      .maybeSingle()
+
+    if (data) {
+      return { data: { available: false, reason: '같은 이메일로 가입된 계정이 있습니다.' } }
+    }
+    return { data: { available: true } }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
  * 닉네임 중복 가능 여부 체크.
  * 회원가입 시 중복 확인 버튼에서 호출.
  */

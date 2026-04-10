@@ -185,12 +185,15 @@ function LoginForm() {
           로그인
         </Button>
 
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          계정이 없으신가요?{" "}
+        <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
           <Link href="/signup" className="font-medium text-[#4F6BF6] hover:underline">
             회원가입
           </Link>
-        </p>
+          <span className="text-gray-300 dark:text-gray-700">·</span>
+          <Link href="/forgot-password" className="font-medium text-gray-500 hover:text-[#4F6BF6] hover:underline dark:text-gray-400">
+            비밀번호 찾기
+          </Link>
+        </div>
       </form>
 
       {/* 데모 체험 영역 */}

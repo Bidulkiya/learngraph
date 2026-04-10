@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -29,7 +29,7 @@ import { Label } from "@/components/ui/label"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { LogoSymbol } from "@/components/Logo"
 import { dicebearUrl } from "@/lib/dicebear"
-import { checkNicknameAvailable, initializeProfileAfterSignup } from "@/actions/profile"
+import { checkNicknameAvailable, checkEmailAvailable, initializeProfileAfterSignup } from "@/actions/profile"
 import type { Role } from "@/types/user"
 
 const roles: Array<{ value: Role; label: string; icon: React.ElementType; color: string; desc: string }> = [
@@ -40,6 +40,7 @@ const roles: Array<{ value: Role; label: string; icon: React.ElementType; color:
 ]
 
 type NicknameStatus = 'idle' | 'checking' | 'available' | 'unavailable'
+type EmailStatus = 'idle' | 'checking' | 'available' | 'unavailable'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -54,8 +55,72 @@ export default function SignupPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
+  // 이메일 중복 체크
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle')
+  const [emailMessage, setEmailMessage] = useState("")
+  const emailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // 완료 화면
   const [completed, setCompleted] = useState<{ nickname: string; avatarUrl: string; role: Role } | null>(null)
+
+  // 이메일 debounce 체크 (500ms) — 입력할 때마다
+  const handleEmailChange = useCallback((value: string): void => {
+    setEmail(value)
+    setEmailStatus('idle')
+    setEmailMessage('')
+
+    if (emailDebounceRef.current) clearTimeout(emailDebounceRef.current)
+
+    // 최소 이메일 형식 검증 후 서버 체크
+    const trimmed = value.trim()
+    if (!trimmed) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return
+
+    emailDebounceRef.current = setTimeout(async () => {
+      setEmailStatus('checking')
+      const res = await checkEmailAvailable(trimmed)
+      if (res.error) {
+        setEmailStatus('unavailable')
+        setEmailMessage(res.error)
+        return
+      }
+      if (res.data?.available) {
+        setEmailStatus('available')
+        setEmailMessage('사용 가능한 이메일입니다')
+      } else {
+        setEmailStatus('unavailable')
+        setEmailMessage(res.data?.reason ?? '같은 이메일로 가입된 계정이 있습니다.')
+      }
+    }, 500)
+  }, [])
+
+  // blur 시에도 체크 (타이핑 중 debounce를 놓친 경우)
+  const handleEmailBlur = async (): Promise<void> => {
+    if (emailDebounceRef.current) clearTimeout(emailDebounceRef.current)
+    const trimmed = email.trim()
+    if (!trimmed) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailStatus('unavailable')
+      setEmailMessage('올바른 이메일 형식이 아닙니다.')
+      return
+    }
+    if (emailStatus === 'available' || emailStatus === 'checking') return
+
+    setEmailStatus('checking')
+    const res = await checkEmailAvailable(trimmed)
+    if (res.error) {
+      setEmailStatus('unavailable')
+      setEmailMessage(res.error)
+      return
+    }
+    if (res.data?.available) {
+      setEmailStatus('available')
+      setEmailMessage('사용 가능한 이메일입니다')
+    } else {
+      setEmailStatus('unavailable')
+      setEmailMessage(res.data?.reason ?? '같은 이메일로 가입된 계정이 있습니다.')
+    }
+  }
 
   const handleNicknameChange = (value: string): void => {
     setNickname(value)
@@ -96,6 +161,11 @@ export default function SignupPage() {
     try {
       if (!name.trim()) {
         setError("이름을 입력해주세요.")
+        setLoading(false)
+        return
+      }
+      if (emailStatus === 'unavailable') {
+        setError("이메일 중복을 확인해주세요.")
         setLoading(false)
         return
       }
@@ -246,17 +316,48 @@ export default function SignupPage() {
               />
             </div>
 
-            {/* Email */}
+            {/* Email — 실시간 중복 체크 */}
             <div className="space-y-2">
               <Label htmlFor="email">이메일</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="example@school.ac.kr"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="example@school.ac.kr"
+                  value={email}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  onBlur={handleEmailBlur}
+                  required
+                  className={
+                    emailStatus === 'available'
+                      ? 'border-green-500 focus-visible:ring-green-500 pr-8'
+                      : emailStatus === 'unavailable'
+                      ? 'border-red-500 focus-visible:ring-red-500 pr-8'
+                      : ''
+                  }
+                />
+                {emailStatus === 'checking' && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                )}
+                {emailStatus === 'available' && (
+                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                )}
+                {emailStatus === 'unavailable' && (
+                  <X className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+                )}
+              </div>
+              {emailStatus === 'available' && (
+                <p className="flex items-center gap-1 text-xs text-green-600">
+                  <Check className="h-3 w-3" />
+                  {emailMessage}
+                </p>
+              )}
+              {emailStatus === 'unavailable' && (
+                <p className="flex items-center gap-1 text-xs text-red-600">
+                  <X className="h-3 w-3" />
+                  {emailMessage}
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -368,7 +469,7 @@ export default function SignupPage() {
             <Button
               type="submit"
               className="w-full bg-[#4F6BF6] hover:bg-[#4F6BF6]/90"
-              disabled={loading || nicknameStatus !== 'available'}
+              disabled={loading || nicknameStatus !== 'available' || emailStatus === 'unavailable'}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               가입하기
