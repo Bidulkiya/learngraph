@@ -48,7 +48,7 @@ export async function getTodayMissions(): Promise<{
 
     const { data: existing } = await admin
       .from('daily_missions')
-      .select('*')
+      .select('id, student_id, mission_type, title, target, progress, completed, xp_reward, mission_date')
       .eq('student_id', user.id)
       .eq('mission_date', today)
       .order('created_at')
@@ -99,7 +99,7 @@ export async function updateMissionProgress(
 
     const { data: mission } = await admin
       .from('daily_missions')
-      .select('*')
+      .select('id, student_id, mission_type, title, target, progress, completed, xp_reward, mission_date')
       .eq('student_id', user.id)
       .eq('mission_type', missionType)
       .eq('mission_date', today)

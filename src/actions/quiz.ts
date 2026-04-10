@@ -25,7 +25,7 @@ export async function generateQuizForNode(
     // Check if quizzes already exist
     const { data: existing } = await admin
       .from('quizzes')
-      .select('*')
+      .select('id, node_id, question, question_type, options, correct_answer, explanation, difficulty, created_at')
       .eq('node_id', nodeId)
 
     if (existing && existing.length > 0) {
@@ -651,7 +651,7 @@ export async function getQuizzesForNode(
     const admin = createAdminClient()
     const { data, error } = await admin
       .from('quizzes')
-      .select('*')
+      .select('id, node_id, question, question_type, options, correct_answer, explanation, difficulty, created_at')
       .eq('node_id', nodeId)
       .order('created_at')
     if (error) return { error: error.message }

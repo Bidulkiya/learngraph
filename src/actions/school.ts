@@ -129,7 +129,7 @@ export async function getMySchools(): Promise<{ data?: Array<School & { teacher_
     const admin = createAdminClient()
     const { data: schools } = await admin
       .from('schools')
-      .select('*')
+      .select('id, name, description, teacher_code, student_code, created_by, created_at')
       .eq('created_by', user.id)
       .order('created_at', { ascending: false })
 
@@ -176,7 +176,7 @@ export async function getSchoolDetail(
 
     const { data: school } = await admin
       .from('schools')
-      .select('*')
+      .select('id, name, description, teacher_code, student_code, created_by, created_at')
       .eq('id', schoolId)
       .single()
 
@@ -227,7 +227,7 @@ export async function getSchoolDetail(
     // Classes
     const { data: classes } = await admin
       .from('classes')
-      .select('*')
+      .select('id, school_id, name, description, class_code, teacher_id, max_students, created_at')
       .eq('school_id', schoolId)
 
     // Pending enrollments for classes in this school
@@ -555,7 +555,7 @@ export async function joinWithCode(
       // 해당 스쿨의 클래스 목록 반환
       const { data: classes } = await admin
         .from('classes')
-        .select('*')
+        .select('id, school_id, name, description, class_code, teacher_id, max_students, created_at')
         .eq('school_id', schoolByCode.id)
 
       return {
@@ -830,7 +830,7 @@ export async function getMyClasses(): Promise<{
     if (profile?.role === 'teacher') {
       const { data } = await admin
         .from('classes')
-        .select('*')
+        .select('id, school_id, name, description, class_code, teacher_id, max_students, created_at')
         .eq('teacher_id', user.id)
       classes = (data ?? []) as SchoolClass[]
     } else if (profile?.role === 'student') {
@@ -844,7 +844,7 @@ export async function getMyClasses(): Promise<{
       if (classIds.length > 0) {
         const { data } = await admin
           .from('classes')
-          .select('*')
+          .select('id, school_id, name, description, class_code, teacher_id, max_students, created_at')
           .in('id', classIds)
         classes = (data ?? []) as SchoolClass[]
       }

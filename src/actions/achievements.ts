@@ -464,43 +464,49 @@ export async function checkAndAwardAchievements(): Promise<{
 
     const admin = createAdminClient()
 
-    const { data: allAchievements } = await admin.from('achievements').select('*')
-    const { data: earned } = await admin
-      .from('user_achievements')
-      .select('achievement_id')
-      .eq('user_id', user.id)
+    // 병렬 조회 — 업적 정의 + 획득 내역 + 메트릭 + 현재 XP
+    const [{ data: allAchievements }, { data: earned }, metrics, { data: currentProfile }] =
+      await Promise.all([
+        admin
+          .from('achievements')
+          .select('id, code, title, description, icon, xp_reward, condition_type, condition_value, category, is_hidden'),
+        admin
+          .from('user_achievements')
+          .select('achievement_id')
+          .eq('user_id', user.id),
+        collectMetrics(admin, user.id),
+        admin
+          .from('profiles')
+          .select('xp')
+          .eq('id', user.id)
+          .single(),
+      ])
     const earnedIds = new Set(earned?.map(e => e.achievement_id) ?? [])
 
-    // 대규모 집계 1회
-    const metrics = await collectMetrics(admin, user.id)
-
+    // 미획득 업적 중 달성 조건 충족 여부 판정 (JS 루프, DB 호출 없음)
     const newAchievements: Achievement[] = []
+    let totalXpGain = 0
+    const insertRows: Array<{ user_id: string; achievement_id: string }> = []
+
     for (const ach of allAchievements ?? []) {
       if (earnedIds.has(ach.id)) continue
-
       const metric = getMetricValue(ach.condition_type, metrics)
       if (metric < ach.condition_value) continue
 
-      // 부여
-      await admin.from('user_achievements').insert({
-        user_id: user.id,
-        achievement_id: ach.id,
-      })
-
-      // XP 지급
-      const { data: p } = await admin
-        .from('profiles')
-        .select('xp')
-        .eq('id', user.id)
-        .single()
-      if (p) {
-        await admin
-          .from('profiles')
-          .update({ xp: (p.xp ?? 0) + ach.xp_reward })
-          .eq('id', user.id)
-      }
-
+      insertRows.push({ user_id: user.id, achievement_id: ach.id })
+      totalXpGain += ach.xp_reward
       newAchievements.push(ach as Achievement)
+    }
+
+    // 배치 insert + XP 일괄 지급 (N+1 제거 — 최대 2 쿼리)
+    if (insertRows.length > 0) {
+      await admin.from('user_achievements').insert(insertRows)
+    }
+    if (totalXpGain > 0 && currentProfile) {
+      await admin
+        .from('profiles')
+        .update({ xp: (currentProfile.xp ?? 0) + totalXpGain })
+        .eq('id', user.id)
     }
 
     // 활동 피드 기록 — 새 업적 획득 시
@@ -546,16 +552,17 @@ export async function getMyAchievements(): Promise<{
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
-    const { data: all } = await admin
-      .from('achievements')
-      .select('*')
-      .order('category')
-      .order('xp_reward')
-
-    const { data: earned } = await admin
-      .from('user_achievements')
-      .select('achievement_id, earned_at')
-      .eq('user_id', user.id)
+    const [{ data: all }, { data: earned }] = await Promise.all([
+      admin
+        .from('achievements')
+        .select('id, code, title, description, icon, xp_reward, condition_type, condition_value, category, is_hidden')
+        .order('category')
+        .order('xp_reward'),
+      admin
+        .from('user_achievements')
+        .select('achievement_id, earned_at')
+        .eq('user_id', user.id),
+    ])
 
     const earnedMap = new Map(
       earned?.map(e => [e.achievement_id, e.earned_at]) ?? []

@@ -100,7 +100,7 @@ export async function generateWeeklyBriefing(
     if (!forceRefresh) {
       const { data: cached } = await admin
         .from('weekly_briefings')
-        .select('*')
+        .select('id, class_id, week_start, summary, highlights, concerns, action_items, created_at')
         .eq('class_id', classId)
         .eq('week_start', weekStart)
         .maybeSingle()

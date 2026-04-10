@@ -549,19 +549,20 @@ export async function fetchSkillTreeDetail(treeId: string) {
     if (!user) return { error: '인증이 필요합니다.' }
 
     const admin = createAdminClient()
-    const { data: tree, error: treeErr } = await admin
-      .from('skill_trees')
-      .select('*')
-      .eq('id', treeId)
-      .single()
+    // 트리 + 프로필 병렬 조회
+    const [{ data: tree, error: treeErr }, { data: profile }] = await Promise.all([
+      admin
+        .from('skill_trees')
+        .select('id, title, description, class_id, created_by, subject_hint, status, created_at')
+        .eq('id', treeId)
+        .single(),
+      admin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle(),
+    ])
     if (treeErr || !tree) return { error: treeErr?.message ?? '스킬트리를 찾을 수 없습니다.' }
-
-    // 권한 체크: 교사 소유자거나 class 담당 교사거나 승인된 학생이거나 admin
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
 
     let canAccess = tree.created_by === user.id
     if (!canAccess && tree.class_id) {
@@ -588,16 +589,18 @@ export async function fetchSkillTreeDetail(treeId: string) {
 
     if (!canAccess) return { error: '이 스킬트리에 접근할 권한이 없습니다.' }
 
-    const { data: nodes } = await admin
-      .from('nodes')
-      .select('*')
-      .eq('skill_tree_id', treeId)
-      .order('order_index')
-
-    const { data: edges } = await admin
-      .from('node_edges')
-      .select('*')
-      .eq('skill_tree_id', treeId)
+    // 노드 + 엣지 병렬 조회
+    const [{ data: nodes }, { data: edges }] = await Promise.all([
+      admin
+        .from('nodes')
+        .select('id, title, description, skill_tree_id, difficulty, order_index, position_x, position_y, learning_content')
+        .eq('skill_tree_id', treeId)
+        .order('order_index'),
+      admin
+        .from('node_edges')
+        .select('id, source_node_id, target_node_id, skill_tree_id, label')
+        .eq('skill_tree_id', treeId),
+    ])
 
     return { data: { tree, nodes: nodes ?? [], edges: edges ?? [] } }
   } catch (err) {

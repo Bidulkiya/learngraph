@@ -105,7 +105,7 @@ export async function getAnnouncements(
 
     const { data: announcements } = await admin
       .from('announcements')
-      .select('*')
+      .select('id, school_id, author_id, title, content, target_role, created_at')
       .in('school_id', targetSchoolIds)
       .order('created_at', { ascending: false })
       .limit(30)

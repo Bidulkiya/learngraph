@@ -79,7 +79,7 @@ export async function analyzeStudentEmotion(
     const today = new Date().toISOString().slice(0, 10)
     const { data: cached } = await admin
       .from('emotion_reports')
-      .select('*')
+      .select('id, student_id, skill_tree_id, mood, mood_score, insights, recommendation, node_emotions, report_date, generated_at, created_at')
       .eq('student_id', studentId)
       .eq('skill_tree_id', skillTreeId)
       .eq('report_date', today)
@@ -302,7 +302,7 @@ export async function getMyLatestEmotion(
     const admin = createAdminClient()
     let query = admin
       .from('emotion_reports')
-      .select('*')
+      .select('id, student_id, skill_tree_id, mood, mood_score, insights, recommendation, node_emotions, report_date, generated_at, created_at')
       .eq('student_id', user.id)
       .order('report_date', { ascending: false })
       .limit(1)

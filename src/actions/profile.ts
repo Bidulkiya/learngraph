@@ -88,7 +88,7 @@ export async function getProfile(): Promise<{ data?: Profile; error?: string }> 
     const admin = createAdminClient()
     const { data, error } = await admin
       .from('profiles')
-      .select('*')
+      .select('id, email, name, role, avatar_url, level, xp, streak_days, last_active_at, created_at, learning_style, nickname, nickname_changed_at, avatar_seed, avatar_change_count, grade, bio, interests, subject')
       .eq('id', user.id)
       .maybeSingle()
 

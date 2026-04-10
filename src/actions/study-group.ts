@@ -123,7 +123,7 @@ export async function getMyGroups(): Promise<{ data?: StudyGroup[]; error?: stri
     // 클래스의 모든 그룹
     const { data: groups } = await admin
       .from('study_groups')
-      .select('*')
+      .select('id, class_id, name, created_by, created_at')
       .in('class_id', classIds)
       .order('created_at', { ascending: false })
 

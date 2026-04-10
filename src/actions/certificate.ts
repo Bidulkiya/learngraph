@@ -38,7 +38,7 @@ export async function issueCertificate(
     // 1. 이미 발급됐는지 확인
     const { data: existing } = await admin
       .from('certificates')
-      .select('*')
+      .select('id, student_id, skill_tree_id, tree_title, node_count, avg_score, teacher_name, issued_at')
       .eq('student_id', user.id)
       .eq('skill_tree_id', skillTreeId)
       .maybeSingle()
@@ -124,7 +124,7 @@ export async function getMyCertificates(): Promise<{
     const admin = createAdminClient()
     const { data } = await admin
       .from('certificates')
-      .select('*')
+      .select('id, student_id, skill_tree_id, tree_title, node_count, avg_score, teacher_name, issued_at')
       .eq('student_id', user.id)
       .order('issued_at', { ascending: false })
 
@@ -148,7 +148,7 @@ export async function getCertificate(
     const admin = createAdminClient()
     const { data: cert } = await admin
       .from('certificates')
-      .select('*')
+      .select('id, student_id, skill_tree_id, tree_title, node_count, avg_score, teacher_name, issued_at')
       .eq('id', certificateId)
       .maybeSingle()
     if (!cert) return { error: '인증서를 찾을 수 없습니다.' }

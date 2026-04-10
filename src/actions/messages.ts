@@ -106,7 +106,7 @@ export async function getConversation(
     const admin = createAdminClient()
     const { data: messages } = await admin
       .from('direct_messages')
-      .select('*')
+      .select('id, sender_id, receiver_id, content, read_at, created_at, school_id')
       .or(
         `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
       )
@@ -140,7 +140,7 @@ export async function getConversations(): Promise<{
     // 내가 sender/receiver인 모든 메시지
     const { data: messages } = await admin
       .from('direct_messages')
-      .select('*')
+      .select('id, sender_id, receiver_id, content, read_at, created_at, school_id')
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
 

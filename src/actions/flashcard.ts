@@ -81,7 +81,7 @@ export async function generateFlashcards(
     // 이미 있으면 스킵
     const { data: existing } = await admin
       .from('flashcards')
-      .select('*')
+      .select('id, node_id, card_index, front, back, created_at')
       .eq('node_id', nodeId)
       .order('card_index')
     if (existing && existing.length > 0) return { data: existing as Flashcard[] }
@@ -146,7 +146,7 @@ export async function getFlashcardsForNode(
 
     const { data } = await admin
       .from('flashcards')
-      .select('*')
+      .select('id, node_id, card_index, front, back, created_at')
       .eq('node_id', nodeId)
       .order('card_index')
 
