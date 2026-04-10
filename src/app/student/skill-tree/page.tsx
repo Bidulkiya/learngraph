@@ -1,7 +1,8 @@
 import Link from 'next/link'
-import { TreePine, Clock } from 'lucide-react'
+import { TreePine, Clock, KeyRound } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/components/layout/RoleGuard'
 import { getMyClassesWithSkillTrees } from '@/actions/school'
@@ -71,28 +72,22 @@ export default async function StudentSkillTreeListPage() {
 
       {hasNoClasses || hasNoTrees ? (
         <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
-              <TreePine className="h-8 w-8 text-gray-400" />
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-medium text-gray-900 dark:text-white">
-                {hasNoClasses
-                  ? '아직 소속된 클래스가 없습니다'
-                  : '소속 클래스에 스킬트리가 없습니다'}
-              </p>
-              <p className="mt-1 text-sm text-gray-500">
-                {hasNoClasses
-                  ? '초대 코드로 클래스에 가입해주세요'
-                  : '교사가 스킬트리를 만들면 여기에 표시됩니다'}
-              </p>
-            </div>
-            {hasNoClasses && (
-              <Link href="/student/join">
-                <Badge className="cursor-pointer bg-[#4F6BF6]">
-                  코드로 가입하러 가기 →
-                </Badge>
-              </Link>
+          <CardContent>
+            {hasNoClasses ? (
+              <EmptyState
+                icon={<KeyRound className="h-8 w-8" />}
+                title="아직 가입한 수업이 없어요!"
+                description="선생님에게 초대 코드를 받아 수업에 참여해보세요."
+                detail="초대 코드를 입력하면 스킬트리를 탐험할 수 있어요! 🌲"
+                actionHref="/student/join"
+                actionLabel="초대 코드 입력"
+              />
+            ) : (
+              <EmptyState
+                icon={<TreePine className="h-8 w-8" />}
+                title="아직 선생님이 학습 자료를 준비하고 있어요"
+                description="스킬트리가 만들어지면 여기에 표시됩니다. 조금만 기다려주세요! 📚"
+              />
             )}
           </CardContent>
         </Card>

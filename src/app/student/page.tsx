@@ -22,6 +22,7 @@ import { ConceptMapCard } from '@/components/dashboard/ConceptMapCard'
 import { ParentInviteCard } from '@/components/student/ParentInviteCard'
 import { MyCertificatesCard } from '@/components/student/MyCertificatesCard'
 import { RediagnoseButton } from '@/components/student/RediagnoseButton'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { isDemoAccount } from '@/lib/demo'
 
 const STYLE_INFO: Record<string, { emoji: string; label: string }> = {

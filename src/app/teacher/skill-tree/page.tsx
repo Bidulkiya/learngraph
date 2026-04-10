@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { Plus, TreePine, FileText } from 'lucide-react'
+import { Plus, TreePine, FileText, Upload, Mic, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -50,20 +51,15 @@ export default async function SkillTreeListPage() {
 
       {!skillTrees || skillTrees.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-800">
-              <TreePine className="h-8 w-8 text-gray-400" />
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-medium text-gray-900 dark:text-white">아직 스킬트리가 없습니다</p>
-              <p className="mt-1 text-sm text-gray-500">PDF를 업로드하여 첫 번째 스킬트리를 만들어보세요</p>
-            </div>
-            <Link href="/teacher/skill-tree/new">
-              <Button className="bg-[#10B981] hover:bg-[#10B981]/90">
-                <Plus className="mr-2 h-4 w-4" />
-                시작하기
-              </Button>
-            </Link>
+          <CardContent className="py-12">
+            <EmptyState
+              icon={<TreePine className="h-8 w-8" />}
+              title="첫 스킬트리를 만들어보세요!"
+              description="PDF를 업로드하거나 수업을 녹음하면 AI가 자동으로 커리큘럼을 만들어줍니다."
+              detail="1. PDF 업로드 → 2. AI 분석 → 3. 스킬트리 + 퀴즈 + 학습 문서 완성!"
+              actionHref="/teacher/skill-tree/new"
+              actionLabel="스킬트리 만들기"
+            />
           </CardContent>
         </Card>
       ) : (

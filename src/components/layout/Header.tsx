@@ -153,7 +153,7 @@ export function Header({
 
         {/* User menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1.5 text-sm hover:bg-accent sm:gap-2 sm:px-2">
+          <DropdownMenuTrigger className="flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1.5 text-sm hover:bg-accent sm:gap-2 sm:px-2" title="프로필 설정">
             <Avatar className="h-7 w-7">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
               <AvatarFallback className="text-xs">{initial}</AvatarFallback>

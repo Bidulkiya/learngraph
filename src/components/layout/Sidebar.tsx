@@ -147,6 +147,8 @@ export function Sidebar({
               key={item.href}
               href={item.href}
               onClick={onMobileClose}
+              data-tour={item.key}
+              title={item.label}
               className={cn(
                 // min-h-11 = 44px for mobile touch target
                 "relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",

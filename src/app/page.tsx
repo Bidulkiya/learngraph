@@ -168,7 +168,7 @@ export default function LandingPage() {
             </button>
           </div>
           <p className="mb-8 text-xs text-gray-500">
-            회원가입 없이 즉시 체험 · 데모 데이터 자동 생성
+            회원가입 없이 즉시 체험 · 인터랙티브 가이드가 주요 기능을 안내해드려요
           </p>
 
           {/* 로그인 / 회원가입 */}
