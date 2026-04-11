@@ -248,7 +248,7 @@ function LoginForm() {
             ) : (
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             )}
-            자기주도
+            독학러
           </Button>
         </div>
         <p className="mt-2 text-center text-[11px] text-gray-400">

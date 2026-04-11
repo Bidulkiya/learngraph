@@ -125,7 +125,7 @@ export async function saveSkillTree(
 
     const admin = createAdminClient()
 
-    // 교사/운영자/자기주도 학습자만 저장 가능
+    // 교사/운영자/독학러만 저장 가능
     const { data: profile } = await admin
       .from('profiles')
       .select('role')

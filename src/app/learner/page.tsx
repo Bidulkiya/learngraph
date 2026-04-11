@@ -32,7 +32,7 @@ export default async function LearnerDashboard() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           안녕하세요, {profile.nickname ?? profile.name}님 👋
         </h1>
-        <p className="mt-1 text-gray-500">오늘도 자기주도 학습을 이어가보세요</p>
+        <p className="mt-1 text-gray-500">오늘도 독학을 이어가보세요</p>
       </div>
 
       {/* Level + XP */}

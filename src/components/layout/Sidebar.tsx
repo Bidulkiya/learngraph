@@ -89,7 +89,7 @@ const roleConfig: Record<Role, { label: string; color: string; icon: React.Eleme
   student: { label: "학생", color: "text-[#4F6BF6]", icon: BookOpen },
   admin: { label: "운영자", color: "text-[#F59E0B]", icon: Shield },
   parent: { label: "학부모", color: "text-pink-500", icon: Heart },
-  learner: { label: "자기주도", color: "text-[#8B5CF6]", icon: BookOpen },
+  learner: { label: "독학러", color: "text-[#8B5CF6]", icon: BookOpen },
 }
 
 export function Sidebar({

@@ -197,10 +197,10 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     }).eq('id', studentId)
 
     // ============================================
-    // 2-c. 데모 자기주도 학습자 계정
+    // 2-c. 데모 독학러 계정
     // ============================================
-    const LEARNER_NICKNAME = '데모 학습자'
-    const LEARNER_AVATAR_SEED = '데모 학습자'
+    const LEARNER_NICKNAME = '데모 독학러'
+    const LEARNER_AVATAR_SEED = '데모 독학러'
     const LEARNER_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(LEARNER_AVATAR_SEED)}`
 
     const { data: existingLearnerProfile } = await admin
@@ -240,7 +240,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       nickname: LEARNER_NICKNAME,
       avatar_url: LEARNER_AVATAR_URL,
       avatar_seed: LEARNER_AVATAR_SEED,
-      bio: '둘러보기 전용 데모 자기주도 학습자 계정입니다.',
+      bio: '둘러보기 전용 데모 독학러 계정입니다.',
       xp: 120,
       streak_days: 2,
       learning_style: 'textual',
@@ -763,6 +763,178 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         content: '오늘 퀴즈 성적이 정말 좋네요. 이 페이스로 계속 가봅시다!',
       },
     ])
+
+    // ============================================
+    // 15. 독학러 데모 스킬트리 + 진도 + 퀴즈 + 플래시카드
+    // ============================================
+    if (learnerId) {
+      // 스킬트리 upsert (제목 기준)
+      const { data: existingLearnerTree } = await admin
+        .from('skill_trees')
+        .select('id')
+        .eq('created_by', learnerId)
+        .eq('title', 'Python 기초 독학')
+        .maybeSingle()
+
+      let learnerTreeId = existingLearnerTree?.id
+      if (!learnerTreeId) {
+        const { data: newTree } = await admin
+          .from('skill_trees')
+          .insert({
+            title: 'Python 기초 독학',
+            description: 'Python 프로그래밍의 기초부터 파일 입출력까지',
+            subject_hint: 'default',
+            created_by: learnerId,
+            class_id: null,
+            status: 'published',
+          })
+          .select('id')
+          .single()
+        learnerTreeId = newTree?.id
+      }
+
+      if (learnerTreeId) {
+        // 기존 노드 확인
+        const { data: existingLearnerNodes } = await admin
+          .from('nodes')
+          .select('id')
+          .eq('skill_tree_id', learnerTreeId)
+
+        if (!existingLearnerNodes || existingLearnerNodes.length === 0) {
+          const pyNodes = [
+            { title: 'Python 설치와 실행', description: 'Python을 설치하고 첫 Hello World를 출력합니다. REPL과 스크립트 실행 차이를 배웁니다.', difficulty: 1 },
+            { title: '변수와 자료형', description: '숫자, 문자열, 불리언 등 기본 자료형과 변수 선언 방법을 배웁니다. type() 함수로 타입을 확인합니다.', difficulty: 1 },
+            { title: '조건문 if-else', description: 'if, elif, else를 사용하여 조건에 따라 다른 코드를 실행합니다. 비교 연산자와 논리 연산자를 활용합니다.', difficulty: 2 },
+            { title: '반복문 for-while', description: 'for 루프로 리스트를 순회하고, while 루프로 조건 반복을 합니다. range() 함수와 break/continue를 배웁니다.', difficulty: 2 },
+            { title: '입출력', description: 'input()으로 사용자 입력을 받고, print()로 출력합니다. f-string 포매팅으로 깔끔한 출력을 만듭니다.', difficulty: 2 },
+            { title: '리스트와 딕셔너리', description: '리스트의 추가/삭제/슬라이싱과 딕셔너리의 키-값 구조를 배웁니다. 리스트 컴프리헨션도 다룹니다.', difficulty: 3 },
+            { title: '함수 정의', description: 'def 키워드로 함수를 만들고, 매개변수와 반환값을 활용합니다. 기본값 인자와 가변 인자를 배웁니다.', difficulty: 3 },
+            { title: '문자열 처리', description: 'split, join, strip, replace 등 문자열 메서드를 마스터합니다. 정규표현식 기초도 다룹니다.', difficulty: 3 },
+            { title: '파일 입출력', description: 'open() 함수로 파일을 읽고 쓰는 방법을 배웁니다. with 문으로 안전한 파일 처리와 CSV 파일도 다룹니다.', difficulty: 4 },
+            { title: '모듈과 패키지', description: 'import로 모듈을 불러오고, pip으로 패키지를 설치합니다. __name__ 변수와 패키지 구조를 배웁니다.', difficulty: 4 },
+          ]
+
+          const nodeInserts = pyNodes.map((n, idx) => ({
+            skill_tree_id: learnerTreeId!,
+            title: n.title,
+            description: n.description,
+            difficulty: n.difficulty,
+            order_index: idx,
+          }))
+          const { data: insertedPyNodes } = await admin.from('nodes').insert(nodeInserts).select('id, title, description, difficulty')
+
+          if (insertedPyNodes && insertedPyNodes.length === 10) {
+            // 엣지: Lv1→Lv2→Lv3→Lv4 트리 구조
+            const pyEdges = [
+              { source: 0, target: 2 }, { source: 0, target: 3 }, { source: 1, target: 2 },
+              { source: 1, target: 4 }, { source: 2, target: 5 }, { source: 3, target: 5 },
+              { source: 3, target: 6 }, { source: 4, target: 7 }, { source: 5, target: 8 },
+              { source: 6, target: 8 }, { source: 7, target: 9 }, { source: 8, target: 9 },
+            ]
+            await admin.from('node_edges').insert(
+              pyEdges.map(e => ({
+                skill_tree_id: learnerTreeId!,
+                source_node_id: insertedPyNodes[e.source].id,
+                target_node_id: insertedPyNodes[e.target].id,
+              }))
+            )
+
+            // 진도: 3 completed, 2 available, 5 locked
+            const targetNodeIds = new Set(pyEdges.map(e => insertedPyNodes[e.target].id))
+            const completedIds = [0, 1, 2].map(i => insertedPyNodes[i].id) // Lv1 2개 + Lv2 1개
+            const progressRows = insertedPyNodes.map(n => {
+              let status = 'locked'
+              if (completedIds.includes(n.id)) status = 'completed'
+              else if (!targetNodeIds.has(n.id)) status = 'available'
+              return {
+                student_id: learnerId!,
+                node_id: n.id,
+                skill_tree_id: learnerTreeId!,
+                status,
+                quiz_score: status === 'completed' ? 90 : null,
+              }
+            })
+            // 수동으로 available 조정 (Lv2의 나머지 2개)
+            progressRows[3].status = 'available' // 반복문
+            progressRows[4].status = 'available' // 입출력
+            await admin.from('student_progress').upsert(progressRows, { onConflict: 'student_id,node_id' })
+
+            // 완료 노드 퀴즈 (3노드 × 3문제)
+            const quizData = [
+              { nodeIdx: 0, questions: [
+                { question: 'Python REPL에서 바로 실행할 수 있는 것은?', type: 'multiple_choice', options: ['print("Hello")', 'System.out.println()', 'console.log()', 'echo "Hello"'], answer: 'print("Hello")', explanation: 'Python REPL은 파이썬 코드를 즉시 실행합니다.' },
+                { question: 'Python 스크립트 파일의 확장자는?', type: 'multiple_choice', options: ['.py', '.js', '.java', '.cpp'], answer: '.py', explanation: 'Python 파일은 .py 확장자를 사용합니다.' },
+                { question: 'Python을 설치한 후 버전을 확인하는 명령어를 쓰시오.', type: 'short_answer', options: null, answer: 'python --version', explanation: 'python --version 또는 python -V로 설치된 버전을 확인합니다.' },
+              ]},
+              { nodeIdx: 1, questions: [
+                { question: 'x = 10일 때 type(x)의 결과는?', type: 'multiple_choice', options: ["<class 'int'>", "<class 'str'>", "<class 'float'>", "<class 'bool'>"], answer: "<class 'int'>", explanation: '정수는 int 타입입니다.' },
+                { question: '문자열을 정수로 변환하는 함수는?', type: 'multiple_choice', options: ['int()', 'str()', 'float()', 'bool()'], answer: 'int()', explanation: "int('123')은 정수 123을 반환합니다." },
+                { question: 'Python에서 변수 이름 규칙을 설명하시오.', type: 'short_answer', options: null, answer: '문자나 밑줄로 시작하고 숫자로 시작할 수 없다', explanation: '변수명은 문자/밑줄로 시작, 숫자로 시작 불가, 예약어 사용 불가입니다.' },
+              ]},
+              { nodeIdx: 2, questions: [
+                { question: 'if x > 0: print("양수") 에서 x가 -1이면?', type: 'multiple_choice', options: ['아무것도 출력 안 됨', '양수', '에러', '-1'], answer: '아무것도 출력 안 됨', explanation: '조건이 False이면 if 블록은 실행되지 않습니다.' },
+                { question: 'elif의 의미는?', type: 'multiple_choice', options: ['else if의 줄임말', 'else의 변형', 'if의 반복', '함수 호출'], answer: 'else if의 줄임말', explanation: 'elif는 else if를 줄인 것으로, 추가 조건을 검사합니다.' },
+                { question: 'and와 or 연산자의 차이를 설명하시오.', type: 'short_answer', options: null, answer: 'and는 두 조건 모두 참일 때 참, or는 하나라도 참이면 참', explanation: 'and는 논리곱, or는 논리합입니다.' },
+              ]},
+            ]
+            for (const qd of quizData) {
+              const nodeId = insertedPyNodes[qd.nodeIdx].id
+              await admin.from('quizzes').insert(
+                qd.questions.map(q => ({
+                  node_id: nodeId,
+                  question: q.question,
+                  question_type: q.type,
+                  options: q.options,
+                  correct_answer: q.answer,
+                  explanation: q.explanation,
+                  difficulty: insertedPyNodes[qd.nodeIdx].difficulty,
+                }))
+              )
+            }
+
+            // 플래시카드 (완료 노드 3개 × 3장)
+            for (const idx of [0, 1, 2]) {
+              const nodeId = insertedPyNodes[idx].id
+              const cards = [
+                { front: `${insertedPyNodes[idx].title}의 핵심 개념은?`, back: insertedPyNodes[idx].description ?? '' },
+                { front: `${insertedPyNodes[idx].title} 관련 함수는?`, back: idx === 0 ? 'print(), input()' : idx === 1 ? 'type(), int(), str(), float()' : 'if, elif, else, and, or, not' },
+                { front: `${insertedPyNodes[idx].title} 예제 코드를 떠올려보세요`, back: idx === 0 ? 'print("Hello, World!")' : idx === 1 ? 'x = 10; name = "Python"' : 'if x > 0: print("양수") elif x == 0: print("0") else: print("음수")' },
+              ]
+              await admin.from('flashcards').insert(
+                cards.map((c, ci) => ({
+                  node_id: nodeId,
+                  card_index: ci,
+                  front: c.front,
+                  back: c.back,
+                }))
+              )
+            }
+
+            // 업적 부여 (first_unlock, perfect_quiz)
+            const { data: achList } = await admin
+              .from('achievements')
+              .select('id, code')
+              .in('code', ['first_unlock', 'perfect_quiz'])
+            if (achList) {
+              for (const ach of achList) {
+                await admin.from('user_achievements').upsert(
+                  { user_id: learnerId!, achievement_id: ach.id },
+                  { onConflict: 'user_id,achievement_id' },
+                )
+              }
+            }
+
+            // 일일 미션 (1 완료 + 1 진행중)
+            const today = new Date().toISOString().slice(0, 10)
+            await admin.from('daily_missions').delete().eq('student_id', learnerId!).eq('mission_date', today)
+            await admin.from('daily_missions').insert([
+              { student_id: learnerId!, mission_type: 'unlock_node', title: '노드 1개 잠금해제하기', target: 1, progress: 1, completed: true, xp_reward: 30, mission_date: today },
+              { student_id: learnerId!, mission_type: 'complete_quiz', title: '퀴즈 3개 풀기', target: 3, progress: 2, completed: false, xp_reward: 25, mission_date: today },
+            ])
+          }
+        }
+      }
+    }
 
     return {}
   } catch (err) {

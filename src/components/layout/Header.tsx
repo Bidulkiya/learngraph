@@ -32,7 +32,7 @@ const roleLabels: Record<Role, string> = {
   student: "학생",
   admin: "운영자",
   parent: "학부모",
-  learner: "자기주도",
+  learner: "독학러",
 }
 
 const roleBadgeColors: Record<Role, string> = {
