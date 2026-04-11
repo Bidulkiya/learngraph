@@ -159,7 +159,7 @@ export default function LandingPage() {
               type="button"
               onClick={() => handleDemo('learner')}
               disabled={demoLoading !== null}
-              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] px-5 py-3.5 text-sm font-semibold text-white shadow-xl shadow-[#8B5CF6]/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70 sm:flex-1"
+              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] px-5 py-3.5 text-sm font-semibold text-white shadow-xl shadow-[#F59E0B]/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70 sm:flex-1"
             >
               <span className="relative flex items-center justify-center gap-2">
                 {demoLoading === 'learner' ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}

@@ -15,9 +15,11 @@ interface Props {
   theme?: string | null
   nodes: D3Node[]
   edges: D3Edge[]
+  /** 뒤로 가기 링크 (기본: /student) — learner에서는 /learner 전달 */
+  backHref?: string
 }
 
-export function StudentSkillTreeView({ treeTitle, treeDescription, theme, nodes, edges }: Props) {
+export function StudentSkillTreeView({ treeTitle, treeDescription, theme, nodes, edges, backHref = '/student' }: Props) {
   const completed = nodes.filter(n => n.status === 'completed').length
   const total = nodes.length
   const [popupNode, setPopupNode] = useState<D3Node | null>(null)
@@ -41,7 +43,7 @@ export function StudentSkillTreeView({ treeTitle, treeDescription, theme, nodes,
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <Link href="/student">
+          <Link href={backHref}>
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>

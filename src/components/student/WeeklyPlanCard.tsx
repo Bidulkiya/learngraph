@@ -139,7 +139,9 @@ export function WeeklyPlanCard() {
 
   // 요일별 미션 그룹핑
   const missionsByDay = groupByDay(data.missions)
-  const daysInPlan = data.plan.plan.map(p => p.day)
+  // 항상 월~금 5일 표시 (AI가 빈 요일을 생성하지 않아도 쉬는 날로 표시)
+  const WEEKDAYS: WeeklyPlanDay[] = ['mon', 'tue', 'wed', 'thu', 'fri']
+  const daysInPlan = WEEKDAYS
   const dayReasons: Record<WeeklyPlanDay, string> = {} as Record<WeeklyPlanDay, string>
   data.plan.plan.forEach(p => { dayReasons[p.day] = p.reason })
 

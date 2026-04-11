@@ -90,6 +90,7 @@ export default async function LearnerSkillTreeExplorePage({ params }: Props) {
       theme={tree.subject_hint ?? 'default'}
       nodes={d3Nodes}
       edges={d3Edges}
+      backHref="/learner"
     />
   )
 }
