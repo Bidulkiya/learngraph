@@ -123,18 +123,56 @@ const TEACHER_STEPS: TutorialStep[] = [
 ]
 
 // ============================================
+// 자기주도 학습자 튜토리얼 단계
+// ============================================
+
+const LEARNER_STEPS: TutorialStep[] = [
+  {
+    icon: <LogoSymbol size={64} />,
+    title: '자기주도 학습에 오신 것을 환영합니다! 📖',
+    description:
+      'PDF를 업로드하면 AI가 스킬트리를 만들어주고, 직접 퀴즈를 풀며 학습할 수 있어요.',
+    detail: '대학생, 직장인, 자격증 준비생에게 딱!',
+  },
+  {
+    icon: <TreePine className="h-16 w-16 text-[#8B5CF6]" />,
+    title: 'PDF로 나만의 스킬트리를 만드세요',
+    description:
+      '학습 자료를 업로드하면 AI가 개념 간 관계를 분석해서 스킬트리를 자동 생성합니다.',
+    detail: '퀴즈와 학습 문서도 AI가 만들어줘요!',
+  },
+  {
+    icon: <Trophy className="h-16 w-16 text-[#F59E0B]" />,
+    title: '혼자서도 게이미피케이션!',
+    description:
+      'XP, 레벨, 스트릭, 업적으로 학습 동기를 유지하세요.',
+    detail: '주간 학습 플랜과 복습 알림도 제공돼요.',
+  },
+  {
+    icon: <Rocket className="h-16 w-16 text-[#A855F7]" />,
+    title: '준비되셨나요?',
+    description: '둘러보기만 가능한 모드입니다.',
+    detail: '직접 사용해보려면 회원가입하세요!',
+  },
+]
+
+// ============================================
 // 메인 컴포넌트
 // ============================================
 
 interface Props {
-  role: 'student' | 'teacher'
+  role: 'student' | 'teacher' | 'learner'
 }
 
 export function DemoTutorial({ role }: Props) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(0)
 
-  const steps = role === 'student' ? STUDENT_STEPS : TEACHER_STEPS
+  const steps = role === 'student'
+    ? STUDENT_STEPS
+    : role === 'teacher'
+    ? TEACHER_STEPS
+    : LEARNER_STEPS
   const storageKey = `demo_tutorial_shown_${role}`
 
   // 첫 진입 시에만 자동 표시 (sessionStorage 플래그 체크)

@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { DEMO_TEACHER_EMAIL, DEMO_STUDENT_EMAIL, DEMO_PASSWORD } from '@/lib/demo'
+import { DEMO_TEACHER_EMAIL, DEMO_STUDENT_EMAIL, DEMO_LEARNER_EMAIL, DEMO_PASSWORD } from '@/lib/demo'
 
 const DEMO_SCHOOL_NAME = 'NodeBloom 둘러보기 학교'
 const DEMO_CLASS_NAME = 'AI 학습 둘러보기반'
@@ -197,12 +197,59 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     }).eq('id', studentId)
 
     // ============================================
-    // 2-bis. 데모 학생/교사의 "체험 학교가 아닌" 오염 데이터 전면 정리
+    // 2-c. 데모 자기주도 학습자 계정
     // ============================================
-    // 데모 계정이 과거에 다른 스쿨/클래스에 가입된 흔적, 캐시된 weekly_plans,
-    // 잘못된 감정 리포트 등을 모두 제거하여 언제나 깨끗한 체험 환경을 보장.
-    // (체험 학교 ID는 아직 resolved 안 됐으므로 이름으로 찾는 서브쿼리 사용)
-    const demoUserIds = [teacherId, studentId]
+    const LEARNER_NICKNAME = '데모 학습자'
+    const LEARNER_AVATAR_SEED = '데모 학습자'
+    const LEARNER_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(LEARNER_AVATAR_SEED)}`
+
+    const { data: existingLearnerProfile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('email', DEMO_LEARNER_EMAIL)
+      .maybeSingle()
+
+    let learnerId = existingLearnerProfile?.id
+    if (!learnerId) {
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email: DEMO_LEARNER_EMAIL,
+        password: DEMO_PASSWORD,
+        email_confirm: true,
+        user_metadata: {
+          name: '데모',
+          role: 'learner',
+          nickname: LEARNER_NICKNAME,
+          avatar_url: LEARNER_AVATAR_URL,
+          avatar_seed: LEARNER_AVATAR_SEED,
+        },
+      })
+      if (createErr) return { error: '데모 학습자 생성 실패: ' + createErr.message }
+      learnerId = created.user.id
+      await admin.from('profiles').upsert({
+        id: learnerId,
+        email: DEMO_LEARNER_EMAIL,
+        name: '데모',
+        role: 'learner',
+        nickname: LEARNER_NICKNAME,
+        avatar_url: LEARNER_AVATAR_URL,
+        avatar_seed: LEARNER_AVATAR_SEED,
+      })
+    }
+    await admin.from('profiles').update({
+      name: '데모',
+      nickname: LEARNER_NICKNAME,
+      avatar_url: LEARNER_AVATAR_URL,
+      avatar_seed: LEARNER_AVATAR_SEED,
+      bio: '둘러보기 전용 데모 자기주도 학습자 계정입니다.',
+      xp: 120,
+      streak_days: 2,
+      learning_style: 'textual',
+    }).eq('id', learnerId)
+
+    // ============================================
+    // 2-bis. 데모 학생/교사/학습자의 오염 데이터 전면 정리
+    // ============================================
+    const demoUserIds = [teacherId, studentId, learnerId]
 
     // weekly_plans — 캐시 전면 삭제 (getWeeklyPlan은 데모면 하드코딩 fallback 반환)
     await admin.from('weekly_plans').delete().in('student_id', demoUserIds)

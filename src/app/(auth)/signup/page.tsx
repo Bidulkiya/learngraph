@@ -35,6 +35,7 @@ import type { Role } from "@/types/user"
 const roles: Array<{ value: Role; label: string; icon: React.ElementType; color: string; desc: string }> = [
   { value: "teacher", label: "교사", icon: GraduationCap, color: "#10B981", desc: "스킬트리 생성 · 학생 관리" },
   { value: "student", label: "학생", icon: BookOpen, color: "#4F6BF6", desc: "스킬트리 탐험 · 퀴즈 풀기" },
+  { value: "learner", label: "자기주도 학습자", icon: BookOpen, color: "#8B5CF6", desc: "혼자서 학습 자료를 만들고 공부해요" },
   { value: "parent", label: "학부모", icon: Heart, color: "#EC4899", desc: "자녀 학습 현황 확인" },
   { value: "admin", label: "운영자", icon: Shield, color: "#F59E0B", desc: "템플릿 관리 · 전체 분석" },
 ]

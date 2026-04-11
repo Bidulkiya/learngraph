@@ -1,9 +1,9 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-const PROTECTED_ROUTES = ["/teacher", "/student", "/admin", "/parent"]
+const PROTECTED_ROUTES = ["/teacher", "/student", "/admin", "/parent", "/learner"]
 
-type Role = "teacher" | "student" | "admin" | "parent"
+type Role = "teacher" | "student" | "admin" | "parent" | "learner"
 
 /**
  * user_metadata.role이 우선. signup 시 `options.data.role`로 저장되므로
@@ -11,7 +11,7 @@ type Role = "teacher" | "student" | "admin" | "parent"
  */
 function getUserRole(user: { user_metadata?: Record<string, unknown> | null }): Role | null {
   const metaRole = user.user_metadata?.role
-  if (metaRole === "teacher" || metaRole === "student" || metaRole === "admin" || metaRole === "parent") {
+  if (metaRole === "teacher" || metaRole === "student" || metaRole === "admin" || metaRole === "parent" || metaRole === "learner") {
     return metaRole
   }
   return null
@@ -88,6 +88,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     if (pathname.startsWith("/student") && role !== "student") return redirectTo(`/${role}`)
     if (pathname.startsWith("/admin") && role !== "admin") return redirectTo(`/${role}`)
     if (pathname.startsWith("/parent") && role !== "parent") return redirectTo(`/${role}`)
+    if (pathname.startsWith("/learner") && role !== "learner") return redirectTo(`/${role}`)
   }
 
   return supabaseResponse

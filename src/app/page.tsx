@@ -14,7 +14,7 @@ import { LogoSymbol } from '@/components/Logo'
 import { toast } from 'sonner'
 
 export default function LandingPage() {
-  const [demoLoading, setDemoLoading] = useState<'teacher' | 'student' | null>(null)
+  const [demoLoading, setDemoLoading] = useState<'teacher' | 'student' | 'learner' | null>(null)
 
   /**
    * 로그인/회원가입 페이지로 이동 시 기존 세션 강제 정리.
@@ -40,7 +40,7 @@ export default function LandingPage() {
   // 데모 체험 — 서버에서 idempotent 환경 구축 후 클라이언트에서 직접 로그인.
   // 서버에서 로그인하면 브라우저 쿠키에 세션이 반영 안 돼서 리다이렉트 후 미인증 상태로
   // /login으로 튕김. 반드시 클라이언트에서 signInWithPassword를 호출해야 쿠키가 설정됨.
-  const handleDemo = async (role: 'teacher' | 'student'): Promise<void> => {
+  const handleDemo = async (role: 'teacher' | 'student' | 'learner'): Promise<void> => {
     setDemoLoading(role)
     try {
       const supabase = createBrowserClient()
@@ -131,41 +131,40 @@ export default function LandingPage() {
             교사 · 학생 · 학부모 · 운영자, 네 주체가 하나로 연결됩니다.
           </p>
 
-          {/* CTA 버튼 2개 — 눈에 띄게 큼 */}
-          <div className="mx-auto mb-5 flex w-full max-w-xl flex-col items-center gap-3 sm:flex-row">
+          {/* CTA 버튼 3개 */}
+          <div className="mx-auto mb-3 flex w-full max-w-3xl flex-col items-center gap-3 sm:flex-row">
             <button
               type="button"
               onClick={() => handleDemo('teacher')}
               disabled={demoLoading !== null}
-              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] px-6 py-4 text-base font-semibold text-white shadow-xl shadow-[#10B981]/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-[#10B981]/40 disabled:opacity-70 sm:flex-1"
+              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#10B981] to-[#059669] px-5 py-3.5 text-sm font-semibold text-white shadow-xl shadow-[#10B981]/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70 sm:flex-1"
             >
               <span className="relative flex items-center justify-center gap-2">
-                {demoLoading === 'teacher' ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <GraduationCap className="h-5 w-5" />
-                )}
+                {demoLoading === 'teacher' ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}
                 교사로 둘러보기
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </span>
-              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
             </button>
             <button
               type="button"
               onClick={() => handleDemo('student')}
               disabled={demoLoading !== null}
-              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#4F6BF6] to-[#7C5CFC] px-6 py-4 text-base font-semibold text-white shadow-xl shadow-[#4F6BF6]/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-[#4F6BF6]/40 disabled:opacity-70 sm:flex-1"
+              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#4F6BF6] to-[#7C5CFC] px-5 py-3.5 text-sm font-semibold text-white shadow-xl shadow-[#4F6BF6]/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70 sm:flex-1"
             >
               <span className="relative flex items-center justify-center gap-2">
-                {demoLoading === 'student' ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <BookOpen className="h-5 w-5" />
-                )}
+                {demoLoading === 'student' ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
                 학생으로 둘러보기
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </span>
-              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDemo('learner')}
+              disabled={demoLoading !== null}
+              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#8B5CF6] to-[#6366F1] px-5 py-3.5 text-sm font-semibold text-white shadow-xl shadow-[#8B5CF6]/30 transition-all hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-70 sm:flex-1"
+            >
+              <span className="relative flex items-center justify-center gap-2">
+                {demoLoading === 'learner' ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
+                자기주도 학습
+              </span>
             </button>
           </div>
           <p className="mb-8 text-xs text-gray-500">

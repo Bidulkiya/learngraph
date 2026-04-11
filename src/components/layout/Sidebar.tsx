@@ -24,9 +24,9 @@ import {
 import { cn } from "@/lib/utils"
 import { LogoSymbol } from "@/components/Logo"
 
-type Role = "teacher" | "student" | "admin" | "parent"
+type Role = "teacher" | "student" | "admin" | "parent" | "learner"
 
-type MenuKey = 'messages' | 'tutor' | 'dashboard' | 'classes' | 'skill-tree' | 'quizzes' | 'recording' | 'join' | 'wrong-answers' | 'groups' | 'schools' | 'announcements' | 'link-student' | 'achievements'
+type MenuKey = 'messages' | 'tutor' | 'dashboard' | 'classes' | 'skill-tree' | 'quizzes' | 'recording' | 'join' | 'wrong-answers' | 'groups' | 'schools' | 'announcements' | 'link-student' | 'achievements' | 'profile'
 
 interface SidebarProps {
   role: Role
@@ -75,6 +75,13 @@ const menuItems: Record<Role, MenuItem[]> = {
     { key: 'dashboard', href: "/parent", label: "자녀 학습 현황", icon: LayoutDashboard },
     { key: 'link-student', href: "/parent/link", label: "자녀 연결", icon: KeyRound },
   ],
+  learner: [
+    { key: 'dashboard', href: "/learner", label: "대시보드", icon: LayoutDashboard },
+    { key: 'skill-tree', href: "/learner/skill-tree", label: "내 스킬트리", icon: TreePine },
+    { key: 'recording', href: "/learner/recording", label: "녹음으로 만들기", icon: Mic },
+    { key: 'achievements', href: "/learner/achievements", label: "업적", icon: Award },
+    { key: 'profile', href: "/learner/profile", label: "프로필", icon: Users },
+  ],
 }
 
 const roleConfig: Record<Role, { label: string; color: string; icon: React.ElementType }> = {
@@ -82,6 +89,7 @@ const roleConfig: Record<Role, { label: string; color: string; icon: React.Eleme
   student: { label: "학생", color: "text-[#4F6BF6]", icon: BookOpen },
   admin: { label: "운영자", color: "text-[#F59E0B]", icon: Shield },
   parent: { label: "학부모", color: "text-pink-500", icon: Heart },
+  learner: { label: "자기주도", color: "text-[#8B5CF6]", icon: BookOpen },
 }
 
 export function Sidebar({

@@ -38,7 +38,7 @@ interface JoyrideProps {
  */
 
 interface Props {
-  role: 'student' | 'teacher'
+  role: 'student' | 'teacher' | 'learner'
 }
 
 // ============================================
@@ -107,6 +107,27 @@ const TEACHER_STEPS: Step[] = [
     target: '[data-tour="messages"]',
     content: '학생이나 학부모에게 메시지를 보낼 수 있어요.',
     title: '✉️ 메시지',
+    placement: 'right',
+  },
+]
+
+const LEARNER_STEPS: Step[] = [
+  {
+    target: '[data-tour="skill-tree"]',
+    content: 'PDF를 업로드하면 AI가 나만의 스킬트리를 만들어줘요. 직접 퀴즈를 풀며 학습할 수 있어요!',
+    title: '📚 내 스킬트리',
+    placement: 'right',
+  },
+  {
+    target: '[data-tour="recording"]',
+    content: '강의를 녹음하면 AI가 핵심 내용을 추출해서 스킬트리나 퀴즈를 만들어줘요.',
+    title: '🎙️ 녹음으로 만들기',
+    placement: 'right',
+  },
+  {
+    target: '[data-tour="achievements"]',
+    content: '퀴즈를 풀면 XP와 업적을 얻을 수 있어요. 혼자서도 동기부여!',
+    title: '🏆 업적',
     placement: 'right',
   },
 ]
@@ -184,7 +205,11 @@ export function DemoJoyrideGuide({ role }: Props) {
     }
   }
 
-  const steps = role === 'student' ? STUDENT_STEPS : TEACHER_STEPS
+  const steps = role === 'student'
+    ? STUDENT_STEPS
+    : role === 'teacher'
+    ? TEACHER_STEPS
+    : LEARNER_STEPS
 
   if (!run) return null
 

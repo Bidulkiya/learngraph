@@ -10,6 +10,7 @@
 
 export const DEMO_TEACHER_EMAIL = 'demo_teacher@learngraph.app'
 export const DEMO_STUDENT_EMAIL = 'demo_student@learngraph.app'
+export const DEMO_LEARNER_EMAIL = 'demo_learner@learngraph.app'
 export const DEMO_PASSWORD = 'demo1234'
 
 // 레거시 데모 계정 (기존 데이터 보존을 위해 판별에 포함)
@@ -22,6 +23,7 @@ const LEGACY_DEMO_EMAILS = [
 const ALL_DEMO_EMAILS = new Set<string>([
   DEMO_TEACHER_EMAIL,
   DEMO_STUDENT_EMAIL,
+  DEMO_LEARNER_EMAIL,
   ...LEGACY_DEMO_EMAILS,
 ])
 

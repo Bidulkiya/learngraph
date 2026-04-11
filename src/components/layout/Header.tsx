@@ -32,6 +32,7 @@ const roleLabels: Record<Role, string> = {
   student: "학생",
   admin: "운영자",
   parent: "학부모",
+  learner: "자기주도",
 }
 
 const roleBadgeColors: Record<Role, string> = {
@@ -39,12 +40,13 @@ const roleBadgeColors: Record<Role, string> = {
   student: "bg-[#4F6BF6]/10 text-[#4F6BF6] border-[#4F6BF6]/30",
   admin: "bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/30",
   parent: "bg-pink-500/10 text-pink-500 border-pink-300",
+  learner: "bg-[#8B5CF6]/10 text-[#8B5CF6] border-[#8B5CF6]/30",
 }
 
-// 프로필 페이지 경로 (parent/admin은 프로필 페이지 없음 → undefined)
 const profilePathByRole: Partial<Record<Role, string>> = {
   student: '/student/profile',
   teacher: '/teacher/profile',
+  learner: '/learner/profile',
 }
 
 export function Header({

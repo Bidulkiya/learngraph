@@ -72,8 +72,8 @@ export async function generateSkillTree(
       .select('role')
       .eq('id', user.id)
       .maybeSingle()
-    if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
-      return { error: '교사만 스킬트리를 생성할 수 있습니다.' }
+    if (profile?.role !== 'teacher' && profile?.role !== 'admin' && profile?.role !== 'learner') {
+      return { error: '스킬트리를 생성할 권한이 없습니다.' }
     }
     if (!fileContent.trim() || fileContent.length > 200_000) {
       return { error: '콘텐츠가 비어있거나 너무 깁니다 (최대 200,000자).' }
@@ -125,14 +125,14 @@ export async function saveSkillTree(
 
     const admin = createAdminClient()
 
-    // 교사/운영자만 저장 가능
+    // 교사/운영자/자기주도 학습자만 저장 가능
     const { data: profile } = await admin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .maybeSingle()
-    if (profile?.role !== 'teacher' && profile?.role !== 'admin') {
-      return { error: '교사만 스킬트리를 저장할 수 있습니다.' }
+    if (profile?.role !== 'teacher' && profile?.role !== 'admin' && profile?.role !== 'learner') {
+      return { error: '스킬트리를 저장할 권한이 없습니다.' }
     }
 
     // classId가 지정된 경우 본인이 담당 교사인지 확인

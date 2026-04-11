@@ -1099,11 +1099,11 @@ export async function getMyClassesWithSkillTrees(): Promise<{
  * 세션에 반영되지 않아 redirect 후에도 미인증 상태가 됨).
  */
 export async function loginAsDemo(
-  role: 'teacher' | 'student'
+  role: 'teacher' | 'student' | 'learner'
 ): Promise<{ data?: { email: string; password: string; redirect: string }; error?: string }> {
   try {
     const { setupDemoData } = await import('./demo-setup')
-    const { DEMO_TEACHER_EMAIL, DEMO_STUDENT_EMAIL, DEMO_PASSWORD } = await import('@/lib/demo')
+    const { DEMO_TEACHER_EMAIL, DEMO_STUDENT_EMAIL, DEMO_LEARNER_EMAIL, DEMO_PASSWORD } = await import('@/lib/demo')
 
     // Idempotent: 이미 있으면 내부적으로 스킵
     const setupResult = await setupDemoData()
@@ -1111,9 +1111,15 @@ export async function loginAsDemo(
       return { error: '데모 환경 구축 실패: ' + setupResult.error }
     }
 
+    const emailByRole = {
+      teacher: DEMO_TEACHER_EMAIL,
+      student: DEMO_STUDENT_EMAIL,
+      learner: DEMO_LEARNER_EMAIL,
+    }
+
     return {
       data: {
-        email: role === 'teacher' ? DEMO_TEACHER_EMAIL : DEMO_STUDENT_EMAIL,
+        email: emailByRole[role],
         password: DEMO_PASSWORD,
         redirect: `/${role}`,
       },

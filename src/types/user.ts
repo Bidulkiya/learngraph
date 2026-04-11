@@ -1,4 +1,4 @@
-export type Role = 'teacher' | 'student' | 'admin' | 'parent'
+export type Role = 'teacher' | 'student' | 'admin' | 'parent' | 'learner'
 
 export type LearningStyle = 'visual' | 'textual' | 'practical'
 
