@@ -11,7 +11,7 @@
 [![Claude](https://img.shields.io/badge/Claude-Sonnet_4.6-CC785C?logo=anthropic)](https://www.anthropic.com)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?logo=vercel)](https://vercel.com)
 
-> 🏆 KEG 바이브 코딩 대회 2026 · AI활용 차세대 교육 솔루션
+> 🏆 KIT 바이브코딩 공모전 2026 · AI활용 차세대 교육 솔루션
 
 ---
 
@@ -161,4 +161,4 @@ MIT License — 자유롭게 사용 · 수정 · 배포할 수 있습니다.
 - **OpenAI** — Whisper STT + 임베딩
 - **DiceBear** — 아바타 자동 생성
 
-> _Built with ❤️ for KEG 바이브 코딩 대회 2026_
+> _Built with ❤️ for KIT 바이브코딩 공모전 2026_
