@@ -113,13 +113,15 @@ export async function getConversation(
       .order('created_at', { ascending: true })
       .limit(200)
 
-    // 받은 메시지 읽음 처리
-    await admin
-      .from('direct_messages')
-      .update({ read_at: new Date().toISOString() })
-      .eq('sender_id', otherUserId)
-      .eq('receiver_id', user.id)
-      .is('read_at', null)
+    // 받은 메시지 읽음 처리 (데모 계정은 스킵)
+    if (!isDemoAccount(user.email)) {
+      await admin
+        .from('direct_messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('sender_id', otherUserId)
+        .eq('receiver_id', user.id)
+        .is('read_at', null)
+    }
 
     return { data: (messages ?? []) as DirectMessage[] }
   } catch (err) {

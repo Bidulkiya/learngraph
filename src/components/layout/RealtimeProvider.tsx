@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { createBrowserClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 

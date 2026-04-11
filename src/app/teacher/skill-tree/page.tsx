@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, TreePine, FileText, Upload, Mic, Sparkles } from 'lucide-react'
+import { Plus, TreePine, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

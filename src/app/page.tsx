@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   BookOpen, GraduationCap, Heart, Sparkles, TreePine, Bot, Mic,
-  Target, Award, Brain, FileText, Users,
+  Target, Award, Brain, FileText,
   AlertTriangle, Shield,
-  School as SchoolIcon, ArrowRight, ExternalLink, Loader2,
+  ArrowRight, ExternalLink, Loader2,
 } from 'lucide-react'
 import { loginAsDemo } from '@/actions/school'
 import { createBrowserClient } from '@/lib/supabase/client'
