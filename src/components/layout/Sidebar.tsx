@@ -80,7 +80,6 @@ const menuItems: Record<Role, MenuItem[]> = {
     { key: 'skill-tree', href: "/learner/skill-tree", label: "내 스킬트리", icon: TreePine },
     { key: 'recording', href: "/learner/recording", label: "녹음으로 만들기", icon: Mic },
     { key: 'achievements', href: "/learner/achievements", label: "업적", icon: Award },
-    { key: 'profile', href: "/learner/profile", label: "프로필", icon: Users },
   ],
 }
 

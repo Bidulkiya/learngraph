@@ -163,7 +163,7 @@ export default function LandingPage() {
             >
               <span className="relative flex items-center justify-center gap-2">
                 {demoLoading === 'learner' ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
-                독학러
+                독학러로 둘러보기
               </span>
             </button>
           </div>
