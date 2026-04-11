@@ -5,7 +5,7 @@
 학생이 퀴즈를 풀어 노드를 잠금해제하며 학습하는 차세대 교육 플랫폼.
 슬로건: **"노드가 피다, 지식이 자라다"** — 노드를 하나씩 잠금해제하면 꽃이 피듯 지식이 확장된다.
 
-- **공모전**: KIT 바이브코딩 공모전 2026 — AI활용 차세대 교육 솔루션
+- **공모전**: 제1회 KIT 바이브코딩 공모전 — AI활용 차세대 교육 솔루션
 - **핵심 가치**: 교사 · 학생 · 학부모 · 운영자 **4자 연동**
 - **브랜드 컬러**: `#6366F1` (인디고) · `#A855F7` (연보라) · `#10B981` (초록)
 
@@ -100,7 +100,7 @@ nodebloom/
 │   │   ├── feed/                   # ActivityFeed
 │   │   ├── shared/                 # AnnouncementBanner
 │   │   ├── shared/                 # AnnouncementBanner, MessengerView, EmptyState, AccountSettings
-│   │   └── layout/                 # Sidebar, Header, DemoBanner, DemoTutorial, DemoJoyrideGuide, DashboardShell, MessageNotifier, RoleGuard
+│   │   └── layout/                 # Sidebar, Header, DemoBanner, DemoTutorial, DashboardShell, RealtimeProvider, MessageNotifier, RoleGuard
 │   ├── lib/
 │   │   ├── supabase/
 │   │   │   ├── client.ts           # 브라우저 클라이언트

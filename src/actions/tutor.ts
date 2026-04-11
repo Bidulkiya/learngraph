@@ -95,18 +95,46 @@ export async function chatWithTutor(
       }
     } catch {}
 
-    // 노력 기반 단계적 도움: 같은 노드에 대한 대화 히스토리 조회
+    // 노력 기반 단계적 도움: 대화 수 + 퀴즈 오답률 + 감정 종합 판단
     let effortContext = ''
     if (nodeId) {
       try {
-        const { count } = await admin
-          .from('tutor_conversations')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', user.id)
-          .eq('node_id', nodeId)
-          .eq('role', 'user')
-        const questionCount = count ?? 0
-        effortContext = `[학생 질문 횟수 (이 노드): ${questionCount + 1}회]\n도움 단계: ${questionCount === 0 ? '1단계 - 스스로 생각 유도' : questionCount === 1 ? '2단계 - 방향 힌트' : '3단계 이상 - 구체적 설명 제공'}`
+        // 병렬로 대화 수 + 퀴즈 오답률 조회
+        const [convRes, attemptsRes] = await Promise.all([
+          admin
+            .from('tutor_conversations')
+            .select('id', { count: 'exact', head: true })
+            .eq('student_id', user.id)
+            .eq('node_id', nodeId)
+            .eq('role', 'user'),
+          admin
+            .from('quiz_attempts')
+            .select('is_correct')
+            .eq('student_id', user.id)
+            .eq('node_id', nodeId)
+            .order('attempted_at', { ascending: false })
+            .limit(10),
+        ])
+
+        const questionCount = convRes.count ?? 0
+        const attempts = attemptsRes.data ?? []
+        const wrongCount = attempts.filter(a => !a.is_correct).length
+        const wrongRate = attempts.length > 0 ? Math.round((wrongCount / attempts.length) * 100) : 0
+
+        // 종합 판단: 감정(이미 emotionAdaptation에 반영) + 오답률 + 대화 수
+        let stage: string
+        if (wrongRate >= 60 || emotionAdaptation.includes('좌절')) {
+          stage = '1단계 - 친절하게 기초부터 설명 (오답률 높음 또는 좌절 상태)'
+        } else if (wrongRate <= 20 && emotionAdaptation.includes('자신감')) {
+          stage = '3단계 - 도전적 질문으로 심화 (오답률 낮고 자신감 있음)'
+        } else if (questionCount === 0) {
+          stage = '1단계 - 스스로 생각 유도 (첫 질문)'
+        } else if (questionCount === 1) {
+          stage = '2단계 - 방향 힌트'
+        } else {
+          stage = '3단계 이상 - 구체적 설명 제공'
+        }
+        effortContext = `[학생 질문 횟수 (이 노드): ${questionCount + 1}회, 최근 오답률: ${wrongRate}%]\n도움 단계: ${stage}`
       } catch {}
     }
 
