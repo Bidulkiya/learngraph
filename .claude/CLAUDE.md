@@ -10,13 +10,13 @@
 - **브랜드 컬러**: `#6366F1` (인디고) · `#A855F7` (연보라) · `#10B981` (초록)
 
 ## 프로젝트 현황
-- **라우트**: 39개 (Static 8 + Dynamic 31)
-- **Server Action**: 35개 파일 / **136개 함수**
-- **DB 테이블**: 40개 (마이그레이션 001~020)
+- **라우트**: 46개 (Static 9 + Dynamic 37)
+- **Server Action**: 35개 파일 / **135개 함수**
+- **DB 테이블**: 40개 (마이그레이션 001~021)
 - **AI 기능**: 16종 통합
-- **컴포넌트**: 67개
-- **소스 파일**: 192개 (.ts/.tsx)
-- **역할 시스템**: 4자 (teacher / student / parent / admin)
+- **컴포넌트**: 68개
+- **소스 파일**: 203개 (.ts/.tsx)
+- **역할 시스템**: 5자 (teacher / student / admin / parent / learner)
 
 ## 기술 스택 (절대 변경 금지)
 - **프론트엔드**: Next.js 16 (App Router + Turbopack) + TypeScript strict + Tailwind CSS 4 + shadcn/ui
@@ -53,7 +53,7 @@ nodebloom/
 │   │   ├── layout.tsx              # 루트 레이아웃 (metadata)
 │   │   ├── page.tsx                # 랜딩 페이지
 │   │   └── icon.svg                # 파비콘 (NodeBloom SVG 로고)
-│   ├── actions/                    # 35개 Server Action 파일, 136개 함수
+│   ├── actions/                    # 35개 Server Action 파일, 135개 함수
 │   │   ├── skill-tree.ts           # 스킬트리 생성/수정 (AI)
 │   │   ├── quiz.ts                 # 퀴즈 생성/채점/힌트 (AI)
 │   │   ├── tutor.ts                # 소크라틱 AI 튜터 (RAG)
@@ -117,7 +117,7 @@ nodebloom/
 │   ├── hooks/                      # useSkillTree, useQuiz, useVoice
 │   └── types/                      # skill-tree, quiz, user, database
 ├── supabase/
-│   └── migrations/                 # 15개 마이그레이션 (001~015)
+│   └── migrations/                 # 21개 마이그레이션 (001~021)
 ├── middleware.ts                   # Auth middleware (user_metadata.role 기반 최적화)
 └── package.json                    # name: nodebloom
 ```
@@ -230,7 +230,7 @@ const { data } = await admin.from('profiles').select('*').eq('id', user.id).sing
 - **판별**: `isDemoAccount(email)` — `demo_teacher@learngraph.app` 또는 `demo_student@learngraph.app`
 - **가드**: 모든 쓰기 Server Action 상단에서 `assertNotDemo(user.email)` 호출
 - **시드**: `setupDemoData()` — idempotent (fast-path로 이미 구축된 경우 즉시 return)
-- **UI**: `DemoBanner` 컴포넌트 4개 레이아웃 상단 표시 + `DemoTutorial` 카드 + `DemoJoyrideGuide` 인터랙티브 가이드
+- **UI**: `DemoBanner` 컴포넌트 5개 레이아웃 상단 표시 + `DemoTutorial` 카드 팝업
 - **계정명**: 데모 학생(`데모 학생`) / 데모 교사(`데모 선생님`)
 
 ---

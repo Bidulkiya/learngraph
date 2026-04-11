@@ -11,7 +11,7 @@
 3. [DB 스키마 (40개 테이블)](#3-db-스키마-40개-테이블)
 4. [AI 핵심 로직 (16종)](#4-ai-핵심-로직-16종)
 5. [Server Action 패턴](#5-server-action-패턴)
-6. [4자 역할 시스템](#6-4자-역할-시스템)
+6. [5자 역할 시스템](#6-5자-역할-시스템)
 7. [스쿨/클래스 초대 플로우](#7-스쿨클래스-초대-플로우)
 8. [게이미피케이션 시스템](#8-게이미피케이션-시스템)
 9. [데모 모드 (읽기 전용)](#9-데모-모드-읽기-전용)
@@ -59,6 +59,7 @@ nodebloom/
 │   │   ├── student/                # 학생 라우트 (13)
 │   │   ├── admin/                  # 운영자 라우트 (6)
 │   │   ├── parent/                 # 학부모 라우트 (2)
+│   │   ├── learner/                # 독학러 라우트 (8)
 │   │   ├── layout.tsx              # 루트 metadata
 │   │   ├── page.tsx                # 랜딩 페이지
 │   │   └── icon.svg                # 파비콘 (NodeBloom 로고)
@@ -81,7 +82,7 @@ nodebloom/
 │   │   └── demo.ts                 # 데모 판별/가드
 │   ├── hooks/                      # useSkillTree, useQuiz, useVoice
 │   └── types/                      # 도메인 타입
-├── supabase/migrations/            # 20 마이그레이션 (001~020)
+├── supabase/migrations/            # 21 마이그레이션 (001~021)
 ├── middleware.ts                   # Auth + role 라우팅
 └── docs/                           # 개발 문서
 ```
@@ -180,7 +181,7 @@ nodebloom/
 
 ---
 
-## 4. AI 핵심 로직 (13종)
+## 4. AI 핵심 로직 (16종)
 
 각 AI 기능의 상세 입력/출력/모델/비용 특성은 [AI-PIPELINE.md](./AI-PIPELINE.md) 참조.
 
@@ -498,7 +499,7 @@ if (demoBlock) return demoBlock
 - 학생 `김지수`, 교사 `박지훈`
 
 ### 9.4 UI
-- `DemoBanner` 컴포넌트 (Server Component) — 4개 레이아웃 상단에서 `isDemoAccount(profile.email)` 체크 후 조건부 렌더
+- `DemoBanner` 컴포넌트 (Client Component) — 5개 레이아웃 상단에서 `isDemoAccount(profile.email)` 체크 후 조건부 렌더
 - 로그인 페이지 "교사 체험하기" / "학생 체험하기" 버튼 → `loginAsDemo(role)` → 클라이언트에서 `signInWithPassword`
 
 ---
@@ -536,5 +537,5 @@ if (demoBlock) return demoBlock
 
 ## 참고 문서
 - [PHASES.md](./PHASES.md) — 개발 Phase 로드맵
-- [AI-PIPELINE.md](./AI-PIPELINE.md) — 13종 AI 파이프라인 상세
+- [AI-PIPELINE.md](./AI-PIPELINE.md) — 16종 AI 파이프라인 상세
 - [PLANNING.md](./PLANNING.md) — 프로젝트 기획서

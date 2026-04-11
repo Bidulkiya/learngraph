@@ -100,7 +100,7 @@
 ┌─────────────────────────────────────────────────┐
 │  Next.js 16 (App Router + Turbopack + RSC)      │
 │  ├─ 32 routes (4자 역할별)                      │
-│  ├─ Server Actions (136 함수)                   │
+│  ├─ Server Actions (135 함수)                   │
 │  └─ Client Components (D3, 차트, 인터랙션)      │
 └─────────────────────────────────────────────────┘
          │                    │                  │
@@ -330,12 +330,12 @@ profiles (id, email, name, role, xp, streak_days, learning_style)
 
 | 지표 | 수치 |
 |---|---|
-| **라우트** | 39개 |
-| **Server Action 함수** | 136개 |
+| **라우트** | 46개 |
+| **Server Action 함수** | 135개 |
 | **DB 테이블** | 40개 |
-| **DB 마이그레이션** | 20개 |
-| **AI 통합 기능** | 13종 |
-| **역할 시스템** | 4자 (교사/학생/학부모/운영자) |
+| **DB 마이그레이션** | 21개 |
+| **AI 통합 기능** | 16종 |
+| **역할 시스템** | 5자 (교사/학생/운영자/학부모/독학러) |
 | **게이미피케이션 요소** | XP, 레벨, 스트릭, 배지 10종, 미션 5유형, 플래시카드, 인증서 |
 | **보안 계층** | middleware → RLS → RoleGuard → 데모 가드 |
 
@@ -383,7 +383,7 @@ profiles (id, email, name, role, xp, streak_days, learning_style)
 ### 12.2 기술적 차별화
 - **13종 AI를 한 플랫폼에 통합** — 경쟁사는 퀴즈만 또는 튜터만
 - **캐시 우선 설계로 API 비용 90% 절감** — weekly/daily 캐시 + 데모 차단
-- **Server Actions 112개로 API Routes 0개** — Next.js 16 아키텍처 정착
+- **Server Actions 135개로 API Routes 0개** — Next.js 16 아키텍처 정착
 - **pgvector RAG 내재화** — 별도 벡터 DB 없이 Supabase 하나로
 
 ---
