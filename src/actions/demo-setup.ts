@@ -62,9 +62,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     if (
       teacherFast.data?.id &&
       studentFast.data?.id &&
-      teacherFast.data.name === '박지훈' &&
-      studentFast.data.name === '김지수' &&
-      studentFast.data.xp === 180 &&
+      teacherFast.data.name === '데모' &&
+      studentFast.data.name === '데모' &&
       schoolFast.data?.id
     ) {
       // 추가 병렬 체크: 클래스 + 스킬트리 + 노드 수 + 오늘 미션

@@ -186,7 +186,33 @@ export function WeeklyPlanCard() {
         <CardContent className="space-y-2">
           {daysInPlan.map(day => {
             const dayMissions = missionsByDay.get(day) ?? []
-            if (dayMissions.length === 0) return null
+            // 미션 없는 요일 = 쉬는 날
+            if (dayMissions.length === 0) {
+              const isToday = day === data.today
+              return (
+                <div
+                  key={day}
+                  className={`rounded-lg border p-3 ${
+                    isToday
+                      ? 'border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/30'
+                      : 'border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-900/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">☕</span>
+                      <span className={`text-xs font-semibold ${isToday ? 'text-green-700 dark:text-green-300' : 'text-gray-500'}`}>
+                        {DAY_LABELS[day]} {isToday && '(오늘)'}
+                      </span>
+                    </div>
+                    <span className="text-xs text-green-600">✓ 쉬는 날</span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    오늘은 쉬는 날! 충분히 쉬고 내일 다시 달려요 💪
+                  </p>
+                </div>
+              )
+            }
             return (
               <DayMissionRow
                 key={day}

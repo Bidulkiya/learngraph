@@ -78,6 +78,7 @@ const menuItems: Record<Role, MenuItem[]> = {
   learner: [
     { key: 'dashboard', href: "/learner", label: "대시보드", icon: LayoutDashboard },
     { key: 'skill-tree', href: "/learner/skill-tree", label: "내 스킬트리", icon: TreePine },
+    { key: 'tutor', href: "/learner/tutor", label: "AI 튜터", icon: MessageSquare },
     { key: 'recording', href: "/learner/recording", label: "녹음으로 만들기", icon: Mic },
     { key: 'achievements', href: "/learner/achievements", label: "업적", icon: Award },
   ],

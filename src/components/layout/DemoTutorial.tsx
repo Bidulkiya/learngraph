@@ -23,7 +23,7 @@ import { createBrowserClient } from '@/lib/supabase/client'
 /**
  * 데모 모드 튜토리얼 팝업.
  *
- * sessionStorage에 'demo_tutorial_shown_{role}' 플래그를 저장하여
+ * localStorage에 'nodebloom_tutorial_shown_{role}' 플래그를 저장하여
  * 같은 세션 내에서 재표시를 방지한다. 탭을 닫으면 초기화.
  *
  * 디자인: 카드 슬라이드 + 하단 진행 점 + "다음"/"시작하기" 버튼.
@@ -173,17 +173,17 @@ export function DemoTutorial({ role }: Props) {
     : role === 'teacher'
     ? TEACHER_STEPS
     : LEARNER_STEPS
-  const storageKey = `demo_tutorial_shown_${role}`
+  const storageKey = `nodebloom_tutorial_shown_${role}`
 
-  // 첫 진입 시에만 자동 표시 (sessionStorage 플래그 체크)
+  // 첫 진입 시에만 자동 표시 (localStorage 플래그 체크)
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (typeof sessionStorage === 'undefined') return
-    if (sessionStorage.getItem(storageKey)) return
+    if (typeof localStorage === 'undefined') return
+    if (localStorage.getItem(storageKey)) return
     // 약간의 딜레이 — 대시보드 로드 후 자연스럽게
     const timer = setTimeout(() => {
       setOpen(true)
-      sessionStorage.setItem(storageKey, 'true')
+      localStorage.setItem(storageKey, 'true')
     }, 800)
     return () => clearTimeout(timer)
   }, [storageKey])

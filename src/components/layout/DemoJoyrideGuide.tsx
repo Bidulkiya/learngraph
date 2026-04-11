@@ -31,7 +31,7 @@ interface JoyrideProps {
  * DemoTutorial(카드 팝업)이 끝난 후 1초 뒤에 자동 시작.
  * 화면의 실제 요소를 spotlight + 말풍선으로 안내한다.
  *
- * sessionStorage에 완료 플래그 저장 → 같은 세션 재표시 방지.
+ * localStorage에 완료 플래그 저장 → 같은 세션 재표시 방지.
  *
  * 주의: 사이드바 메뉴 항목에 data-tour-* 속성이 필요하다.
  * Sidebar.tsx에서 각 메뉴 항목에 `data-tour={item.key}` 를 추가해야 한다.
@@ -174,18 +174,18 @@ const joyrideStyles = {
 
 export function DemoJoyrideGuide({ role }: Props) {
   const [run, setRun] = useState(false)
-  const storageKey = `demo_joyride_done_${role}`
+  const storageKey = `nodebloom_joyride_shown_${role}`
 
   // 카드 튜토리얼 완료 후 1초 뒤 시작
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (typeof sessionStorage === 'undefined') return
-    if (sessionStorage.getItem(storageKey)) return
+    if (typeof localStorage === 'undefined') return
+    if (localStorage.getItem(storageKey)) return
 
     // DemoTutorial 카드가 닫힌 후에 시작하도록 딜레이
     const timer = setTimeout(() => {
       // 카드 튜토리얼이 이미 표시되었는지 확인
-      const tutorialShown = sessionStorage.getItem(`demo_tutorial_shown_${role}`)
+      const tutorialShown = localStorage.getItem(`nodebloom_tutorial_shown_${role}`)
       if (tutorialShown) {
         setRun(true)
       }
@@ -201,7 +201,7 @@ export function DemoJoyrideGuide({ role }: Props) {
 
     if (finishedStatuses.includes(status)) {
       setRun(false)
-      sessionStorage.setItem(storageKey, 'true')
+      localStorage.setItem(storageKey, 'true')
     }
   }
 
