@@ -400,7 +400,7 @@ profiles (id, email, name, role, xp, streak_days, learning_style)
 
 ## 부록
 
-- **라이브 데모**: https://learninggraph.vercel.app
+- **라이브 데모**: https://nodebloom.vercel.app
 - **GitHub**: https://github.com/Bidulkiya/nodebloom
 - **문서**:
   - [DEVELOPMENT.md](./DEVELOPMENT.md) — 개발 가이드

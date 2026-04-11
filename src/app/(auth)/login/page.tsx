@@ -24,9 +24,9 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [demoLoading, setDemoLoading] = useState<'teacher' | 'student' | null>(null)
+  const [demoLoading, setDemoLoading] = useState<'teacher' | 'student' | 'learner' | null>(null)
 
-  async function handleDemoLogin(role: 'teacher' | 'student'): Promise<void> {
+  async function handleDemoLogin(role: 'teacher' | 'student' | 'learner'): Promise<void> {
     setError("")
     setDemoLoading(role)
     try {
@@ -207,7 +207,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-3 gap-2">
           <Button
             type="button"
             variant="outline"
@@ -220,7 +220,7 @@ function LoginForm() {
             ) : (
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             )}
-            교사 둘러보기
+            교사
           </Button>
           <Button
             type="button"
@@ -234,7 +234,21 @@ function LoginForm() {
             ) : (
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
             )}
-            학생 둘러보기
+            학생
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleDemoLogin('learner')}
+            disabled={loading || demoLoading !== null}
+            className="border-[#8B5CF6]/30 text-[#8B5CF6] hover:bg-[#8B5CF6]/5"
+          >
+            {demoLoading === 'learner' ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            자기주도
           </Button>
         </div>
         <p className="mt-2 text-center text-[11px] text-gray-400">
