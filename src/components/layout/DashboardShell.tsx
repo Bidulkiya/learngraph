@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { RealtimeProvider, useRealtime } from './RealtimeProvider'
 import type { Role } from '@/types/user'
 
 /**
@@ -24,6 +25,7 @@ import type { Role } from '@/types/user'
 
 interface Props {
   role: Role
+  userId?: string | null
   userName?: string
   nickname?: string | null
   avatarUrl?: string | null
@@ -33,6 +35,7 @@ interface Props {
 
 export function DashboardShell({
   role,
+  userId,
   userName,
   nickname,
   avatarUrl,
@@ -77,8 +80,48 @@ export function DashboardShell({
   }, [sidebarOpen])
 
   return (
+    <RealtimeProvider userId={userId ?? null}>
+      <DashboardShellInner
+        role={role}
+        userName={userName}
+        nickname={nickname}
+        avatarUrl={avatarUrl}
+        unreadMessageCount={unreadMessageCount}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      >
+        {children}
+      </DashboardShellInner>
+    </RealtimeProvider>
+  )
+}
+
+/**
+ * 내부 렌더러 — RealtimeProvider 컨텍스트를 소비하여 실시간 unread를 사이드바에 반영.
+ */
+function DashboardShellInner({
+  role,
+  userName,
+  nickname,
+  avatarUrl,
+  unreadMessageCount,
+  sidebarOpen,
+  setSidebarOpen,
+  children,
+}: {
+  role: Role
+  userName?: string
+  nickname?: string | null
+  avatarUrl?: string | null
+  unreadMessageCount: number
+  sidebarOpen: boolean
+  setSidebarOpen: (v: boolean) => void
+  children: React.ReactNode
+}) {
+  const { realtimeUnread } = useRealtime()
+
+  return (
     <div className="flex h-screen">
-      {/* 모바일 백드롭 (딤 처리) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
@@ -87,15 +130,13 @@ export function DashboardShell({
         />
       )}
 
-      {/* 사이드바 — 데스크톱: 정적 flex item, 모바일: fixed overlay */}
       <Sidebar
         role={role}
-        unreadMessageCount={unreadMessageCount}
+        unreadMessageCount={unreadMessageCount + realtimeUnread}
         mobileOpen={sidebarOpen}
         onMobileClose={() => setSidebarOpen(false)}
       />
 
-      {/* 메인 영역 */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           role={role}

@@ -24,6 +24,7 @@ export default async function TeacherLayout({
     <RoleGuard allowedRole="teacher">
       <DashboardShell
         role="teacher"
+        userId={profile?.id}
         userName={profile?.name}
         nickname={profile?.nickname}
         avatarUrl={profile?.avatar_url}

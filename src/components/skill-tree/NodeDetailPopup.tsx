@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { saveMemo, getMemo } from '@/actions/memo'
 import { getConceptConnections } from '@/actions/recommendations'
-import { getNodeLearningDoc } from '@/actions/learning-doc'
+import { getNodeLearningDoc, getOrCreatePersonalizedDoc } from '@/actions/learning-doc'
 import { buildPrintableHtml, isHtmlDoc } from '@/lib/learning-doc-utils'
 import { FlashcardDeck } from './FlashcardDeck'
 import { Layers } from 'lucide-react'
@@ -85,16 +85,24 @@ export function NodeDetailPopup({
       setMemoLoaded(true)
     })
     // 학습 문서 로드 (locked가 아닐 때만)
+    // lazy 생성: learning_content가 null이면 AI가 즉석 생성
     if (node.status !== 'locked') {
       setDocLoading(true)
-      getNodeLearningDoc(node.id).then(res => {
+      // 먼저 권한+캐시 확인, 없으면 AI 생성 (getOrCreatePersonalizedDoc)
+      getOrCreatePersonalizedDoc(node.id).then(docRes => {
         if (cancelled) return
-        if (res.data) {
-          setLearningDoc(res.data.content)
-          setAllowDownload(res.data.allowDownload)
-          setAllowPrint(res.data.allowPrint)
+        if (docRes.data) {
+          setLearningDoc(docRes.data)
         }
-        setDocLoading(false)
+        // 권한 정보는 별도 조회
+        getNodeLearningDoc(node.id).then(permRes => {
+          if (cancelled) return
+          if (permRes.data) {
+            setAllowDownload(permRes.data.allowDownload)
+            setAllowPrint(permRes.data.allowPrint)
+          }
+          setDocLoading(false)
+        })
       })
     }
     // completed 노드는 관련 개념 자동 로드

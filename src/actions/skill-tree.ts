@@ -234,50 +234,12 @@ export async function saveSkillTree(
       }
     }
 
-    // 5. 퀴즈 자동 생성 (첫 3개 노드만 — 비용 절약)
-    try {
-      const { generateQuizForNode } = await import('./quiz')
-      const nodesToQuiz = dbNodes.slice(0, 3)
-      // 병렬 호출하면 rate limit 걸릴 수 있으므로 순차
-      for (const node of nodesToQuiz) {
-        await generateQuizForNode(node.id)
-      }
-    } catch (quizErr) {
-      console.error('[saveSkillTree] 초기 퀴즈 생성 실패 (저장은 성공):', quizErr)
-    }
+    // 5. 퀴즈 + 학습 문서는 lazy 생성으로 이관됨:
+    //    - 퀴즈: 학생이 노드 클릭 → 퀴즈 탭 열 때 0개면 generateQuizForNode 호출
+    //    - 학습 문서: 학생이 노드 클릭 → 학습 문서 탭 열 때 null이면 getOrCreatePersonalizedDoc 호출
+    //    이렇게 하면 saveSkillTree는 5초 이내로 완료.
 
-    // 6. 노드별 학습 문서 AI 생성 (best-effort, 병렬로 빠르게)
-    // 새로 생성된 스킬트리는 아직 style_guide가 없으므로 null 전달.
-    try {
-      const { generateLearningDocForNode } = await import('./learning-doc')
-      const subjectHint = treeData.subject_hint ?? 'default'
-      // 병렬 호출 — 최대 5개씩 배치
-      const batchSize = 5
-      for (let i = 0; i < dbNodes.length; i += batchSize) {
-        const batch = dbNodes.slice(i, i + batchSize)
-        await Promise.all(
-          batch.map(async (node) => {
-            const res = await generateLearningDocForNode(
-              node.title,
-              node.description ?? '',
-              tree.title,
-              subjectHint,
-              null
-            )
-            if (res.data) {
-              await admin
-                .from('nodes')
-                .update({ learning_content: res.data })
-                .eq('id', node.id)
-            }
-          })
-        )
-      }
-    } catch (docErr) {
-      console.error('[saveSkillTree] 학습 문서 생성 실패 (저장은 성공):', docErr)
-    }
-
-    // 7. Vectorize (best-effort, admin client)
+    // 6. Vectorize (best-effort, admin client)
     try {
       await embedAndStoreDocument(originalText, tree.id)
     } catch (vecErr) {

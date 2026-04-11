@@ -22,6 +22,7 @@ export default async function AdminLayout({
     <RoleGuard allowedRole="admin">
       <DashboardShell
         role="admin"
+        userId={profile?.id}
         userName={profile?.name}
         nickname={profile?.nickname}
         avatarUrl={profile?.avatar_url}

@@ -13,6 +13,7 @@ export default async function ParentLayout({
     <RoleGuard allowedRole="parent">
       <DashboardShell
         role="parent"
+        userId={profile?.id}
         userName={profile?.name}
         nickname={profile?.nickname}
         avatarUrl={profile?.avatar_url}

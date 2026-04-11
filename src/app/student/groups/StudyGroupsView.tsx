@@ -132,48 +132,63 @@ export function StudyGroupsView({ initialGroups, classes, currentUserId }: Props
               {groups.map(g => (
                 <Card
                   key={g.id}
-                  className={`cursor-pointer transition-all ${
+                  className={`transition-all ${
                     selected?.id === g.id ? 'ring-2 ring-[#4F6BF6]' : 'hover:shadow-md'
-                  }`}
+                  } ${g.is_member ? 'cursor-pointer' : ''}`}
                   onClick={() => g.is_member && setSelected(g)}
                 >
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="font-semibold">{g.name}</p>
                         <p className="text-xs text-gray-500">{g.class_name}</p>
                       </div>
-                      {g.is_member ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-xs text-gray-500 hover:text-red-500"
-                          onClick={async (e) => {
-                            e.stopPropagation()
-                            if (!confirm('정말 이 그룹을 탈퇴하시겠습니까?')) return
-                            const res = await leaveGroup(g.id)
-                            if (res.error) { toast.error(res.error); return }
-                            toast.success('그룹을 탈퇴했습니다')
-                            if (selected?.id === g.id) setSelected(null)
-                            const refreshed = await getMyGroups()
-                            if (refreshed.data) setGroups(refreshed.data)
-                          }}
-                        >
-                          탈퇴
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleJoin(g.id)
-                          }}
-                        >
-                          <UserPlus className="mr-1 h-3.5 w-3.5" />
-                          가입
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {g.is_member ? (
+                          <>
+                            <Button
+                              size="sm"
+                              className="bg-[#10B981] hover:bg-[#10B981]/90 text-white"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelected(g)
+                              }}
+                            >
+                              <MessageSquare className="mr-1 h-3.5 w-3.5" />
+                              입장
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs text-gray-400 hover:text-red-500"
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                if (!confirm('정말 이 그룹을 탈퇴하시겠습니까?')) return
+                                const res = await leaveGroup(g.id)
+                                if (res.error) { toast.error(res.error); return }
+                                toast.success('그룹을 탈퇴했습니다')
+                                if (selected?.id === g.id) setSelected(null)
+                                const refreshed = await getMyGroups()
+                                if (refreshed.data) setGroups(refreshed.data)
+                              }}
+                            >
+                              탈퇴
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="bg-[#6366F1] hover:bg-[#6366F1]/90"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleJoin(g.id)
+                            }}
+                          >
+                            <UserPlus className="mr-1 h-3.5 w-3.5" />
+                            가입하기
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">
                       <Users className="mr-1 inline h-3 w-3" />
