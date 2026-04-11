@@ -3,7 +3,6 @@ import { RoleGuard, getCurrentProfile } from "@/components/layout/RoleGuard"
 import { MessageNotifier } from "@/components/layout/MessageNotifier"
 import { DemoBanner } from "@/components/layout/DemoBanner"
 import { DemoTutorial } from "@/components/layout/DemoTutorial"
-import { DemoJoyrideGuide } from "@/components/layout/DemoJoyrideGuide"
 import { getUnreadSummary } from "@/actions/messages"
 import { isDemoAccount } from "@/lib/demo"
 
@@ -36,7 +35,6 @@ export default async function TeacherLayout({
         </main>
       </DashboardShell>
       {isDemo && <DemoTutorial role="teacher" />}
-      {isDemo && <DemoJoyrideGuide role="teacher" />}
       <MessageNotifier
         role="teacher"
         latestUnread={unread.latestUnread}

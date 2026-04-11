@@ -2,7 +2,6 @@ import { DashboardShell } from "@/components/layout/DashboardShell"
 import { RoleGuard, getCurrentProfile } from "@/components/layout/RoleGuard"
 import { DemoBanner } from "@/components/layout/DemoBanner"
 import { DemoTutorial } from "@/components/layout/DemoTutorial"
-import { DemoJoyrideGuide } from "@/components/layout/DemoJoyrideGuide"
 import { isDemoAccount } from "@/lib/demo"
 
 export default async function LearnerLayout({
@@ -28,7 +27,6 @@ export default async function LearnerLayout({
         </main>
       </DashboardShell>
       {isDemo && <DemoTutorial role="learner" />}
-      {isDemo && <DemoJoyrideGuide role="learner" />}
     </RoleGuard>
   )
 }

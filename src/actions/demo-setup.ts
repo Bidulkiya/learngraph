@@ -11,19 +11,17 @@ const DEMO_TREE_TITLE = '인공지능의 이해'
  * 이전 브랜드 이름 — DB에 이미 있는 기존 데모 스쿨을 찾아 자동 rename 하기 위함.
  * NodeBloom 브랜드 전환 후에도 기존 데이터를 손상 없이 migration.
  */
-const LEGACY_DEMO_SCHOOL_NAME = 'LearnGraph 체험 학교'
-
 /**
  * Idempotent 데모 환경 구축.
- * - 데모 교사 1명 + 데모 학생 1명 (email_confirmed)
+ * - 데모 교사 1명 + 데모 학생 1명 + 데모 독학러 1명 (email_confirmed)
  * - 데모 전용 스쿨 + 클래스
- * - 하드코딩된 스킬트리 "인공지능의 이해" 14노드
+ * - 하드코딩된 스킬트리
  * - 각 노드 학습 문서, 퀴즈, 플래시카드 (완료 노드만)
  * - 게이미피케이션 데이터 (XP, 업적, 미션, 감정, 브리핑)
  *
  * 모든 생성은 "이미 있으면 스킵" 패턴으로 재실행 안전.
  *
- * 성능: 완전히 구축된 상태면 fast-path로 ~6개 병렬 쿼리 후 즉시 return.
+ * 성능: 완전히 구축된 상태면 fast-path로 ~3개 병렬 쿼리 후 즉시 return.
  * 미구축 상태에서만 전체 30+ 쿼리 실행.
  */
 export async function setupDemoData(): Promise<{ error?: string }> {
@@ -31,20 +29,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     const admin = createAdminClient()
 
     // ============================================
-    // 0-pre. 레거시 "LearnGraph 체험 학교" → "NodeBloom 체험 학교" migration
-    // ============================================
-    // 브랜드 전환 이전에 만들어진 데모 환경은 스쿨 이름이 "LearnGraph 체험 학교"로
-    // 남아 있음. fast-path가 새 이름으로 검색하므로, 먼저 이름만 자동 업데이트.
-    await admin
-      .from('schools')
-      .update({
-        name: DEMO_SCHOOL_NAME,
-        description: '심사위원 둘러보기용 데모 스쿨 — 읽기 전용',
-      })
-      .eq('name', LEGACY_DEMO_SCHOOL_NAME)
-
-    // ============================================
-    // 0. Fast-path: 이미 완전 구축됐는지 6개 병렬 쿼리로 확인
+    // 0. Fast-path: 이미 완전 구축됐는지 병렬 쿼리로 확인
     // ============================================
     // 정상 구축된 상태: profile 2개 + school + class + tree + 14 nodes + 오늘 미션
     // 이 조건이 모두 만족되면 즉시 return (로딩 시간 대폭 단축).

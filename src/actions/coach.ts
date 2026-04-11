@@ -669,20 +669,5 @@ export async function getPreviousWeekSummary(): Promise<{
   }
 }
 
-// ============================================
-// 기존 getWeeklyPlan (하위 호환 — 지난 API)
-// ============================================
-
-/**
- * @deprecated — getWeeklyPlanWithMissions를 사용하세요.
- * 기존 API와의 호환을 위해 남겨두었지만 새 필드는 반환하지 않습니다.
- */
-export async function getWeeklyPlan(
-  forceRefresh: boolean = false
-): Promise<{ data?: WeeklyPlanOutput; error?: string }> {
-  const res = await getWeeklyPlanWithMissions(forceRefresh)
-  if (res.error) return { error: res.error }
-  if (!res.data) return { error: '주간 계획을 불러올 수 없습니다.' }
-  return { data: res.data.plan }
-}
+// getWeeklyPlan — 삭제됨. getWeeklyPlanWithMissions()를 직접 사용.
 
