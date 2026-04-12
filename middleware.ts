@@ -45,6 +45,12 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // IMPORTANT: getUser() validates server-side (not getSession which reads JWT only)
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Server Action POST 요청은 리디렉트하면 안 됨 — 자체적으로 인증 처리
+  // (세션 갱신은 위의 getUser()에서 이미 수행됨)
+  if (request.headers.has("next-action")) {
+    return supabaseResponse
+  }
+
   // Redirect 시 supabaseResponse의 갱신된 세션 쿠키를 복사
   function redirectTo(path: string): NextResponse {
     const redirectResponse = NextResponse.redirect(new URL(path, request.url))
