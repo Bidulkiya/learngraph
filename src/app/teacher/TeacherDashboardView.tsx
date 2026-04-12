@@ -73,7 +73,7 @@ export function TeacherDashboardView({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          안녕하세요, {profileName} 선생님 👋
+          안녕하세요, {profileName}님 👋
         </h1>
         <p className="mt-1 text-gray-500">스킬트리와 학생 학습 현황을 확인하세요</p>
       </div>

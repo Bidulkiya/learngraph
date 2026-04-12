@@ -92,7 +92,7 @@ export function ParentDashboardView({ parentName, students }: Props) {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            안녕하세요, {parentName} 학부모님 👋
+            안녕하세요, {parentName}님 👋
           </h1>
           <p className="mt-1 text-gray-500">자녀의 학습을 함께 응원해주세요</p>
         </div>

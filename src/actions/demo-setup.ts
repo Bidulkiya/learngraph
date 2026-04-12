@@ -74,9 +74,9 @@ export async function setupDemoData(): Promise<{ error?: string }> {
           .eq('email', DEMO_LEARNER_EMAIL)
           .maybeSingle()
         await Promise.all([
-          admin.from('profiles').update({ nickname: '데모' }).eq('id', teacherFast.data.id),
-          admin.from('profiles').update({ nickname: '데모' }).eq('id', studentFast.data.id),
-          ...(learnerProfile ? [admin.from('profiles').update({ nickname: '데모' }).eq('id', learnerProfile.id)] : []),
+          admin.from('profiles').update({ nickname: '데모선생' }).eq('id', teacherFast.data.id),
+          admin.from('profiles').update({ nickname: '데모학생' }).eq('id', studentFast.data.id),
+          ...(learnerProfile ? [admin.from('profiles').update({ nickname: '데모독학' }).eq('id', learnerProfile.id)] : []),
         ])
         // 공지사항 중복 정리: 1건만 남기기
         const { data: annRows } = await admin
@@ -102,8 +102,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .eq('email', DEMO_TEACHER_EMAIL)
       .maybeSingle()
 
-    const TEACHER_NICKNAME = '데모'
-    const TEACHER_AVATAR_SEED = '데모 선생님'
+    const TEACHER_NICKNAME = '데모선생'
+    const TEACHER_AVATAR_SEED = '데모선생'
     const TEACHER_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(TEACHER_AVATAR_SEED)}`
 
     let teacherId = existingTeacherProfile?.id
@@ -151,8 +151,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .eq('email', DEMO_STUDENT_EMAIL)
       .maybeSingle()
 
-    const STUDENT_NICKNAME = '데모'
-    const STUDENT_AVATAR_SEED = '데모 학생'
+    const STUDENT_NICKNAME = '데모학생'
+    const STUDENT_AVATAR_SEED = '데모학생'
     const STUDENT_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(STUDENT_AVATAR_SEED)}`
 
     let studentId = existingStudentProfile?.id
@@ -205,8 +205,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     // ============================================
     // 2-c. 데모 독학러 계정
     // ============================================
-    const LEARNER_NICKNAME = '데모'
-    const LEARNER_AVATAR_SEED = '데모 독학러'
+    const LEARNER_NICKNAME = '데모독학'
+    const LEARNER_AVATAR_SEED = '데모독학'
     const LEARNER_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(LEARNER_AVATAR_SEED)}`
 
     const { data: existingLearnerProfile } = await admin

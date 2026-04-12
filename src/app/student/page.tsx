@@ -108,7 +108,7 @@ export default async function StudentDashboard() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            안녕하세요, {profile.nickname ?? profile.name} 학생 👋
+            안녕하세요, {profile.nickname ?? profile.name}님 👋
           </h1>
           <p className="mt-1 flex items-center gap-2 text-gray-500">
             오늘도 학습을 이어가보세요
