@@ -196,7 +196,6 @@ export default function SignupPage() {
             avatar_url: avatarUrl,
             avatar_seed: nickname.trim(),
           },
-          emailRedirectTo: `${appUrl}/callback?next=/login?verified=true`,
         },
       })
 
@@ -214,9 +213,9 @@ export default function SignupPage() {
         return
       }
 
-      // session이 있으면 (이메일 확인 꺼져있음) → 프로필 초기화 + 완료 화면
+      // 가입 성공 → 프로필 초기화 + 완료 화면
+      // (Supabase "Confirm email" OFF 시 session이 바로 발급됨)
       if (signUpData.session) {
-        // auth trigger가 nickname/avatar를 기록하지만, race condition 대비 명시 업데이트
         const initRes = await initializeProfileAfterSignup(nickname.trim())
         if (initRes.error && !initRes.error.includes('이미')) {
           setError(initRes.error)
@@ -233,7 +232,8 @@ export default function SignupPage() {
         return
       }
 
-      // 이메일 확인이 켜진 환경 — verify 페이지로 이동
+      // Fallback: 이메일 확인이 켜진 환경 — verify 페이지로 이동
+      // (Supabase 대시보드에서 "Confirm email"을 다시 켜면 이 분기 활성화)
       router.push(`/verify?email=${encodeURIComponent(email)}`)
     } catch {
       setError("회원가입 중 오류가 발생했습니다. 다시 시도해주세요.")

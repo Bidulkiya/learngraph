@@ -80,7 +80,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .eq('email', DEMO_TEACHER_EMAIL)
       .maybeSingle()
 
-    const TEACHER_NICKNAME = '데모 선생님'
+    const TEACHER_NICKNAME = '데모'
     const TEACHER_AVATAR_SEED = '데모 선생님'
     const TEACHER_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(TEACHER_AVATAR_SEED)}`
 
@@ -129,7 +129,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       .eq('email', DEMO_STUDENT_EMAIL)
       .maybeSingle()
 
-    const STUDENT_NICKNAME = '데모 학생'
+    const STUDENT_NICKNAME = '데모'
     const STUDENT_AVATAR_SEED = '데모 학생'
     const STUDENT_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(STUDENT_AVATAR_SEED)}`
 
@@ -183,7 +183,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     // ============================================
     // 2-c. 데모 독학러 계정
     // ============================================
-    const LEARNER_NICKNAME = '데모 독학러'
+    const LEARNER_NICKNAME = '데모'
     const LEARNER_AVATAR_SEED = '데모 독학러'
     const LEARNER_AVATAR_URL = `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(LEARNER_AVATAR_SEED)}`
 
@@ -708,8 +708,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
     // ============================================
     // 14. 공지사항 + 환영 메시지
     // ============================================
-    // 공지사항: 체험 스쿨의 기존 공지 전부 삭제 후 재생성 (항상 깨끗한 첫 인상)
-    // announcement_reads도 같이 정리 → 데모 학생이 "미읽음" 상태로 보이도록
+    // 공지사항: 스쿨의 기존 공지 + 읽음 기록 전부 삭제 후 1건만 재생성
+    // 이렇게 해야 데모 진입 시 항상 깨끗한 "미읽음 1건" 상태
     const { data: existingAnnRows } = await admin
       .from('announcements')
       .select('id')
@@ -719,6 +719,7 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       await admin.from('announcement_reads').delete().in('announcement_id', existingAnnIds)
       await admin.from('announcements').delete().in('id', existingAnnIds)
     }
+    // 정확히 1건만 insert
     await admin.from('announcements').insert({
       school_id: schoolId,
       author_id: teacherId,
@@ -726,6 +727,8 @@ export async function setupDemoData(): Promise<{ error?: string }> {
       content: 'NodeBloom 둘러보기 학교입니다. 데모 계정은 읽기 전용이므로 모든 기능을 둘러볼 수 있지만 데이터는 저장되지 않습니다. 직접 사용해보고 싶으시면 회원가입 후 이용해주세요.',
       target_role: 'all',
     })
+    // 데모 계정의 모든 announcement_reads도 삭제 (항상 미읽음)
+    await admin.from('announcement_reads').delete().in('user_id', demoUserIds)
 
     // 직접 메시지: 교사→학생 메시지 전부 삭제 후 재생성 (미읽음 상태)
     await admin
