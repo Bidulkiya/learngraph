@@ -67,6 +67,28 @@ export async function setupDemoData(): Promise<{ error?: string }> {
         (missionCheck.count ?? 0) >= 3
       ) {
         // 모든 핵심 entity가 이미 구축됨 → 전체 setup skip
+        // 단, 닉네임/공지는 매번 강제 동기화 (코드 변경이 DB에 반영되도록)
+        const { data: learnerProfile } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('email', DEMO_LEARNER_EMAIL)
+          .maybeSingle()
+        await Promise.all([
+          admin.from('profiles').update({ nickname: '데모' }).eq('id', teacherFast.data.id),
+          admin.from('profiles').update({ nickname: '데모' }).eq('id', studentFast.data.id),
+          ...(learnerProfile ? [admin.from('profiles').update({ nickname: '데모' }).eq('id', learnerProfile.id)] : []),
+        ])
+        // 공지사항 중복 정리: 1건만 남기기
+        const { data: annRows } = await admin
+          .from('announcements')
+          .select('id')
+          .eq('school_id', schoolFast.data.id)
+          .order('created_at', { ascending: false })
+        if (annRows && annRows.length > 1) {
+          const idsToDelete = annRows.slice(1).map(a => a.id)
+          await admin.from('announcement_reads').delete().in('announcement_id', idsToDelete)
+          await admin.from('announcements').delete().in('id', idsToDelete)
+        }
         return {}
       }
     }
